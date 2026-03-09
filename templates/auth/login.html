@@ -21,6 +21,16 @@
         
         <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ next_page|default('') }}">
+            {% if show_default_admin_hint and not show_email_verification %}
+            <div class="default-admin-note">
+                <strong>Default admin loaded from `.env`.</strong>
+                <span>
+                    {% if default_admin_email_hint %}{{ default_admin_email_hint }}{% endif %}
+                    {% if default_admin_role_hint %}{{ default_admin_role_hint|title }}{% endif %}
+                </span>
+            </div>
+            {% endif %}
             <div class="form-group">
                 <input type="text" id="email" name="email" value="{{ prefill_email|default('') }}" required>
                 <label for="email">Username</label>
@@ -38,7 +48,7 @@
             
             <div class="form-group role-selector">
                 <select id="role" name="role" required>
-                    <option value="" disabled selected></option>
+                    <option value="" disabled {% if not prefill_role|default('') %}selected{% endif %}></option>
                     <option value="admin" {% if prefill_role|default('') == 'admin' %}selected{% endif %}>Administrator</option>
                     <option value="doctor" {% if prefill_role|default('') == 'doctor' %}selected{% endif %}>Doctor</option>
                     <option value="nurse" {% if prefill_role|default('') == 'nurse' %}selected{% endif %}>Nurse</option>
@@ -50,7 +60,7 @@
             </div>
             
             <div class="form-group remember-me">
-                <input type="checkbox" id="remember" name="remember">
+                <input type="checkbox" id="remember" name="remember" {% if remember_checked %}checked{% endif %}>
                 <label for="remember">Remember me</label>
             </div>
             
@@ -83,6 +93,46 @@
                 <a href="{{ url_for('auth.reset_password') }}">Forgot Password?</a>
             </div>
         </form>
+
+        {% if show_email_verification and verification_email %}
+        <div class="verification-panel">
+            <div class="verification-panel__header">
+                <h2>Email Verification Required</h2>
+                <p>Enter the 6-digit OTP sent to the account email to activate the login.</p>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.verify_email') }}" class="verification-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="login">
+                <input type="hidden" name="email" value="{{ verification_email }}">
+                <div class="form-group">
+                    <input type="email" id="verification_email" value="{{ verification_email }}" readonly>
+                    <label for="verification_email">Verification Email</label>
+                </div>
+                <div class="form-group">
+                    <input
+                        type="text"
+                        id="email_otp_code"
+                        name="code"
+                        maxlength="6"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        required
+                    >
+                    <label for="email_otp_code">OTP Code</label>
+                </div>
+                <button type="submit" class="login-button verification-button">Verify & Continue</button>
+            </form>
+
+            <form method="POST" action="{{ url_for('auth.resend_verify_email') }}" class="verification-resend">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="login">
+                <input type="hidden" name="email" value="{{ verification_email }}">
+                <button type="submit" class="secondary-button">Resend OTP</button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -263,6 +313,29 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+}
+
+.default-admin-note {
+    position: relative;
+    z-index: 1;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    background: rgba(232, 240, 254, 0.92);
+    color: #1f3c88;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-shadow: inset 0 0 0 1px rgba(66, 133, 244, 0.15);
+}
+
+.default-admin-note strong {
+    font-size: 0.92rem;
+}
+
+.default-admin-note span {
+    font-size: 0.88rem;
+    color: #3256a8;
+    word-break: break-word;
 }
 
 .form-group {
@@ -484,6 +557,56 @@ body {
     text-decoration: underline;
 }
 
+.verification-panel {
+    position: relative;
+    z-index: 1;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(66, 133, 244, 0.18);
+}
+
+.verification-panel__header {
+    margin-bottom: 1rem;
+}
+
+.verification-panel__header h2 {
+    font-size: 1rem;
+    margin-bottom: 0.35rem;
+    color: #1f2937;
+}
+
+.verification-panel__header p {
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+}
+
+.verification-form,
+.verification-resend {
+    position: relative;
+    z-index: 1;
+}
+
+.verification-button,
+.secondary-button {
+    width: 100%;
+}
+
+.secondary-button {
+    border: none;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: rgba(66, 133, 244, 0.12);
+    color: var(--dark-blue);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.secondary-button:hover {
+    background: rgba(66, 133, 244, 0.2);
+}
+
 /* Alert Messages */
 .alert {
     padding: 1rem;
@@ -523,7 +646,8 @@ body {
     
     .form-group input,
     .role-selector select,
-    .login-button {
+    .login-button,
+    .secondary-button {
         padding: 0.8rem;
     }
 }

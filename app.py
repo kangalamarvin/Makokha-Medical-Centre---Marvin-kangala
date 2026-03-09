@@ -9041,34 +9041,112 @@ def ensure_database_initialized():
 
 
 def _create_default_users():
-    """Create default admin user from .env only if no users exist. Runs only on initial DB setup."""
+    """Create or update the env-configured default admin user."""
     try:
-        user_count = User.query.count()
-        if user_count > 0:
-            app.logger.info("Users already exist. Skipping default admin creation.")
-            return
-        from dotenv import load_dotenv
         load_dotenv()
-        admin_username = os.getenv('DEFAULT_ADMIN_USERNAME')
-        admin_email = os.getenv('DEFAULT_ADMIN_EMAIL')
-        admin_password = os.getenv('DEFAULT_ADMIN_PASSWORD')
-        admin_role = 'admin'
+        admin_username = (os.getenv('DEFAULT_ADMIN_USERNAME') or '').strip()
+        admin_email = _normalize_email_address(os.getenv('DEFAULT_ADMIN_EMAIL'))
+        admin_password = os.getenv('DEFAULT_ADMIN_PASSWORD') or ''
+        admin_role = (os.getenv('DEFAULT_ADMIN_ROLE') or 'admin').strip() or 'admin'
+
+        admin_verified_raw = os.getenv('DEFAULT_ADMIN_EMAIL_VERIFIED')
+        admin_verified_requested = None
+        if admin_verified_raw is not None:
+            admin_verified_requested = str(admin_verified_raw).strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+
         if not (admin_username and admin_email and admin_password):
-            app.logger.warning("Default admin credentials not set in .env. Skipping admin creation.")
+            app.logger.warning("Default admin credentials not fully set in .env. Skipping default admin sync.")
             return
-        user = User(
-            username=admin_username,
-            email=admin_email,
-            role=admin_role,
-            is_active=True,
-            is_email_verified=True
-        )
-        user.set_password(admin_password)
-        db.session.add(user)
-        db.session.commit()
-        app.logger.info(f"✓ Default admin user created: {admin_email}")
+
+        email_match = None
+        username_match = None
+        admin_email_norm = admin_email.strip().lower()
+        admin_username_norm = admin_username.strip().lower()
+
+        for candidate in User.query.all():
+            try:
+                candidate_email = str(candidate.email or '').strip().lower()
+                candidate_username = str(candidate.username or '').strip().lower()
+            except Exception:
+                continue
+
+            if not email_match and candidate_email == admin_email_norm:
+                email_match = candidate
+            if not username_match and candidate_username == admin_username_norm:
+                username_match = candidate
+
+            if email_match is not None and username_match is not None:
+                break
+
+        if email_match and username_match and int(email_match.id) != int(username_match.id):
+            app.logger.error(
+                "Default admin sync skipped because env email and username map to different users."
+            )
+            return
+
+        user = email_match or username_match
+        changed = False
+        action = 'updated'
+
+        if user is None:
+            user = User(
+                username=admin_username,
+                email=admin_email,
+                role=admin_role,
+                is_active=True,
+                is_email_verified=(admin_verified_requested if admin_verified_requested is not None else False),
+            )
+            user.set_password(admin_password)
+            db.session.add(user)
+            changed = True
+            action = 'created'
+        else:
+            existing_email = str(getattr(user, 'email', '') or '').strip().lower()
+            email_changed = existing_email != admin_email_norm
+
+            if str(getattr(user, 'username', '') or '') != admin_username:
+                user.username = admin_username
+                changed = True
+
+            if email_changed:
+                user.email = admin_email
+                user.email_otp_hash = None
+                user.email_otp_expires_at = None
+                changed = True
+
+            if str(getattr(user, 'role', '') or '').strip().lower() != admin_role.strip().lower():
+                user.role = admin_role
+                changed = True
+
+            if not bool(getattr(user, 'is_active', False)):
+                user.is_active = True
+                changed = True
+
+            try:
+                password_matches = user.check_password(admin_password)
+            except Exception:
+                password_matches = False
+
+            if not password_matches:
+                user.set_password(admin_password)
+                changed = True
+
+            if email_changed:
+                target_verified = admin_verified_requested if admin_verified_requested is not None else False
+                if bool(getattr(user, 'is_email_verified', False)) != bool(target_verified):
+                    user.is_email_verified = bool(target_verified)
+                    changed = True
+            elif admin_verified_requested is True and not bool(getattr(user, 'is_email_verified', False)):
+                user.is_email_verified = True
+                user.email_otp_hash = None
+                user.email_otp_expires_at = None
+                changed = True
+
+        if changed:
+            db.session.commit()
+            app.logger.info(f"✓ Default admin user {action}: {admin_email}")
     except Exception as e:
-        app.logger.error(f"✗ Failed to create default admin: {str(e)}")
+        app.logger.error(f"✗ Failed to sync default admin: {str(e)}", exc_info=True)
         db.session.rollback()
 
 
@@ -9780,6 +9858,256 @@ def can_user_access_patient(user, patient):
 
 
 
+def _get_requested_next_page() -> str | None:
+    next_page = (request.form.get('next') or request.args.get('next') or '').strip()
+    return next_page or None
+
+
+def _resolve_post_login_destination(user: User, next_page: str | None = None) -> str:
+    candidate = (next_page or '').strip()
+    if candidate.startswith('/'):
+        return candidate
+
+    user_role = str(getattr(user, 'role', '') or '').lower().strip()
+    if user_role == 'admin':
+        return url_for('admin_dashboard')
+    if user_role == 'doctor':
+        return url_for('doctor_restore_last')
+    if user_role == 'nurse':
+        return url_for('nurse_dashboard')
+    if user_role == 'pharmacist':
+        return url_for('pharmacist_dashboard')
+    if user_role == 'receptionist':
+        return url_for('receptionist_dashboard')
+    if user_role == 'labtech':
+        return url_for('labtech_dashboard')
+    return url_for('home')
+
+
+def _clear_pending_email_verification_session() -> None:
+    for key in (
+        'email_verification_pending_user_id',
+        'email_verification_pending_remember',
+        'email_verification_pending_role',
+        'email_verification_next_page',
+    ):
+        session.pop(key, None)
+
+
+def _get_pending_email_verification_context():
+    pending_user_id = session.get('email_verification_pending_user_id')
+    if not pending_user_id:
+        return None, False, None, ''
+
+    try:
+        user = db.session.get(User, int(pending_user_id))
+    except Exception:
+        user = None
+
+    if not user:
+        _clear_pending_email_verification_session()
+        return None, False, None, ''
+
+    remember = bool(session.get('email_verification_pending_remember', False))
+    next_page = (session.get('email_verification_next_page') or '').strip() or None
+    role = str(session.get('email_verification_pending_role') or '').strip().lower()
+    return user, remember, next_page, role
+
+
+def _user_has_active_email_otp(user: User) -> bool:
+    if not user or not getattr(user, 'email_otp_hash', None):
+        return False
+    expires_at = _as_eat_naive(getattr(user, 'email_otp_expires_at', None))
+    return bool(expires_at and expires_at >= _utcnow_naive())
+
+
+def _begin_pending_email_verification(
+    user: User,
+    *,
+    remember: bool,
+    role: str | None = None,
+    next_page: str | None = None,
+) -> bool:
+    session['email_verification_pending_user_id'] = int(user.id)
+    session['email_verification_pending_remember'] = bool(remember)
+    session['email_verification_pending_role'] = str(role or '').strip().lower()
+    session['email_verification_next_page'] = _resolve_post_login_destination(user, next_page)
+
+    already_sent = _user_has_active_email_otp(user)
+    if not already_sent:
+        _send_user_verification_otp(user)
+    return not already_sent
+
+
+def _continue_verified_login(user: User, *, remember: bool = False, next_page: str | None = None):
+    accept_language = request.headers.get('Accept-Language', '')
+    resolved_next_page = _resolve_post_login_destination(user, next_page)
+
+    _clear_pending_email_verification_session()
+
+    current_app.logger.info(f"Logging in user: {user.username}, role: {user.role}")
+
+    # ==================================================================
+    # ADAPTIVE AUTHENTICATION - Phase 2
+    # ==================================================================
+    # Perform risk assessment (single canonical path)
+    device_fingerprint = DeviceFingerprint.generate_fingerprint(
+        user_agent=request.user_agent.string,
+        ip_address=request.remote_addr,
+        accept_language=accept_language
+    )
+
+    # Get user's known devices and IPs (persisted)
+    known_devices = user.known_devices or []
+    known_ips = user.known_ips or []
+    typical_hours = user.typical_login_hours or []
+    current_hour = datetime.now().hour
+
+    risk_score, risk_level, risk_factors = adaptive_auth.assess_login_risk(
+        user_id=user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+        accept_language=accept_language,
+        known_devices=known_devices,
+        known_ips=known_ips,
+        typical_hours=typical_hours,
+        failed_attempts=(user.failed_login_attempts or 0),
+    )
+
+    # AI Threat Detection - Phase 2
+    threat_score = 0.0
+    try:
+        # Analyze behavior patterns
+        threat_score = ai_threat_detector.analyze_login_attempt(
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            failed_attempts=user.failed_login_attempts or 0,
+            risk_factors=risk_factors
+        )
+    except Exception as e:
+        app.logger.error(f"AI threat detection error: {e}")
+
+    # Log comprehensive audit event
+    try:
+        comprehensive_audit.log_event(
+            event_type=AuditEventType.LOGIN,
+            user_id=user.id,
+            action='login_attempt',
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            severity=AuditSeverity.INFO if risk_level == 'LOW' else AuditSeverity.MEDIUM,
+            metadata={
+                'risk_score': risk_score,
+                'risk_level': risk_level,
+                'threat_score': threat_score,
+                'device_fingerprint': device_fingerprint[:16],  # Truncate for storage
+                'risk_factors': {k: v for k, v in risk_factors.items() if v}  # Only true factors
+            }
+        )
+    except Exception as e:
+        app.logger.error(f"Comprehensive audit error: {e}")
+
+    # Update user's device and location tracking
+    try:
+        if device_fingerprint not in known_devices:
+            known_devices.append(device_fingerprint)
+            user.known_devices = known_devices[-10:]  # Keep last 10
+
+        if request.remote_addr not in known_ips:
+            known_ips.append(request.remote_addr)
+            user.known_ips = known_ips[-10:]  # Keep last 10
+
+        if current_hour not in typical_hours:
+            typical_hours.append(current_hour)
+            user.typical_login_hours = typical_hours
+    except Exception as e:
+        app.logger.error(f"Error updating device tracking: {e}")
+
+    # ==================================================================
+    # MFA CHECK - Phase 1
+    # ==================================================================
+    # Check if MFA is enabled and required
+    require_mfa = user.mfa_enabled and user.mfa_secret
+
+    # Allow runtime disable of MFA enforcement via feature flags.
+    try:
+        if app.config.get('MFA_ENFORCEMENT_ENABLED') is False:
+            require_mfa = False
+    except Exception:
+        pass
+
+    # High risk logins ALWAYS require MFA (if MFA is set up)
+    if risk_level in ['HIGH', 'CRITICAL'] and user.mfa_enabled:
+        require_mfa = True
+        flash(f'High risk login detected (Risk: {risk_level}). MFA verification required.', 'warning')
+
+    if require_mfa:
+        # Store user ID in session for MFA verification
+        session['mfa_pending_user_id'] = user.id
+        session['mfa_remember'] = remember
+        session['mfa_next_page'] = resolved_next_page
+
+        flash('Please enter your MFA verification code', 'info')
+        return redirect(url_for('auth.verify_mfa'))
+
+    # ==================================================================
+    # COMPLETE LOGIN (No MFA or MFA not enabled)
+    # ==================================================================
+    # Security: Regenerate session to prevent session fixation attacks
+    # Store any data that needs to persist across regeneration
+    old_session_data = dict(session)
+    session.clear()
+    # Restore necessary data (Flash messages are handled by Flask)
+    for key, value in old_session_data.items():
+        if key.startswith('email_verification_'):
+            continue
+        if key.startswith('_') and key not in ['_csrf_token']:
+            continue  # Skip internal Flask session keys
+        session[key] = value
+
+    login_user(user, remember=remember, fresh=True)
+    user.last_login = get_eat_now()
+    user.failed_login_attempts = 0  # Reset on successful login
+
+    # Adaptive auth: record successful login for future risk scoring
+    try:
+        adaptive_auth.record_login_attempt(
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string,
+            success=True,
+            accept_language=accept_language,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Adaptive auth record (success) error: {e}")
+
+    # Security: Log successful login for monitoring
+    current_app.logger.info(f"Successful login - User: {user.username}, Role: {user.role}, IP: {request.remote_addr}, Risk: {risk_level}")
+
+    # SIEM auth success event (best-effort)
+    try:
+        from utils.siem import emit_auth_event
+
+        emit_auth_event(
+            user_id=int(user.id),
+            ip=request.headers.get('X-Forwarded-For') or request.remote_addr,
+            success=True,
+            meta={"risk_level": str(risk_level)},
+        )
+    except Exception:
+        pass
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(f"Error committing user login: {str(e)}")
+        db.session.rollback()
+
+    flash('Login successful!', 'success')
+    current_app.logger.info(f"Redirecting to: {resolved_next_page}")
+    return redirect(resolved_next_page)
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def login():
@@ -9787,17 +10115,49 @@ def login():
         return redirect(url_for('home'))
 
     # Allow verification flow to remain on the login page.
-    prefill_email = (request.args.get('verify_email') or '').strip()
-    show_email_verification = bool(prefill_email)
+    requested_next_page = _get_requested_next_page()
+    pending_verification_user, pending_verification_remember, pending_verification_next_page, pending_verification_role = _get_pending_email_verification_context()
+    prefill_email = (request.form.get('email') or request.args.get('verify_email') or '').strip()
+    prefill_role = (request.form.get('role') or '').strip().lower()
+    remember_checked = bool(request.form.get('remember')) or bool(pending_verification_remember)
+    verification_email = ''
+    show_default_admin_hint = False
+    default_admin_email_hint = ''
+    default_admin_role_hint = ''
+
+    if pending_verification_user:
+        verification_email = (str(getattr(pending_verification_user, 'email', '') or '')).strip()
+        if not prefill_role:
+            prefill_role = pending_verification_role
+    elif (request.args.get('verify_email') or '').strip():
+        verification_email = (request.args.get('verify_email') or '').strip()
+
+    if not prefill_email and pending_verification_user:
+        prefill_email = verification_email
+
+    if not requested_next_page and pending_verification_next_page:
+        requested_next_page = pending_verification_next_page
+
+    if not prefill_email:
+        default_admin_username = (os.getenv('DEFAULT_ADMIN_USERNAME') or '').strip()
+        default_admin_email = _normalize_email_address(os.getenv('DEFAULT_ADMIN_EMAIL'))
+        default_admin_role = str((os.getenv('DEFAULT_ADMIN_ROLE') or 'admin')).strip().lower()
+        if default_admin_username or default_admin_email:
+            prefill_email = default_admin_username or default_admin_email
+            prefill_role = prefill_role or default_admin_role
+            show_default_admin_hint = True
+            default_admin_email_hint = default_admin_email
+            default_admin_role_hint = default_admin_role
+
+    show_email_verification = bool(verification_email)
     
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = (request.form.get('email') or '').strip()
         password = request.form.get('password')
-        role = request.form.get('role')
+        role = (request.form.get('role') or '').strip()
         remember = True if request.form.get('remember') else False
-
         accept_language = request.headers.get('Accept-Language', '')
-        
+
         current_app.logger.info(f"Login attempt - email/username: {email}, role: {role}")
         
         # Since email and username are encrypted, we must fetch all users and check in Python
@@ -9875,218 +10235,38 @@ def login():
         
         if user:
             if not getattr(user, 'is_email_verified', True):
-                # Keep the user on the login page and let them request + verify OTP.
                 verification_email = (str(getattr(user, 'email', '') or '')).strip()
                 # Security: Log email verification required
                 current_app.logger.warning(f"Login blocked - Email not verified: {email}, IP: {request.remote_addr}")
-                flash('Your email is not verified. Request an OTP to continue.', 'warning')
+                try:
+                    otp_sent_now = _begin_pending_email_verification(
+                        user,
+                        remember=remember,
+                        role=role,
+                        next_page=requested_next_page,
+                    )
+                    if otp_sent_now:
+                        flash('Your email is not verified. We sent a 6-digit OTP to your email. Enter it to continue.', 'warning')
+                    else:
+                        flash('Your email is not verified. Enter the active OTP from your email, or resend a new code.', 'warning')
+                except Exception as e:
+                    current_app.logger.error(f'Failed to start email verification login flow: {e}', exc_info=True)
+                    flash('Your email is not verified. OTP sending failed for now; use resend after checking email configuration.', 'danger')
                 return render_template(
                     'auth/login.html',
                     show_email_verification=True,
-                    prefill_email=verification_email,
+                    prefill_email=email,
                     prefill_role=role,
+                    verification_email=verification_email,
+                    next_page=requested_next_page,
+                    remember_checked=remember,
                 )
 
-            current_app.logger.info(f"Logging in user: {user.username}, role: {user.role}")
-            
-            # ==================================================================
-            # ADAPTIVE AUTHENTICATION - Phase 2
-            # ==================================================================
-            # Perform risk assessment (single canonical path)
-            device_fingerprint = DeviceFingerprint.generate_fingerprint(
-                user_agent=request.user_agent.string,
-                ip_address=request.remote_addr,
-                accept_language=accept_language
+            return _continue_verified_login(
+                user,
+                remember=remember,
+                next_page=requested_next_page,
             )
-            
-            # Get user's known devices and IPs (persisted)
-            known_devices = user.known_devices or []
-            known_ips = user.known_ips or []
-            typical_hours = user.typical_login_hours or []
-            current_hour = datetime.now().hour
-
-            risk_score, risk_level, risk_factors = adaptive_auth.assess_login_risk(
-                user_id=user.id,
-                ip_address=request.remote_addr,
-                user_agent=request.user_agent.string,
-                accept_language=accept_language,
-                known_devices=known_devices,
-                known_ips=known_ips,
-                typical_hours=typical_hours,
-                failed_attempts=(user.failed_login_attempts or 0),
-            )
-            
-            # AI Threat Detection - Phase 2
-            threat_score = 0.0
-            try:
-                # Analyze behavior patterns
-                threat_score = ai_threat_detector.analyze_login_attempt(
-                    user_id=user.id,
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string,
-                    failed_attempts=user.failed_login_attempts or 0,
-                    risk_factors=risk_factors
-                )
-            except Exception as e:
-                app.logger.error(f"AI threat detection error: {e}")
-            
-            # Log comprehensive audit event
-            try:
-                comprehensive_audit.log_event(
-                    event_type=AuditEventType.LOGIN,
-                    user_id=user.id,
-                    action='login_attempt',
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string,
-                    severity=AuditSeverity.INFO if risk_level == 'LOW' else AuditSeverity.MEDIUM,
-                    metadata={
-                        'risk_score': risk_score,
-                        'risk_level': risk_level,
-                        'threat_score': threat_score,
-                        'device_fingerprint': device_fingerprint[:16],  # Truncate for storage
-                        'risk_factors': {k: v for k, v in risk_factors.items() if v}  # Only true factors
-                    }
-                )
-            except Exception as e:
-                app.logger.error(f"Comprehensive audit error: {e}")
-            
-            # Update user's device and location tracking
-            try:
-                if device_fingerprint not in known_devices:
-                    known_devices.append(device_fingerprint)
-                    user.known_devices = known_devices[-10:]  # Keep last 10
-                
-                if request.remote_addr not in known_ips:
-                    known_ips.append(request.remote_addr)
-                    user.known_ips = known_ips[-10:]  # Keep last 10
-                
-                if current_hour not in typical_hours:
-                    typical_hours.append(current_hour)
-                    user.typical_login_hours = typical_hours
-            except Exception as e:
-                app.logger.error(f"Error updating device tracking: {e}")
-            
-            # ==================================================================
-            # MFA CHECK - Phase 1
-            # ==================================================================
-            # Check if MFA is enabled and required
-            require_mfa = user.mfa_enabled and user.mfa_secret
-
-            # Allow runtime disable of MFA enforcement via feature flags.
-            try:
-                if app.config.get('MFA_ENFORCEMENT_ENABLED') is False:
-                    require_mfa = False
-            except Exception:
-                pass
-            
-            # High risk logins ALWAYS require MFA (if MFA is set up)
-            if risk_level in ['HIGH', 'CRITICAL'] and user.mfa_enabled:
-                require_mfa = True
-                flash(f'High risk login detected (Risk: {risk_level}). MFA verification required.', 'warning')
-            
-            if require_mfa:
-                # Store user ID in session for MFA verification
-                session['mfa_pending_user_id'] = user.id
-                session['mfa_remember'] = remember
-                
-                # Store redirect target
-                user_role = str(user.role).lower().strip() if user.role else ''
-                next_page = request.args.get('next')
-                if not next_page or not next_page.startswith('/'):
-                    if user_role == 'admin':
-                        next_page = url_for('admin_dashboard')
-                    elif user_role == 'doctor':
-                        next_page = url_for('doctor_restore_last')
-                    elif user_role == 'nurse':
-                        next_page = url_for('nurse_dashboard')
-                    elif user_role == 'pharmacist':
-                        next_page = url_for('pharmacist_dashboard')
-                    elif user_role == 'receptionist':
-                        next_page = url_for('receptionist_dashboard')
-                    elif user_role == 'labtech':
-                        next_page = url_for('labtech_dashboard')
-                    else:
-                        next_page = url_for('home')
-                
-                session['mfa_next_page'] = next_page
-                
-                flash('Please enter your MFA verification code', 'info')
-                return redirect(url_for('auth.verify_mfa'))
-            
-            # ==================================================================
-            # COMPLETE LOGIN (No MFA or MFA not enabled)
-            # ==================================================================
-            # Security: Regenerate session to prevent session fixation attacks
-            # Store any data that needs to persist across regeneration
-            old_session_data = dict(session)
-            session.clear()
-            # Restore necessary data (Flash messages are handled by Flask)
-            for key, value in old_session_data.items():
-                if key.startswith('_') and key not in ['_csrf_token']:
-                    continue  # Skip internal Flask session keys
-                session[key] = value
-            
-            login_user(user, remember=remember, fresh=True)
-            user.last_login = get_eat_now()
-            user.failed_login_attempts = 0  # Reset on successful login
-
-            # Adaptive auth: record successful login for future risk scoring
-            try:
-                adaptive_auth.record_login_attempt(
-                    user_id=user.id,
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string,
-                    success=True,
-                    accept_language=accept_language,
-                )
-            except Exception as e:
-                current_app.logger.error(f"Adaptive auth record (success) error: {e}")
-            
-            # Security: Log successful login for monitoring
-            current_app.logger.info(f"Successful login - User: {user.username}, Role: {user.role}, IP: {request.remote_addr}, Risk: {risk_level}")
-
-            # SIEM auth success event (best-effort)
-            try:
-                from utils.siem import emit_auth_event
-
-                emit_auth_event(
-                    user_id=int(user.id),
-                    ip=request.headers.get('X-Forwarded-For') or request.remote_addr,
-                    success=True,
-                    meta={"risk_level": str(risk_level)},
-                )
-            except Exception:
-                pass
-            
-            try:
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.error(f"Error committing user login: {str(e)}")
-                db.session.rollback()
-            
-            flash('Login successful!', 'success')
-            
-            # Get the redirect target based on user role (compare as strings)
-            user_role = str(user.role).lower().strip() if user.role else ''
-            next_page = request.args.get('next')
-            if not next_page or not next_page.startswith('/'):
-                if user_role == 'admin':
-                    next_page = url_for('admin_dashboard')
-                elif user_role == 'doctor':
-                    next_page = url_for('doctor_restore_last')
-                elif user_role == 'nurse':
-                    next_page = url_for('nurse_dashboard')
-                elif user_role == 'pharmacist':
-                    next_page = url_for('pharmacist_dashboard')
-                elif user_role == 'receptionist':
-                    next_page = url_for('receptionist_dashboard')
-                elif user_role == 'labtech':
-                    next_page = url_for('labtech_dashboard')
-                else:
-                    next_page = url_for('home')
-            
-            current_app.logger.info(f"Redirecting to: {next_page}")
-            return redirect(next_page)
         
         current_app.logger.warning(f"Login failed for email/username: {email}, role: {role}")
         flash('Invalid credentials or role', 'danger')
@@ -10095,6 +10275,13 @@ def login():
         'auth/login.html',
         show_email_verification=show_email_verification,
         prefill_email=prefill_email,
+        prefill_role=prefill_role,
+        verification_email=verification_email,
+        next_page=requested_next_page,
+        remember_checked=remember_checked,
+        show_default_admin_hint=show_default_admin_hint,
+        default_admin_email_hint=default_admin_email_hint,
+        default_admin_role_hint=default_admin_role_hint,
     )
 
 @app.context_processor
@@ -11138,11 +11325,19 @@ def verify_email():
         email = (request.form.get('email') or '').strip()
         code = (request.form.get('code') or '').strip()
         user = _find_user_by_email_plain(email)
+        pending_user, pending_remember, pending_next_page, _pending_role = _get_pending_email_verification_context()
         if not user:
             flash('Invalid email or OTP.', 'danger')
             return _redirect_back(email)
 
         if user.is_email_verified:
+            if pending_user and int(pending_user.id) == int(user.id):
+                flash('Email already verified. Continuing login.', 'info')
+                return _continue_verified_login(
+                    user,
+                    remember=pending_remember,
+                    next_page=pending_next_page,
+                )
             flash('Email already verified. You can login.', 'info')
             return redirect(url_for('auth.login'))
 
@@ -11160,6 +11355,13 @@ def verify_email():
         user.email_otp_hash = None
         user.email_otp_expires_at = None
         db.session.commit()
+        if pending_user and int(pending_user.id) == int(user.id):
+            flash('Email verified successfully. Continuing login.', 'success')
+            return _continue_verified_login(
+                user,
+                remember=pending_remember,
+                next_page=pending_next_page,
+            )
         flash('Email verified successfully. Please login.', 'success')
         return redirect(url_for('auth.login'))
 
