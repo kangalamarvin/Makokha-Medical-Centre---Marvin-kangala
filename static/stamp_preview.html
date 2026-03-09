@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stamp & Signature Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .preview-section {
+            background: white;
+            padding: 40px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        .demo-container {
+            display: flex;
+            gap: 40px;
+            margin: 30px 0;
+            align-items: center;
+            justify-content: center;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Dynamic Stamp & Signature Preview</h1>
+    
+    <div class="info">
+        <strong>✨ What you're seeing:</strong> System-generated stamps and signatures that automatically update with today's date.
+        No images needed - all code-based!
+    </div>
+    
+    <!-- Red Stamp -->
+    <div class="preview-section">
+        <h2>1. Default Red Rubber Stamp (Official Documents)</h2>
+        <div class="demo-container">
+            <style>
+                .rubber-stamp {
+                    width: 200px;
+                    height: 200px;
+                    border: 4px solid #c0392b;
+                    border-radius: 50%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                    background: linear-gradient(135deg, rgba(192, 57, 43, 0.1) 0%, rgba(192, 57, 43, 0.05) 100%);
+                    transform: rotate(-15deg);
+                    font-family: 'Arial Black', 'Arial Bold', Arial, sans-serif;
+                    text-align: center;
+                    padding: 15px;
+                    box-shadow: 0 0 0 2px #c0392b inset;
+                }
+                
+                .rubber-stamp::before {
+                    content: '';
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    border: 2px solid #c0392b;
+                    border-radius: 50%;
+                    top: 4px;
+                    left: 4px;
+                    opacity: 0.3;
+                }
+                
+                .stamp-top {
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #c0392b;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin-bottom: 5px;
+                    line-height: 1.2;
+                }
+                
+                .stamp-center {
+                    font-size: 18px;
+                    font-weight: 900;
+                    color: #c0392b;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    margin: 8px 0;
+                    line-height: 1.1;
+                }
+                
+                .stamp-date {
+                    font-size: 11px;
+                    font-weight: bold;
+                    color: #c0392b;
+                    margin-top: 5px;
+                    letter-spacing: 0.5px;
+                }
+                
+                .stamp-bottom {
+                    font-size: 9px;
+                    color: #c0392b;
+                    margin-top: 3px;
+                    text-transform: uppercase;
+                }
+            </style>
+            
+            <div class="rubber-stamp">
+                <div class="stamp-top">Makokha</div>
+                <div class="stamp-center">Medical<br>Centre</div>
+                <div class="stamp-date">
+                    <script>document.write(new Date().toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}))</script>
+                </div>
+                <div class="stamp-bottom">Nairobi • Kenya</div>
+            </div>
+            
+            <div>
+                <strong>Use for:</strong> LPOs, Invoices, Official Documents<br>
+                <strong>Color:</strong> Red (#c0392b)<br>
+                <strong>Date:</strong> <span id="current-date"></span> (Auto-updates daily)<br>
+                <strong>Code:</strong> <code>{{ generate_rubber_stamp() }}</code>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Digital Signature -->
+    <div class="preview-section">
+        <h2>2. Digital Signature (Cursive Style)</h2>
+        <div class="demo-container">
+            <style>
+                .signature-container {
+                    display: inline-block;
+                    position: relative;
+                    margin: 20px 0;
+                }
+                
+                .signature-script {
+                    font-family: 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
+                    font-size: 42px;
+                    color: #1a1a1a;
+                    font-style: italic;
+                    transform: rotate(-3deg);
+                    display: inline-block;
+                    padding: 0 20px;
+                    position: relative;
+                    line-height: 1;
+                }
+                
+                .signature-script::before {
+                    content: '';
+                    position: absolute;
+                    bottom: -5px;
+                    left: 10px;
+                    right: 10px;
+                    height: 2px;
+                    background: linear-gradient(to right, transparent, #1a1a1a 20%, #1a1a1a 80%, transparent);
+                    opacity: 0.4;
+                }
+                
+                .signature-title {
+                    text-align: center;
+                    font-size: 11px;
+                    color: #2c3e50;
+                    margin-top: 5px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                
+                .signature-date {
+                    text-align: center;
+                    font-size: 9px;
+                    color: #7f8c8d;
+                    margin-top: 2px;
+                }
+            </style>
+            
+            <div class="signature-container">
+                <div class="signature-script">Dr. J. Makokha</div>
+                <div class="signature-title">Medical Director</div>
+                <div class="signature-date">
+                    Signed: <script>document.write(new Date().toLocaleDateString('en-GB', {day: '2-digit', month: 'long', year: 'numeric'}))</script>
+                </div>
+            </div>
+            
+            <div>
+                <strong>Use for:</strong> Prescriptions, Certificates, Reports<br>
+                <strong>Style:</strong> Handwritten cursive<br>
+                <strong>Date:</strong> <span id="sig-date"></span> (Auto-updates)<br>
+                <strong>Code:</strong> <code>{{ generate_digital_signature() }}</code>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Together Example -->
+    <div class="preview-section">
+        <h2>3. Combined (As seen on LPOs)</h2>
+        <div style="display: flex; justify-content: space-between; padding: 20px; border: 2px dashed #bdc3c7;">
+            <div class="signature-container">
+                <div class="signature-script">Dr. J. Makokha</div>
+                <div class="signature-title">Medical Director</div>
+                <div class="signature-date">
+                    Signed: <script>document.write(new Date().toLocaleDateString('en-GB', {day: '2-digit', month: 'long', year: 'numeric'}))</script>
+                </div>
+            </div>
+            
+            <div class="rubber-stamp">
+                <div class="stamp-top">Makokha</div>
+                <div class="stamp-center">Medical<br>Centre</div>
+                <div class="stamp-date">
+                    <script>document.write(new Date().toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}))</script>
+                </div>
+                <div class="stamp-bottom">Nairobi • Kenya</div>
+            </div>
+        </div>
+        <p style="text-align: center; color: #7f8c8d; margin-top: 20px;">
+            ↑ This is how it appears on your LPOs (Local Purchase Orders)
+        </p>
+    </div>
+    
+    <!-- Color Variations -->
+    <div class="preview-section">
+        <h2>4. Color Variations (Available Options)</h2>
+        <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;">
+            <!-- Green Stamp -->
+            <div>
+                <div class="rubber-stamp" style="border-color: #27ae60; box-shadow: 0 0 0 2px #27ae60 inset;">
+                    <div class="stamp-top" style="color: #27ae60;">Makokha</div>
+                    <div class="stamp-center" style="color: #27ae60;">Medical<br>Centre</div>
+                    <div class="stamp-date" style="color: #27ae60;">Green Stamp</div>
+                    <div class="stamp-bottom" style="color: #27ae60;">Approved</div>
+                </div>
+                <p style="text-align: center;"><code>stamp_color="#27ae60"</code></p>
+            </div>
+            
+            <!-- Blue Stamp -->
+            <div>
+                <div class="rubber-stamp" style="border-color: #3498db; box-shadow: 0 0 0 2px #3498db inset;">
+                    <div class="stamp-top" style="color: #3498db;">Makokha</div>
+                    <div class="stamp-center" style="color: #3498db;">Medical<br>Centre</div>
+                    <div class="stamp-date" style="color: #3498db;">Blue Stamp</div>
+                    <div class="stamp-bottom" style="color: #3498db;">Verified</div>
+                </div>
+                <p style="text-align: center;"><code>stamp_color="#3498db"</code></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info">
+        <strong>📖 Full Documentation:</strong> See <code>STAMP_SIGNATURE_GUIDE.md</code> for complete usage instructions.
+    </div>
+    
+    <script>
+        // Update current date displays
+        const today = new Date();
+        const stampDate = today.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
+        const sigDate = today.toLocaleDateString('en-GB', {day: '2-digit', month: 'long', year: 'numeric'});
+        
+        document.getElementById('current-date').textContent = stampDate;
+        document.getElementById('sig-date').textContent = sigDate;
+    </script>
+</body>
+</html>

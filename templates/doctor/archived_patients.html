@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="mb-0"><i class="fas fa-archive"></i> Archived Patients</h2>
+            <a class="btn btn-outline-primary" href="{{ url_for('doctor_new_patient') }}">
+                <i class="fas fa-user-plus"></i> New Patient
+            </a>
+        </div>
+        <div class="text-muted mt-1">Continue incomplete patient entries or permanently delete drafts.</div>
+    </div>
+
+    <link rel="stylesheet" href="{{ request.script_root }}/vendor/jsdelivr/npm/datatables.net-bs5@1.13.6/css/dataTables.bootstrap5.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.6/css/dataTables.bootstrap5.min.css';">
+
+    <style>
+    .table-container {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 70vh;
+        -webkit-overflow-scrolling: touch;
+        margin-top: 10px;
+    }
+
+    .simple-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .simple-table thead {
+        background: #0d6efd;
+        color: #fff;
+    }
+
+    .simple-table th {
+        padding: 10px 12px;
+        text-align: left;
+        font-weight: 600;
+        border: 2px solid #0d6efd;
+        white-space: nowrap;
+    }
+
+    .simple-table td {
+        padding: 9px 12px;
+        border: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .simple-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .simple-table tbody tr:hover {
+        background-color: #f9f9f9;
+    }
+
+    .action-btns {
+        display: flex;
+        gap: 6px;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
+    .action-btn {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        height: 32px;
+        color: #fff;
+        opacity: 0.95;
+    }
+
+    .action-btn:hover {
+        transform: scale(1.04);
+        opacity: 1;
+    }
+
+    .action-btn.btn-primary { background: #4361ee; }
+    .action-btn.btn-danger { background: #dc3545; }
+
+    /* DataTables tweaks to blend with existing UI */
+    .dataTables_wrapper .dataTables_filter input {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        padding: 6px 10px;
+        margin-left: 8px;
+    }
+    .dataTables_wrapper .dataTables_length select {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        padding: 4px 8px;
+        margin: 0 6px;
+    }
+    </style>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Archived Inpatients</strong>
+            <span class="text-muted small">{{ archived_inpatients|length }} patient(s)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table id="archivedInpatientsTable" class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>IP Number</th>
+                            <th>Name</th>
+                            <th class="text-end">Age</th>
+                            <th>Gender</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in archived_inpatients %}
+                        <tr>
+                            <td>{{ p.ip_number }}</td>
+                            <td>{{ p.decrypted_name }}</td>
+                            <td class="text-end">{{ p.age if p.age is not none else '' }}</td>
+                            <td>{{ p.gender or '' }}</td>
+                            <td>{{ p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else '' }}</td>
+                            <td>
+                                <div class="action-btns">
+                                    <form method="post" action="{{ url_for('doctor_resume_archived_patient', patient_id=p.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-btn btn-primary" title="Continue entering data">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('doctor_purge_archived_patient', patient_id=p.id) }}" class="mmc-purge-patient-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-btn btn-danger" title="Delete permanently">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Archived Outpatients</strong>
+            <span class="text-muted small">{{ archived_outpatients|length }} patient(s)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table id="archivedOutpatientsTable" class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>OP Number</th>
+                            <th>Name</th>
+                            <th class="text-end">Age</th>
+                            <th>Gender</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in archived_outpatients %}
+                        <tr>
+                            <td>{{ p.op_number }}</td>
+                            <td>{{ p.decrypted_name }}</td>
+                            <td class="text-end">{{ p.age if p.age is not none else '' }}</td>
+                            <td>{{ p.gender or '' }}</td>
+                            <td>{{ p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else '' }}</td>
+                            <td>
+                                <div class="action-btns">
+                                    <form method="post" action="{{ url_for('doctor_resume_archived_patient', patient_id=p.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-btn btn-primary" title="Continue entering data">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('doctor_purge_archived_patient', patient_id=p.id) }}" class="mmc-purge-patient-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-btn btn-danger" title="Delete permanently">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ request.script_root }}/vendor/jsdelivr/npm/datatables.net@1.13.6/js/jquery.dataTables.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/datatables.net@1.13.6/js/jquery.dataTables.min.js';"></script>
+<script src="{{ request.script_root }}/vendor/jsdelivr/npm/datatables.net-bs5@1.13.6/js/dataTables.bootstrap5.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.6/js/dataTables.bootstrap5.min.js';"></script>
+<script>
+$(function() {
+    function initTable(sel) {
+        try {
+            $(sel).DataTable({
+                pageLength: 25,
+                lengthMenu: [10, 25, 50, 100],
+                order: [[4, 'desc']],
+                responsive: false
+            });
+        } catch (e) {
+            // best-effort
+        }
+    }
+
+    initTable('#archivedInpatientsTable');
+    initTable('#archivedOutpatientsTable');
+
+    $('.mmc-purge-patient-form').on('submit', function(e) {
+        if (!confirm('Delete this archived patient permanently? This cannot be undone.')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}
+

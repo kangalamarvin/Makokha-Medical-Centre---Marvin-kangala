@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<div class="content">
+  <div class="section-content active" id="security-features-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Security Features</h2>
+      <a class="btn btn-secondary" href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin_security_features') }}" class="card p-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <h4 class="mb-2">Phase 1</h4>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase1_mfa_enforcement" name="phase1_mfa_enforcement" {% if flags.get('phase1_mfa_enforcement') %}checked{% endif %}>
+        <label class="form-check-label" for="phase1_mfa_enforcement">MFA Enforcement</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase1_message_encryption" name="phase1_message_encryption" {% if flags.get('phase1_message_encryption') %}checked{% endif %}>
+        <label class="form-check-label" for="phase1_message_encryption">Message Encryption (Socket.IO)</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase1_db_encryption_at_rest" name="phase1_db_encryption_at_rest" {% if flags.get('phase1_db_encryption_at_rest') %}checked{% endif %}>
+        <label class="form-check-label" for="phase1_db_encryption_at_rest">Database Encryption at Rest</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase1_db_activity_monitoring" name="phase1_db_activity_monitoring" {% if flags.get('phase1_db_activity_monitoring') %}checked{% endif %}>
+        <label class="form-check-label" for="phase1_db_activity_monitoring">Enhanced Database Activity Monitoring</label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="phase1_immutable_backups" name="phase1_immutable_backups" {% if flags.get('phase1_immutable_backups') %}checked{% endif %}>
+        <label class="form-check-label" for="phase1_immutable_backups">Backups / Restore Access</label>
+      </div>
+
+      <h4 class="mb-2">Phase 2</h4>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase2_waf" name="phase2_waf" {% if flags.get('phase2_waf') %}checked{% endif %}>
+        <label class="form-check-label" for="phase2_waf">Custom WAF</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase2_zero_knowledge" name="phase2_zero_knowledge" {% if flags.get('phase2_zero_knowledge') %}checked{% endif %}>
+        <label class="form-check-label" for="phase2_zero_knowledge">Zero-Knowledge Encryption</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase2_adaptive_auth" name="phase2_adaptive_auth" {% if flags.get('phase2_adaptive_auth') %}checked{% endif %}>
+        <label class="form-check-label" for="phase2_adaptive_auth">Adaptive Authentication</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase2_ai_threat_detection" name="phase2_ai_threat_detection" {% if flags.get('phase2_ai_threat_detection') %}checked{% endif %}>
+        <label class="form-check-label" for="phase2_ai_threat_detection">AI Threat Detection</label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="phase2_comprehensive_audit" name="phase2_comprehensive_audit" {% if flags.get('phase2_comprehensive_audit') %}checked{% endif %}>
+        <label class="form-check-label" for="phase2_comprehensive_audit">Comprehensive Audit</label>
+      </div>
+
+      <h4 class="mb-2">Phase 3</h4>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase3_siem" name="phase3_siem" {% if flags.get('phase3_siem') %}checked{% endif %}>
+        <label class="form-check-label" for="phase3_siem">SIEM</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase3_uba" name="phase3_uba" {% if flags.get('phase3_uba') %}checked{% endif %}>
+        <label class="form-check-label" for="phase3_uba">User Behavior Analytics (UBA)</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase3_compliance" name="phase3_compliance" {% if flags.get('phase3_compliance') %}checked{% endif %}>
+        <label class="form-check-label" for="phase3_compliance">Automated Compliance Checking</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="phase3_dlp" name="phase3_dlp" {% if flags.get('phase3_dlp') %}checked{% endif %}>
+        <label class="form-check-label" for="phase3_dlp">Data Loss Prevention (DLP)</label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="phase3_incident_response" name="phase3_incident_response" {% if flags.get('phase3_incident_response') %}checked{% endif %}>
+        <label class="form-check-label" for="phase3_incident_response">Incident Response Automation</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

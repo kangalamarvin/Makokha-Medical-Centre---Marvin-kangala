@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .tca-today-widget {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 1070;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+        {# Flash Messages (embed only; base.html already renders flashes) #}
+        {% if is_embed %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        {% endif %}
+    
+    <!-- Content from extending templates will go here -->
+    {% block doctor_content %}
+    {% endblock %}
+</div>
+
+<div class="tca-today-widget" id="tcaTodayWidget" aria-label="TCA Today Notifications">
+        <button type="button" class="btn btn-primary position-relative" id="tcaTodayButton" data-bs-toggle="modal" data-bs-target="#tcaTodayModal">
+                <i class="fas fa-bell"></i>
+                <span class="ms-1">TCA Today</span>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="tcaTodayCount" style="display:none;">0</span>
+        </button>
+</div>
+
+<div class="modal fade" id="tcaTodayModal" tabindex="-1" aria-labelledby="tcaTodayModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                        <div class="modal-header">
+                                <h5 class="modal-title" id="tcaTodayModalLabel">TCA Today</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                                <div class="text-muted" id="tcaTodayLoading">Loading…</div>
+                                <div class="text-muted" id="tcaTodayEmpty" style="display:none;">No patients with TCA today.</div>
+                                <div class="table-responsive" id="tcaTodayTableWrap" style="display:none;">
+                                        <table class="table table-sm table-striped align-middle">
+                                                <thead>
+                                                        <tr>
+                                                                <th>Name</th>
+                                                                <th>Phone</th>
+                                                                <th>OP</th>
+                                                                <th>IP</th>
+                                                                <th>Destination</th>
+                                                                <th>Status</th>
+                                                                <th></th>
+                                                        </tr>
+                                                </thead>
+                                                <tbody id="tcaTodayTableBody"></tbody>
+                                        </table>
+                                </div>
+                        </div>
+                </div>
+        </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+(function(){
+    function $(id){ return document.getElementById(id); }
+
+    async function fetchTcaToday(){
+        try {
+            const res = await fetch('/doctor/notifications/tca_today', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) throw new Error('Request failed');
+            const data = await res.json();
+            if (!data || data.success !== true) throw new Error('Invalid response');
+            return data;
+        } catch (e) {
+            return { success: false, count: 0, patients: [] };
+        }
+    }
+
+    function setBadgeCount(count){
+        const badge = $('tcaTodayCount');
+        if (!badge) return;
+        const safeCount = Number(count || 0);
+        if (safeCount > 0) {
+            badge.textContent = String(safeCount);
+            badge.style.display = '';
+        } else {
+            badge.textContent = '0';
+            badge.style.display = 'none';
+        }
+    }
+
+    function renderModal(patients){
+        const loading = $('tcaTodayLoading');
+        const empty = $('tcaTodayEmpty');
+        const wrap = $('tcaTodayTableWrap');
+        const body = $('tcaTodayTableBody');
+
+        if (loading) loading.style.display = 'none';
+        if (!body || !wrap || !empty) return;
+
+        body.innerHTML = '';
+        if (!patients || patients.length === 0) {
+            empty.style.display = '';
+            wrap.style.display = 'none';
+            return;
+        }
+
+        empty.style.display = 'none';
+        wrap.style.display = '';
+
+        for (const p of patients) {
+            const tr = document.createElement('tr');
+
+            const nameTd = document.createElement('td');
+            nameTd.textContent = p.name || '';
+
+            const phoneTd = document.createElement('td');
+            phoneTd.textContent = p.phone || '';
+
+            const opTd = document.createElement('td');
+            opTd.textContent = p.op_number || '';
+
+            const ipTd = document.createElement('td');
+            ipTd.textContent = p.ip_number || '';
+
+            const destTd = document.createElement('td');
+            destTd.textContent = p.destination || '';
+
+            const statusTd = document.createElement('td');
+            statusTd.textContent = p.status || '';
+
+            const actionTd = document.createElement('td');
+            const a = document.createElement('a');
+            a.className = 'btn btn-sm btn-outline-primary';
+            a.textContent = 'Open';
+            a.href = '/doctor/patient/' + encodeURIComponent(p.id);
+            actionTd.appendChild(a);
+
+            tr.appendChild(nameTd);
+            tr.appendChild(phoneTd);
+            tr.appendChild(opTd);
+            tr.appendChild(ipTd);
+            tr.appendChild(destTd);
+            tr.appendChild(statusTd);
+            tr.appendChild(actionTd);
+            body.appendChild(tr);
+        }
+    }
+
+    async function refreshBadge(){
+        const data = await fetchTcaToday();
+        setBadgeCount(data.count || 0);
+    }
+
+    async function refreshModal(){
+        const loading = $('tcaTodayLoading');
+        const empty = $('tcaTodayEmpty');
+        const wrap = $('tcaTodayTableWrap');
+        if (loading) loading.style.display = '';
+        if (empty) empty.style.display = 'none';
+        if (wrap) wrap.style.display = 'none';
+
+        const data = await fetchTcaToday();
+        setBadgeCount(data.count || 0);
+        renderModal(data.patients || []);
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        refreshBadge();
+
+        const modalEl = $('tcaTodayModal');
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', function(){
+                refreshModal();
+            });
+        }
+    });
+})();
+</script>
+{% endblock %}
+
+{# Add this new template for displaying patient sensitive data securely #}
+{% macro display_patient_info(patient) %}
+<div class="patient-sensitive-data">
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row">
+                <dt class="col-sm-4">Full Name:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_name or '[Name Unavailable]' }}</dd>
+                
+                <dt class="col-sm-4">Phone:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_phone or '[Phone Unavailable]' }}</dd>
+                
+                <dt class="col-sm-4">Address:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_address or '[Address Unavailable]' }}</dd>
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row">
+                <dt class="col-sm-4">Occupation:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_occupation or '[Occupation Unavailable]' }}</dd>
+                
+                <dt class="col-sm-4">Next of Kin:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_nok_name or '[Next of Kin Unavailable]' }}</dd>
+                
+                <dt class="col-sm-4">Kin Contact:</dt>
+                <dd class="col-sm-8">{{ patient.decrypted_nok_contact or '[Contact Unavailable]' }}</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<style>
+.patient-sensitive-data {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+}
+.patient-sensitive-data dt {
+    font-weight: 600;
+}
+</style>
+{% endmacro %}

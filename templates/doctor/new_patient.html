@@ -1,0 +1,3362 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <h2><i class="fas fa-user-plus"></i> New Patient</h2>
+    </div>
+    
+    <div class="patient-form-container">
+        <div class="form-progress">
+            <div class="progress-step active" data-step="biodata"><span>1</span><p>Biodata</p></div>
+            <div class="progress-step" data-step="chief_complaint"><span>2</span><p>Chief Complaint</p></div>
+            <div class="progress-step" data-step="review_systems"><span>3</span><p>Review of Systems</p></div>
+            <div class="progress-step" data-step="hpi"><span>4</span><p>HPI</p></div>
+            <div class="progress-step mmc-optional-step mmc-disabled" data-step="peds_past_history" style="display:none;"><span>5</span><p>Past History</p></div>
+            <div class="progress-step mmc-optional-step mmc-disabled" data-step="peds_family_history" style="display:none;"><span>6</span><p>Family/Genetic</p></div>
+            <div class="progress-step mmc-optional-step mmc-disabled" data-step="peds_social_history" style="display:none;"><span>7</span><p>Social History</p></div>
+            <div class="progress-step" data-step="smhx"><span>8</span><p>SMHx</p></div>
+            <div class="progress-step mmc-optional-step mmc-disabled" data-step="obgyn" style="display:none;"><span>9</span><p>OB/GYN</p></div>
+            <div class="progress-step" data-step="examination"><span>10</span><p>Examination</p></div>
+            <div class="progress-step" data-step="summary"><span>11</span><p>Summary</p></div>
+            <div class="progress-step" data-step="diagnosis"><span>12</span><p>Diagnosis</p></div>
+            <div class="progress-step mmc-optional-step mmc-disabled" data-step="clinical_impression" style="display:none;"><span>13</span><p>Impression</p></div>
+            <div class="progress-step" data-step="management"><span>13</span><p>Management</p></div>
+        </div>
+        
+        <form id="patientForm" method="POST">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- Biodata Section -->
+            <div class="form-section active" id="biodata-section">
+                <h3>Patient Biodata</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enable-assistant" name="assistant_enabled">
+                            <label class="form-check-label" for="enable-assistant">
+                                Enable Doctor Assistant
+                            </label>
+                            <small class="form-text text-muted">
+                                Get Doctor Assistant suggestions for diagnosis and treatment
+                            </small>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="patient_type">Patient Type*</label>
+                        <select class="form-control" id="patient_type" name="patient_type" required>
+                            <option value="">Select Type</option>
+                            <option value="OP">Outpatient (OP)</option>
+                            <option value="IP">Inpatient (IP)</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>Patient Number</label>
+                        <input type="text" class="form-control" id="patient_number" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="name">Full Name*</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="age">Age*</label>
+                        <input type="text" class="form-control" id="age" name="age" required placeholder="e.g. 2 weeks, 6 months, 1.5 years, 1 year 6 months">
+                        <small class="text-muted">You can enter age in weeks, months, or years (fractions accepted). Saved as whole years.</small>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="gender">Gender*</label>
+                        <select class="form-control" id="gender" name="gender" required>
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="religion">Religion</label>
+                        <select class="form-control" id="religion" name="religion">
+                            <option value="">Select</option>
+                            <option value="Christianity">Christianity</option>
+                            <option value="Islam">Islam</option>
+                            <option value="Hinduism">Hinduism</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="address">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="occupation">Occupation</label>
+                        <input type="text" class="form-control" id="occupation" name="occupation">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone" name="phone">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="nok_name" id="nok_name_label">Next of Kin Name</label>
+                        <input type="text" class="form-control" id="nok_name" name="nok_name">
+                    </div>
+                    <div class="form-group col-md-3 mmc-peds-only" id="informant_relationship_group" style="display:none;">
+                        <label for="informant_relationship">Relationship</label>
+                        <select class="form-control" id="informant_relationship" name="informant_relationship">
+                            <option value="">Select</option>
+                            <option value="Mother">Mother</option>
+                            <option value="Father">Father</option>
+                            <option value="Guardian">Guardian</option>
+                            <option value="Caregiver">Caregiver</option>
+                            <option value="Self">Self</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="nok_contact" id="nok_contact_label">Next of Kin Contact</label>
+                        <input type="tel" class="form-control" id="nok_contact" name="nok_contact">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="admission_date">Date of Admission</label>
+                        <input type="date" class="form-control" id="admission_date" name="admission_date" value="{{ current_date }}" readonly>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="tca">TCA Date</label>
+                        <input type="date" class="form-control" id="tca" name="tca">
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="insurance_provider_id"><i class="fas fa-shield-alt"></i> Insurance Provider (Optional)</label>
+                        <select class="form-control" id="insurance_provider_id" name="insurance_provider_id">
+                            <option value="">-- No Insurance / Cash Patient --</option>
+                            {% for p in insurance_providers or [] %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Provider must be one created by the administrator.</small>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="insurance_policy_number">Policy #</label>
+                        <input type="text" class="form-control" id="insurance_policy_number" name="insurance_policy_number" placeholder="Policy number">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="insurance_member_number">Member #</label>
+                        <input type="text" class="form-control" id="insurance_member_number" name="insurance_member_number" placeholder="Member number">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="insurance_covers_inpatient" name="insurance_covers_inpatient" value="1" checked>
+                            <label class="form-check-label" for="insurance_covers_inpatient">
+                                Insurance covers inpatient billing
+                            </label>
+                            <small class="form-text text-muted">
+                                If unchecked, insurance will be disabled for inpatient bills during admission.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chief Complaint Section -->
+            <div class="form-section" id="chief_complaint-section">
+                <h3>Chief Complaint</h3>
+                <div class="form-group">
+                    <label for="chief_complaint" id="cc_label">Chief Complaint*</label>
+                    <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3" required
+                        placeholder="Patient's main complaint in their own words (e.g., 'Headache for 3 days')"></textarea>
+                </div>
+            </div>
+
+            <!-- Review of Systems Section -->
+            <div class="form-section" id="review_systems-section">
+                <h3>Review of Systems</h3>
+                <p class="text-muted small mmc-peds-only" style="display:none;">
+                    Paediatrics ROS: include at least one item in each system. Avoid writing only “negative” or “unremarkable”.
+                </p>
+                <div class="split-screen-container">
+                    <!-- Assistant Suggestions Panel -->
+                    <div class="assistant-suggestions-panel">
+                        <div class="panel-header bg-info text-white">
+                            <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                        </div>
+                        <div class="panel-body">
+                            <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-review-questions">
+                                <i class="fas fa-lightbulb"></i> Suggest Review Questions
+                            </button>
+                            <div id="review-suggestions" class="assistant-suggestions-content">
+                                <p class="text-muted">Doctor Assistant suggestions will appear here. Click the button above to generate questions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Input Panel -->
+                    <div class="form-input-panel">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Constitutional symptoms</label>
+                                <textarea class="form-control" name="general" rows="3" placeholder="Fever, chills/night sweats, fatigue, weight/appetite changes, activity, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>ENT</label>
+                                <textarea class="form-control" name="heent" rows="3" placeholder="Runny nose, nasal congestion, ear pain/discharge, sore throat, hearing changes, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label id="ros_cns_label">CNS</label>
+                                <textarea class="form-control" name="cns" rows="3" placeholder="Headache, dizziness, seizures, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>CVS</label>
+                                <textarea class="form-control" name="cvs" rows="3" placeholder="Chest pain, palpitations, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Respiratory System</label>
+                                <textarea class="form-control" name="rs" rows="3" placeholder="Cough, shortness of breath, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>GIT</label>
+                                <textarea class="form-control" name="git" rows="3" placeholder="Nausea, vomiting, diarrhea, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>GUT</label>
+                                <textarea class="form-control" name="gut" rows="3" placeholder="Dysuria, frequency, hematuria, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Skin</label>
+                                <textarea class="form-control" name="skin" rows="3" placeholder="Rashes, itching, lesions, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>MSK</label>
+                            <textarea class="form-control" name="msk" rows="3" placeholder="Joint pain, swelling, etc."></textarea>
+                        </div>
+                        <div class="form-row mmc-peds-only" style="display:none;">
+                            <div class="form-group col-md-6">
+                                <label>Hematologic/Lymphoid</label>
+                                <textarea class="form-control" name="hematologic_lymphoid" rows="3" placeholder="Bruising, bleeding, lymph nodes, pallor, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Endocrine &amp; Growth</label>
+                                <textarea class="form-control" name="endocrine_growth" rows="3" placeholder="Polyuria/polydipsia, growth concerns, delayed puberty, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group mmc-peds-only" style="display:none;">
+                            <label>Psychiatric</label>
+                            <textarea class="form-control" name="psychiatric" rows="3" placeholder="Mood, anxiety, sleep, behavior, etc."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HPI Section -->
+            <div class="form-section" id="hpi-section">
+                <h3>History of Present Illness (HPI)</h3>
+                <div class="split-screen-container">
+                    <!-- Assistant Suggestions Panel -->
+                    <div class="assistant-suggestions-panel">
+                        <div class="panel-header bg-info text-white">
+                            <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                        </div>
+                        <div class="panel-body">
+                            <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-hpi-questions">
+                                <i class="fas fa-lightbulb"></i> Suggest HPI Questions
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success mb-2" id="generate-hpi-content">
+                                <i class="fas fa-magic"></i> Generate HPI Content
+                            </button>
+                            <div id="hpi-suggestions" class="assistant-suggestions-content">
+                                <p class="text-muted">Doctor Assistant suggestions will appear here. Use the buttons above to generate questions or content.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Input Panel -->
+                    <div class="form-input-panel">
+                        <div class="form-group">
+                            <label for="hpi_details">Detailed HPI*</label>
+                            <textarea class="form-control" id="hpi_details" name="hpi_details" rows="8" required
+                                placeholder="Describe the history of the current illness in detail"></textarea>
+                        </div>
+                        <div class="hpi-tips mt-2">
+                            <strong>Flexible HPI approach:</strong>
+                            <ul class="list-unstyled">
+                                <li>Use SOCRATES/OPQRST mainly for pain complaints.</li>
+                                <li>For non-pain complaints (vomiting, diarrhea, cough, fever, etc.), document symptom-specific chronology and pattern.</li>
+                                <li>Always capture associated symptoms, risk exposures, prior treatment, and danger signs.</li>
+                                <li>Describe impact on feeding, hydration, sleep, work, or daily activities.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paediatrics: Past History (optional; enabled when age < 18) -->
+            <div class="form-section mmc-optional-section mmc-disabled" id="peds_past_history-section" style="display:none;">
+                <h3>Past History (Paediatrics)</h3>
+                <p class="text-muted small mb-2">
+                    This section is critical for paediatric diagnosis. Document clearly and chronologically where applicable.
+                </p>
+
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-peds-past-history-questions">
+                            <i class="fas fa-lightbulb"></i> Suggest Past History Questions
+                        </button>
+                        <div id="peds-past-history-suggestions" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="perinatal_neonatal_history">Perinatal &amp; Neonatal Information</label>
+                    <textarea class="form-control" id="perinatal_neonatal_history" name="perinatal_neonatal_history" rows="3"
+                        placeholder="Birth details, gestation, delivery, APGAR, exposures in pregnancy, neonatal issues (jaundice, seizures, feeding problems, etc.)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="nutrition_history">Nutrition</label>
+                    <textarea class="form-control" id="nutrition_history" name="nutrition_history" rows="2"
+                        placeholder="Breast/bottle, formula type, supplementation, water source, WIC, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="developmental_history">Developmental History</label>
+                    <textarea class="form-control" id="developmental_history" name="developmental_history" rows="2"
+                        placeholder="Gross motor, fine motor, social, language; school performance/activities if school age"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="immunization_history">Immunization / TB Testing</label>
+                    <textarea class="form-control" id="immunization_history" name="immunization_history" rows="2"
+                        placeholder="Dates/types, source of information, TB testing dates/results"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="habits_personality_history">Habits &amp; Personality</label>
+                    <textarea class="form-control" id="habits_personality_history" name="habits_personality_history" rows="2"
+                        placeholder="Sleep pattern, behavior issues, etc."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="peds_previous_illnesses">Previous Illnesses</label>
+                        <textarea class="form-control" id="peds_previous_illnesses" name="peds_previous_illnesses" rows="2"
+                            placeholder="Age, severity, complications, hospitalizations (include dates)"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="peds_surgical_procedures">Surgical Procedures</label>
+                        <textarea class="form-control" id="peds_surgical_procedures" name="peds_surgical_procedures" rows="2"
+                            placeholder="Procedures with approximate dates and complications"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="peds_allergies">Allergies (Medication &amp; Others)</label>
+                        <textarea class="form-control" id="peds_allergies" name="peds_allergies" rows="2" placeholder="Include type of reaction"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="peds_current_medications">Current Medications</label>
+                        <textarea class="form-control" id="peds_current_medications" name="peds_current_medications" rows="2"
+                            placeholder="Numbered list: name, dose, route, frequency, indication"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paediatrics: Family/Genetic History (optional; enabled when age < 18) -->
+            <div class="form-section mmc-optional-section mmc-disabled" id="peds_family_history-section" style="display:none;">
+                <h3>Family / Genetic History (Paediatrics)</h3>
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-peds-family-history-questions">
+                            <i class="fas fa-lightbulb"></i> Suggest Family / Genetic Questions
+                        </button>
+                        <div id="peds-family-history-suggestions" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="peds_family_history">Family / Genetic History</label>
+                    <textarea class="form-control" id="peds_family_history" name="peds_family_history" rows="4"
+                        placeholder="Significant diseases/deaths in first-degree relatives (parents, grandparents, aunts/uncles, siblings)"></textarea>
+                </div>
+            </div>
+
+            <!-- Paediatrics: Social History (optional; enabled when age < 18) -->
+            <div class="form-section mmc-optional-section mmc-disabled" id="peds_social_history-section" style="display:none;">
+                <h3>Social History (Paediatrics)</h3>
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-peds-social-history-questions">
+                            <i class="fas fa-lightbulb"></i> Suggest Social Questions
+                        </button>
+                        <div id="peds-social-history-suggestions" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="peds_social_history">Social History</label>
+                    <textarea class="form-control" id="peds_social_history" name="peds_social_history" rows="5"
+                        placeholder="Living circumstances, sleeping arrangements, daycare, economic circumstances, parents occupations/marital status, pets, toxins/smoke exposure, age of home (<3y: lead risk)"></textarea>
+                </div>
+            </div>
+                        
+            <!-- SMHx Section -->
+            <div class="form-section" id="smhx-section">
+                <h3>Social and Medical History</h3>
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-smhx-questions">
+                            <i class="fas fa-lightbulb"></i> Suggest History Questions
+                        </button>
+                        <div id="smhx-suggestions" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="social_history">Social History</label>
+                        <textarea class="form-control" id="social_history" name="social_history" rows="3" placeholder="Occupation, living situation, habits (smoking, alcohol, drugs)"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="medical_history">Past Medical History</label>
+                        <textarea class="form-control" id="medical_history" name="medical_history" rows="3" placeholder="Chronic illnesses, previous hospitalizations"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="surgical_history">Surgical History</label>
+                        <textarea class="form-control" id="surgical_history" name="surgical_history" rows="3" placeholder="Previous surgeries with dates if known"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="family_history">Family History</label>
+                        <textarea class="form-control" id="family_history" name="family_history" rows="3" placeholder="Relevant family medical history"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="allergies">Allergies</label>
+                        <textarea class="form-control" id="allergies" name="allergies" rows="2" placeholder="Drug, food, or other allergies"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="medications">Current Medications</label>
+                        <textarea class="form-control" id="medications" name="medications" rows="2" placeholder="Include dosages if known"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OB/GYN Section (Adult Female Only) -->
+            <div class="form-section mmc-optional-section mmc-disabled" id="obgyn-section" style="display:none;">
+                <h3>Obstetrics &amp; Gynaecology</h3>
+                <div class="split-screen-container">
+                    <!-- Assistant Suggestions Panel -->
+                    <div class="assistant-suggestions-panel">
+                        <div class="panel-header bg-info text-white">
+                            <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                        </div>
+                        <div class="panel-body">
+                            <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-obgyn-questions">
+                                <i class="fas fa-lightbulb"></i> Suggest OB/GYN Questions
+                            </button>
+                            <div id="obgyn-suggestions" class="assistant-suggestions-content">
+                                <p class="text-muted">Doctor Assistant suggestions will appear here.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Input Panel -->
+                    <div class="form-input-panel">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="menstrual_history">Menstrual History</label>
+                                <textarea class="form-control" id="menstrual_history" name="menstrual_history" rows="3" placeholder="LMP, cycle regularity/length, bleeding amount, dysmenorrhea, menopausal status, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="obstetric_history">Obstetric History</label>
+                                <textarea class="form-control" id="obstetric_history" name="obstetric_history" rows="3" placeholder="Gravida/Para, outcomes, complications, ANC history, PPH, C/S, miscarriages, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="gynecologic_history">Gynaecologic History</label>
+                                <textarea class="form-control" id="gynecologic_history" name="gynecologic_history" rows="3" placeholder="Discharge, pelvic pain, fibroids, STIs, Pap smear, infertility, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="contraception_history">Contraception History</label>
+                                <textarea class="form-control" id="contraception_history" name="contraception_history" rows="3" placeholder="Method, adherence, side effects, last use, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="sexual_history">Sexual History</label>
+                                <textarea class="form-control" id="sexual_history" name="sexual_history" rows="3" placeholder="Partners, protection, STI risk, pain with intercourse, etc."></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="obgyn_other_notes">Other Notes</label>
+                                <textarea class="form-control" id="obgyn_other_notes" name="obgyn_other_notes" rows="3" placeholder="Any other relevant OB/GYN information"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Examination Section -->
+            <div class="form-section" id="examination-section">
+                <h3>Examination Findings</h3>
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-exam-guidance">
+                            <i class="fas fa-stethoscope"></i> Suggest Examination Guidance
+                        </button>
+                        <div id="exam-guidance-suggestions" style="display:none;"></div>
+                    </div>
+                </div>
+                
+                <h4>General Examination</h4>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="general_appearance">General Appearance</label>
+                        <textarea class="form-control" id="general_appearance" name="general_appearance" rows="2" placeholder="General state, distress level, etc."></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Clinical Parameters</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="jaundice" id="jaundice" value="yes">
+                            <label class="form-check-label" for="jaundice">Jaundice</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="pallor" id="pallor" value="yes">
+                            <label class="form-check-label" for="pallor">Pallor</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="cyanosis" id="cyanosis" value="yes">
+                            <label class="form-check-label" for="cyanosis">Cyanosis</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="lymphadenopathy" id="lymphadenopathy" value="yes">
+                            <label class="form-check-label" for="lymphadenopathy">Lymphadenopathy</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="edema" id="edema" value="yes">
+                            <label class="form-check-label" for="edema">Edema</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="dehydration" id="dehydration" value="yes">
+                            <label class="form-check-label" for="dehydration">Dehydration</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="dehydration_parameters">Dehydration Parameters</label>
+                        <textarea class="form-control" id="dehydration_parameters" name="dehydration_parameters" rows="3" placeholder="Sunken eyes, dry mucous membranes, poor skin turgor, etc."></textarea>
+                    </div>
+                </div>
+                
+                <h4>Vital Signs</h4>
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label for="temperature">Temperature (°C)</label>
+                        <input type="number" step="0.1" class="form-control" id="temperature" name="temperature">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="pulse">Pulse (bpm)</label>
+                        <input type="number" class="form-control" id="pulse" name="pulse">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="resp_rate">Respiratory Rate (/min)</label>
+                        <input type="number" class="form-control" id="resp_rate" name="resp_rate">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="bp_systolic">BP (mmHg)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="bp_systolic" name="bp_systolic" placeholder="Systolic">
+                            <div class="input-group-append">
+                                <span class="input-group-text">/</span>
+                            </div>
+                            <input type="number" class="form-control" id="bp_diastolic" name="bp_diastolic" placeholder="Diastolic">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label for="spo2">SpO2 (%)</label>
+                        <input type="number" class="form-control" id="spo2" name="spo2" min="0" max="100">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="weight">Weight (kg)</label>
+                        <input type="number" step="0.1" class="form-control" id="weight" name="weight">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="height">Height (cm)</label>
+                        <input type="number" step="0.1" class="form-control" id="height" name="height">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="bmi">BMI</label>
+                        <input type="number" step="0.1" class="form-control" id="bmi" name="bmi" readonly>
+                    </div>
+                </div>
+                
+                <h4>Systemic Examination</h4>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cvs_exam">Cardiovascular System</label>
+                        <textarea class="form-control" id="cvs_exam" name="cvs_exam" rows="3" placeholder="Heart sounds, murmurs, JVP, peripheral pulses, etc."></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="resp_exam">Respiratory System</label>
+                        <textarea class="form-control" id="resp_exam" name="resp_exam" rows="3" placeholder="Breath sounds, percussion note, etc."></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="abdo_exam">Abdomen</label>
+                        <textarea class="form-control" id="abdo_exam" name="abdo_exam" rows="3" placeholder="Inspection, palpation, percussion, auscultation findings"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cns_exam">Central Nervous System</label>
+                        <textarea class="form-control" id="cns_exam" name="cns_exam" rows="3" placeholder="Higher functions, cranial nerves, motor, sensory, reflexes, etc."></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="msk_exam">Musculoskeletal</label>
+                        <textarea class="form-control" id="msk_exam" name="msk_exam" rows="3" placeholder="Joint swelling, deformity, range of motion, etc."></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="skin_exam">Skin</label>
+                        <textarea class="form-control" id="skin_exam" name="skin_exam" rows="3" placeholder="Rashes, lesions, ulcers, etc."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Summary Section (After Examination) -->
+            <div class="form-section" id="summary-section">
+                <h3>Clinical Summary</h3>
+                
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-file-medical"></i> Clinical Summary
+                            <small class="float-right">(Used for Doctor Assistant Diagnosis)</small>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="summary-importance">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            <strong>Important:</strong> This summary will be used by Doctor Assistant to generate accurate diagnosis suggestions. 
+                            Include key findings from history and examination.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="patient_summary" class="form-label"><strong>Clinical Summary</strong></label>
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-sm btn-success" id="generate-summary-assistant">
+                                    <i class="fas fa-magic"></i> Generate Summary (Doctor Assistant)
+                                </button>
+                            </div>
+                            <textarea class="form-control" id="patient_summary" name="patient_summary" rows="6"
+                                      placeholder="Enter a comprehensive clinical summary including:
+- Presenting complaint and key history
+- Significant examination findings  
+- Relevant positive and negative findings
+- Initial clinical impression
+
+This summary will help Doctor Assistant generate accurate diagnosis suggestions in the next section."></textarea>
+                            <small class="form-text text-muted">
+                                A good clinical summary helps Doctor Assistant provide better diagnostic suggestions.
+                            </small>
+
+                            <div class="mt-2">
+                                <div class="small text-muted mb-1">Preview (formatted)</div>
+                                <div id="patientSummaryPreview" class="assistant-outline"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Diagnosis Section -->
+            <div class="form-section" id="diagnosis-section">
+                <h3>Diagnosis</h3>
+                <div class="split-screen-container">
+                    <!-- Assistant Suggestions Panel -->
+                    <div class="assistant-suggestions-panel">
+                        <div class="panel-header bg-info text-white">
+                            <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                        </div>
+                        <div class="panel-body">
+                            <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-diagnosis">
+                                <i class="fas fa-lightbulb"></i> Suggest Diagnosis
+                            </button>
+                            <div id="assistant-diagnosis-loading" class="text-center" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p>Analyzing clinical summary...</p>
+                            </div>
+                            <div id="assistant-diagnosis-results" class="assistant-suggestions-content" style="display: none;">
+                                <div class="alert alert-info" id="assistant-diagnosis-text"></div>
+                                <button id="apply-assistant-diagnosis" class="btn btn-sm btn-success mt-2">
+                                    <i class="fas fa-check"></i> Apply Suggestions
+                                </button>
+                            </div>
+                            <div id="diagnosis-placeholder" class="assistant-suggestions-content">
+                                <p class="text-muted">Doctor Assistant diagnosis suggestions will appear here. Click the button above to generate recommendations based on your clinical summary.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Input Panel -->
+                    <div class="form-input-panel">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="working_diagnosis">Working Diagnosis*</label>
+                                <textarea class="form-control" id="working_diagnosis" name="working_diagnosis" rows="3" required></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="working_diagnosis_supporting_argument">Dx supporting argument (optional)</label>
+                                <textarea class="form-control" id="working_diagnosis_supporting_argument" name="working_diagnosis_supporting_argument" rows="3" placeholder="Key findings supporting this diagnosis"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="differential_diagnosis">Differential Diagnosis</label>
+                                <textarea class="form-control" id="differential_diagnosis" name="differential_diagnosis" rows="3" placeholder="List possible diagnoses in order of likelihood"></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="differential_diagnosis_supporting_argument">DDx supporting argument (optional)</label>
+                                <textarea class="form-control" id="differential_diagnosis_supporting_argument" name="differential_diagnosis_supporting_argument" rows="3" placeholder="Key findings supporting the differential diagnoses"></textarea>
+                            </div>
+                        </div>
+                        
+                        <h4>Investigations</h4>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Laboratory Tests</label>
+                                <select class="form-control select2" name="lab_tests" id="lab_tests" multiple>
+                                    {% for test in lab_tests %}
+                                        <option value="{{ test.id }}">{{ test.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <textarea class="form-control mt-2" name="lab_notes" placeholder="Notes for lab tests" rows="2"></textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Imaging Tests</label>
+                                <select class="form-control select2" name="imaging_tests" id="imaging_tests" multiple>
+                                    {% for test in imaging_tests %}
+                                        <option value="{{ test.id }}">{{ test.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <textarea class="form-control mt-2" name="imaging_notes" placeholder="Notes for imaging tests" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
+                        <h4 class="mt-3">Lab Interpretation</h4>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="lab-analysis-test">Lab test type (optional)</label>
+                                <select class="form-control" id="lab-analysis-test">
+                                    <option value="">Select lab test</option>
+                                    {% for test in lab_tests %}
+                                        <option value="{{ test.id }}">{{ test.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="lab-analysis-file">Upload lab result file (optional)</label>
+                                <input type="file" class="form-control" id="lab-analysis-file" accept=".pdf,.txt,.md,.docx,.png,.jpg,.jpeg">
+                                <small class="text-muted">PDF/DOCX/TXT supported. Image OCR/vision must be configured for photos.</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="lab-results-text">Lab results (paste text or upload file)</label>
+                            <textarea class="form-control" id="lab-results-text" rows="4" placeholder="Paste lab results here (values + units + reference ranges if available)"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="lab-doctor-report-text">Doctor report/interpretation (optional)</label>
+                            <textarea class="form-control" id="lab-doctor-report-text" rows="3" placeholder="Paste the doctor/lab report here (optional). The AI will first interpret results, then compare."></textarea>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-info" id="analyze-lab-results">
+                                <i class="fas fa-search"></i> Analyze Labs
+                            </button>
+                        </div>
+                        <div id="lab-analysis-results" class="mt-2" style="display: none;"></div>
+
+                        <h4 class="mt-4">Imaging Interpretation</h4>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="imaging-analysis-test">Imaging type (optional)</label>
+                                <select class="form-control" id="imaging-analysis-test">
+                                    <option value="">Select imaging</option>
+                                    {% for test in imaging_tests %}
+                                        <option value="{{ test.id }}">{{ test.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="imaging-analysis-file">Upload imaging file/report (optional)</label>
+                                <input type="file" class="form-control" id="imaging-analysis-file" accept=".pdf,.txt,.md,.docx,.png,.jpg,.jpeg">
+                                <small class="text-muted">Paste the radiology report text for best results. Image interpretation requires OCR/vision config.</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="imaging-results-text">Imaging report/findings (paste text or upload file)</label>
+                            <textarea class="form-control" id="imaging-results-text" rows="4" placeholder="Paste imaging report/findings here"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="imaging-doctor-report-text">Doctor/radiology report (optional)</label>
+                            <textarea class="form-control" id="imaging-doctor-report-text" rows="3" placeholder="Paste the official report here (optional). The AI will compare after generating its own interpretation."></textarea>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-info" id="analyze-imaging-results">
+                                <i class="fas fa-search"></i> Analyze Imaging
+                            </button>
+                        </div>
+                        <div id="imaging-analysis-results" class="mt-2" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical Impression Section (Paediatrics) -->
+            <div class="form-section mmc-optional-section mmc-disabled" id="clinical_impression-section" style="display:none;">
+                <h3>Clinical Impression</h3>
+                <div class="form-group">
+                    <label for="clinical_impression">Clinical Impression</label>
+                    <textarea class="form-control" id="clinical_impression" name="clinical_impression" rows="5"
+                        placeholder="Which diagnosis is most likely and which are less likely? Provide clinical reasoning, key positives/negatives, and red flags."></textarea>
+                </div>
+            </div>
+            
+            <!-- Management Section -->
+            <div class="form-section" id="management-section">
+                <h3>Management Plan</h3>
+                <div class="assistant-card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-robot"></i> Doctor Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-sm btn-info mb-2" id="suggest-treatment">
+                            <i class="fas fa-lightbulb"></i> Suggest Treatment Plan
+                        </button>
+                        <div id="treatment-suggestions" class="mt-2" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="treatment_plan">Treatment Plan*</label>
+                    <textarea class="form-control" id="treatment_plan" name="treatment_plan" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="follow_up">Follow Up Plan</label>
+                    <textarea class="form-control" id="follow_up" name="follow_up" rows="2" placeholder="When to return, what to watch for, etc."></textarea>
+                </div>
+                
+                <h4>Prescriptions</h4>
+                <div id="prescription-items"></div>
+                <template id="prescription-item-template">
+                    <div class="prescription-item form-row compact-rx">
+                        <div class="form-group col-md-1 d-flex align-items-center">
+                            <div class="form-check mt-3">
+                                <input class="form-check-input controlled-toggle" type="checkbox">
+                                <label class="form-check-label" style="font-size: 0.85rem;">Controlled</label>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <select class="form-control drug-select" name="drug_id">
+                                <option value="">Select Drug</option>
+                                {% for drug in drugs %}
+                                    <option value="{{ drug.id }}" data-stock="{{ drug.remaining_quantity }}" data-ip-price="{{ (drug.ip_drug_price if drug.ip_drug_price is not none else drug.selling_price) }}" data-otc-price="{{ drug.selling_price }}">{{ drug.name }} (IP Ksh {{ "%.2f"|format((drug.ip_drug_price if drug.ip_drug_price is not none else drug.selling_price)) }} | {{ drug.remaining_quantity }} in stock)</option>
+                                {% endfor %}
+                            </select>
+                            <select class="form-control controlled-drug-select" name="controlled_drug_id" style="display:none;">
+                                <option value="">Select Controlled Drug</option>
+                                {% for cdrug in controlled_drugs %}
+                                    <option value="{{ cdrug.id }}" data-stock="{{ cdrug.remaining_quantity }}" data-ip-price="{{ (cdrug.ip_drug_price if cdrug.ip_drug_price is not none else cdrug.selling_price) }}" data-otc-price="{{ cdrug.selling_price }}">{{ cdrug.name }} (IP Ksh {{ "%.2f"|format((cdrug.ip_drug_price if cdrug.ip_drug_price is not none else cdrug.selling_price)) }} | {{ cdrug.remaining_quantity }} in stock)</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-info mt-2 view-dosage-btn">
+                                <i class="fas fa-info-circle"></i> View Dosage
+                            </button>
+                        </div>
+                        <div class="form-group col-md-1">
+                            <input type="number" class="form-control" name="quantity" placeholder="Qty" min="1">
+                        </div>
+                        <div class="form-group col-md-2">
+                            <input type="text" class="form-control" name="dosage" placeholder="Dosage">
+                        </div>
+                        <div class="form-group col-md-1">
+                            <input type="text" class="form-control" name="frequency" placeholder="Frequency">
+                        </div>
+                        <div class="form-group col-md-1">
+                            <input type="text" class="form-control" name="duration" placeholder="Duration">
+                        </div>
+                        <div class="form-group col-md-2">
+                            <input type="text" class="form-control" name="prescription_notes" placeholder="Notes">
+                        </div>
+                        <div class="form-group col-md-1 d-flex align-items-center">
+                            <button type="button" class="btn btn-sm btn-danger remove-prescription" title="Remove this medication">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-sm btn-secondary" id="add-prescription">
+                    <i class="fas fa-plus"></i> Add Prescription
+                </button>
+                
+                <div class="mt-3">
+                    <button type="button" class="btn btn-success" id="complete-prescription">
+                        <i class="fas fa-check-circle"></i> Complete Prescription
+                    </button>
+                    <div id="prescription-feedback" class="mt-2" style="display: none;"></div>
+                </div>
+                
+                <h4 class="mt-4">Services</h4>
+                <div class="form-group">
+                    <select class="form-control select2" name="service_id" id="service_id" multiple>
+                        {% for service in services %}
+                            <option value="{{ service.id }}">{{ service.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <textarea class="form-control mt-2" name="service_notes" placeholder="Notes for services" rows="2"></textarea>
+
+                    <div class="mt-2" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-success btn-sm" id="complete-services">
+                            <i class="fas fa-check-circle"></i> Complete Services
+                        </button>
+                        <div id="services-feedback" class="small" style="display:none;"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="management_notes">Additional Notes</label>
+                    <textarea class="form-control" id="management_notes" name="management_notes" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="form-navigation">
+                <input type="hidden" name="section" id="current_section" value="biodata">
+                <input type="hidden" name="patient_id" id="patient_id" value="">
+                <input type="hidden" name="reserved_patient_number" id="reserved_patient_number" value="">
+                <button type="button" class="btn btn-outline-warning" id="archivePatientBtn" title="Archive and continue later">
+                    <i class="fas fa-archive"></i> Archive
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="cancelPatientBtn" title="Cancel and delete this draft">
+                    <i class="fas fa-times-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-secondary" id="prevBtn">Previous</button>
+                <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+                <a class="btn btn-success" id="endBtn" style="display:none;" href="{{ url_for('doctor_patients') }}">End</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Dosage Modal -->
+<div class="modal fade" id="doctorDosageModal" tabindex="-1" role="dialog" aria-labelledby="doctorDosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="doctorDosageModalLabel"><i class="fas fa-pills"></i> Dosage Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-muted mb-2" id="doctorDosageSource"></div>
+                <div id="doctorDosageBody" class="small text-muted">Loading...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Professional outline styling for assistant outputs (display-only) */
+.assistant-outline {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.assistant-outline h6 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 10px 0 6px;
+    color: #1f2937;
+}
+
+.assistant-outline p {
+    margin: 0 0 6px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+.assistant-outline ul,
+.assistant-outline ol {
+    margin: 0 0 8px 1.25rem;
+    padding-left: 1.1rem;
+}
+
+.assistant-outline li {
+    margin: 0 0 4px;
+    color: #374151;
+    line-height: 1.35;
+}
+</style>
+
+<script>
+(function mmcWaitForJQuery() {
+    if (!window.jQuery) {
+        return window.setTimeout(mmcWaitForJQuery, 25);
+    }
+    $(document).ready(function() {
+    // Optional preset coming from OP/IP pages (keeps existing wizard flow intact)
+    const MMC_PRESET_PATIENT_TYPE = {{ (preset_patient_type or '')|tojson }};
+    const MMC_LOCK_PATIENT_TYPE = {{ (lock_patient_type or False)|tojson }};
+    const MMC_RESUME_PATIENT_ID = {{ (resume_patient_id or none)|tojson }};
+    const MMC_RESUME_PATIENT_NUMBER = {{ (resume_patient_number or '')|tojson }};
+    const MMC_RESUME_DRAFT = {{ (resume_draft or none)|tojson }};
+    const MMC_IS_RESUME = Boolean(MMC_RESUME_PATIENT_ID);
+
+    // Function to get CSRF token
+    function getCSRFToken() {
+        return $('input[name="csrf_token"]').val();
+    }
+
+    // Ensure all AJAX requests carry CSRF header
+    var csrfMeta = $('meta[name="csrf-token"]').attr('content');
+    if (csrfMeta) {
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (/^(POST|PUT|PATCH|DELETE)$/i.test(settings.type)) {
+                    xhr.setRequestHeader('X-CSRFToken', csrfMeta);
+                }
+            }
+        });
+    }
+
+    function safeText(v) {
+        return (v === null || v === undefined || v === '') ? '-' : String(v);
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatAssistantText(text) {
+        const raw = (text === null || text === undefined) ? '' : String(text);
+        const t = raw.replace(/\r/g, '').trim();
+        if (!t) return '';
+
+        const lines = t.split('\n');
+        let html = '<div class="assistant-outline">';
+        let inUl = false;
+        let inOl = false;
+
+        function closeLists() {
+            if (inUl) { html += '</ul>'; inUl = false; }
+            if (inOl) { html += '</ol>'; inOl = false; }
+        }
+
+        for (const rawLine of lines) {
+            const line = (rawLine || '').trim();
+            if (!line) { continue; }
+
+            // Heading-ish lines
+            if (/^.{2,80}:$/.test(line) && !/^\d+[\).]\s+/.test(line)) {
+                closeLists();
+                html += `<h6>${escapeHtml(line.replace(/:$/, ''))}</h6>`;
+                continue;
+            }
+
+            // Numbered list
+            const olMatch = line.match(/^\s*(\d+)[\).]\s+(.*)$/);
+            if (olMatch) {
+                if (!inOl) { closeLists(); html += '<ol>'; inOl = true; }
+                html += `<li>${escapeHtml(olMatch[2].trim())}</li>`;
+                continue;
+            }
+
+            // Bulleted list
+            const ulMatch = line.match(/^\s*([•\-*]|\u2022)\s+(.*)$/);
+            if (ulMatch) {
+                if (!inUl) { closeLists(); html += '<ul>'; inUl = true; }
+                html += `<li>${escapeHtml(ulMatch[2].trim())}</li>`;
+                continue;
+            }
+
+            closeLists();
+            html += `<p>${escapeHtml(line)}</p>`;
+        }
+
+        closeLists();
+        html += '</div>';
+        return html;
+    }
+
+    function splitToBulletItems(text) {
+        const raw = (text === null || text === undefined) ? '' : String(text);
+        let t = raw.replace(/\r/g, '').trim();
+        if (!t) return [];
+        t = t.replace(/\s*•\s*/g, '\n• ');
+        const lines = t.split('\n').map(s => s.trim()).filter(Boolean);
+        const items = [];
+        for (const line of lines) {
+            const cleaned = line
+                .replace(/^([•\u2022\-*]+\s*)/, '')
+                .replace(/^\d+[\).]\s*/, '')
+                .trim();
+            if (cleaned) items.push(cleaned);
+        }
+        return items.length ? items : [t];
+    }
+
+    function renderBullets(text) {
+        const items = splitToBulletItems(text);
+        if (!items.length) return '<span class="text-muted">-</span>';
+        const lis = items.map(i => `<li>${escapeHtml(i)}</li>`).join('');
+        return `<ul class="mb-0 pl-3">${lis}</ul>`;
+    }
+
+    function renderDosageBody(payload) {
+        const d = payload && payload.dosage ? payload.dosage : null;
+        if (!d) {
+            return '<div class="text-muted">No dosage information found (DB or index book).</div>';
+        }
+
+        return `
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Basic Information</h5>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Drug Number</th>
+                            <td>${escapeHtml(safeText(payload.drug.drug_number) || '-')}</td>
+                        </tr>
+                        <tr>
+                            <th>Drug Name</th>
+                            <td>${escapeHtml(safeText(payload.drug.name) || '-')}</td>
+                        </tr>
+                    </table>
+
+                    <h5>Medical Information</h5>
+                    <table class="table table-bordered">
+                        <tr><th>Indication</th><td>${renderBullets(d.indication)}</td></tr>
+                        <tr><th>Contraindication</th><td>${renderBullets(d.contraindication)}</td></tr>
+                        <tr><th>Drug Interaction</th><td>${renderBullets(d.interaction)}</td></tr>
+                        <tr><th>Side Effects</th><td>${renderBullets(d.side_effects)}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h5>Dosage Information</h5>
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">Pediatrics</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_peds)}</div></div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">Adults</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_adults)}</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">Geriatrics</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_geriatrics)}</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <h5>Important Notes</h5>
+                <div class="card">
+                    <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.important_notes)}</div></div>
+                </div>
+            </div>
+        `;
+    }
+
+    $(document).on('click', '.view-dosage-btn', function() {
+        const row = $(this).closest('.prescription-item');
+        const isControlled = row.find('.controlled-toggle').is(':checked');
+        const drugId = isControlled ? row.find('select[name="controlled_drug_id"]').val() : row.find('select[name="drug_id"]').val();
+
+        if (!drugId) {
+            alert('Please select a drug first.');
+            return;
+        }
+
+        const url = isControlled ? `/doctor/controlled-drugs/${drugId}/dosage` : `/doctor/drugs/${drugId}/dosage`;
+        $('#doctorDosageSource').text('');
+        $('#doctorDosageBody').html('<div class="text-muted">Loading...</div>');
+        try {
+            const el = document.getElementById('doctorDosageModal');
+            if (el && window.bootstrap && bootstrap.Modal) {
+                bootstrap.Modal.getOrCreateInstance(el).show();
+            }
+        } catch (e) {
+            // best-effort
+        }
+
+        $.get(url)
+            .done(function(data) {
+                const src = data.source === 'db' ? 'Database' : (data.source === 'index' ? 'Dosage index book' : 'Not available');
+                $('#doctorDosageSource').text(`Source: ${src}`);
+                $('#doctorDosageBody').html(renderDosageBody(data));
+            })
+            .fail(function() {
+                $('#doctorDosageBody').html('<div class="text-danger">Failed to load dosage information.</div>');
+            });
+    });
+
+    // Initialize Select2 for multi-select inputs
+    $('.select2').select2({
+        width: '100%',
+        placeholder: 'Select options'
+    });
+
+    function mmcHideSelect2Select($select) {
+        $select.hide();
+        const $container = $select.next('.select2');
+        if ($container.length) $container.hide();
+    }
+
+    function mmcShowSelect2Select($select) {
+        $select.show();
+        const $container = $select.next('.select2');
+        if ($container.length) $container.show();
+    }
+
+    function createPrescriptionRow() {
+        const tpl = document.getElementById('prescription-item-template');
+        const host = document.getElementById('prescription-items');
+        if (!tpl || !host) return null;
+
+        const fragment = tpl.content.cloneNode(true);
+        host.appendChild(fragment);
+
+        const $newItem = $('#prescription-items .prescription-item').last();
+        $newItem.find('input').val('');
+        $newItem.find('select').val('');
+        $newItem.find('.controlled-toggle').prop('checked', false);
+        $newItem.find('.drug-select').show();
+        $newItem.find('.controlled-drug-select').hide();
+
+        if ($.fn && $.fn.select2) {
+            $newItem.find('.drug-select, .controlled-drug-select').each(function() {
+                const $el = $(this);
+                if ($el.data('select2')) {
+                    $el.select2('destroy');
+                }
+                $el.select2({ width: '100%' });
+            });
+        }
+
+        mmcShowSelect2Select($newItem.find('.drug-select'));
+        mmcHideSelect2Select($newItem.find('.controlled-drug-select'));
+        return $newItem;
+    }
+
+    // Generate patient number when type is selected
+    $('#patient_type').change(function() {
+        const type = String($(this).val() || '').trim();
+        const reserved = String($('#reserved_patient_number').val() || '').trim();
+
+        if (type) {
+            if (reserved) {
+                // Resume/after-save: keep showing the reserved number (do not preview a new one).
+                $('#patient_number').val(reserved);
+            } else {
+                $('#patient_number').val('Generating...');
+                // Call server to preview next number (display-only; reservation happens on biodata save)
+                $.get('/generate_patient_number?type=' + encodeURIComponent(type), function(data) {
+                    $('#patient_number').val((data && data.number) ? data.number : '');
+                }).fail(function() {
+                    $('#patient_number').val('Error generating number');
+                });
+            }
+        } else {
+            $('#patient_number').val('');
+        }
+
+        // If the select is disabled (locked), it won't be submitted with the form.
+        // Add/update a hidden field so the backend still receives patient_type.
+        try {
+            const sel = $('#patient_type');
+            const hiddenId = 'patient_type_locked_hidden';
+            if (sel.prop('disabled')) {
+                let hidden = $('#' + hiddenId);
+                if (!hidden.length) {
+                    hidden = $('<input/>', { type: 'hidden', id: hiddenId, name: 'patient_type' });
+                    $('#patientForm').append(hidden);
+                }
+                hidden.val(String(sel.val() || '').trim());
+            } else {
+                $('#' + hiddenId).remove();
+            }
+        } catch (e) { /* ignore */ }
+    });
+
+    // Apply preset after handlers are registered but before draft restore runs.
+    // Draft restore might already set patient_type; we only set preset if empty.
+    (function applyPatientTypePreset() {
+        if (!MMC_PRESET_PATIENT_TYPE) return;
+        const current = String($('#patient_type').val() || '').trim();
+        if (!current) {
+            $('#patient_type').val(MMC_PRESET_PATIENT_TYPE);
+        }
+        if (MMC_LOCK_PATIENT_TYPE) {
+            $('#patient_type').prop('disabled', true);
+        }
+        try { $('#patient_type').trigger('change'); } catch (e) { /* ignore */ }
+    })();
+
+    // Calculate BMI when weight or height changes
+    $('#weight, #height').on('input', function() {
+        const weight = parseFloat($('#weight').val());
+        const height = parseFloat($('#height').val()) / 100; // convert cm to m
+        
+        if (weight && height) {
+            const bmi = weight / (height * height);
+            $('#bmi').val(bmi.toFixed(1));
+        } else {
+            $('#bmi').val('');
+        }
+    });
+
+    // Add prescription item
+    $('#add-prescription').click(function() {
+        createPrescriptionRow();
+    });
+
+    // Remove prescription item
+    $(document).on('click', '.remove-prescription', function() {
+        $(this).closest('.prescription-item').remove();
+    });
+
+    // Drug stock validation
+    $(document).on('change', '.drug-select, .controlled-drug-select', function() {
+        const selectedOption = $(this).find('option:selected');
+        const stock = selectedOption.data('stock');
+        const quantityInput = $(this).closest('.prescription-item').find('input[name="quantity"]');
+        
+        if (stock !== undefined) {
+            quantityInput.attr('max', stock);
+            if (parseInt(quantityInput.val()) > parseInt(stock)) {
+                alert('Quantity exceeds available stock');
+                quantityInput.val('');
+            }
+        }
+    });
+
+    $(document).on('input change', '.prescription-item input[name="quantity"]', function() {
+        const max = parseInt($(this).attr('max'));
+        const val = parseInt($(this).val());
+        if (Number.isFinite(max) && Number.isFinite(val) && val > max) {
+            alert(`Quantity exceeds available stock (${max})`);
+            $(this).val(max);
+        }
+    });
+
+    // Controlled toggle
+    $(document).on('change', '.controlled-toggle', function() {
+        const row = $(this).closest('.prescription-item');
+        const isControlled = $(this).is(':checked');
+        const normalSelect = row.find('select[name="drug_id"]');
+        const controlledSelect = row.find('select[name="controlled_drug_id"]');
+
+        if (isControlled) {
+            normalSelect.val('').trigger('change');
+            mmcHideSelect2Select(normalSelect);
+            mmcShowSelect2Select(controlledSelect);
+        } else {
+            controlledSelect.val('').trigger('change');
+            mmcHideSelect2Select(controlledSelect);
+            mmcShowSelect2Select(normalSelect);
+        }
+    });
+
+    // Handle Complete Prescription button
+    $('#complete-prescription').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        // Gather prescription data
+        const prescriptions = [];
+        $('.prescription-item').each(function() {
+            const isControlled = $(this).find('.controlled-toggle').is(':checked');
+            const drugId = $(this).find('select[name="drug_id"]').val();
+            const controlledDrugId = $(this).find('select[name="controlled_drug_id"]').val();
+            const quantity = $(this).find('input[name="quantity"]').val();
+            const dosage = $(this).find('input[name="dosage"]').val();
+            const frequency = $(this).find('input[name="frequency"]').val();
+            const duration = $(this).find('input[name="duration"]').val();
+            const notes = $(this).find('input[name="prescription_notes"]').val();
+
+            if (quantity && dosage && frequency && duration) {
+                if (isControlled && controlledDrugId) {
+                    prescriptions.push({
+                        is_controlled: true,
+                        controlled_drug_id: controlledDrugId,
+                        quantity: quantity,
+                        dosage: dosage,
+                        frequency: frequency,
+                        duration: duration,
+                        notes: notes
+                    });
+                } else if (!isControlled && drugId) {
+                    prescriptions.push({
+                        drug_id: drugId,
+                        quantity: quantity,
+                        dosage: dosage,
+                        frequency: frequency,
+                        duration: duration,
+                        notes: notes
+                    });
+                }
+            }
+        });
+
+        if (prescriptions.length === 0) {
+            alert('No valid prescriptions to save. Please add at least one medication with all required fields.');
+            return;
+        }
+
+        $('#prescription-feedback').html('<div class="spinner-border spinner-border-sm" role="status"></div> Saving prescription...').show();
+        $('#complete-prescription').prop('disabled', true);
+
+        $.ajax({
+            url: '/doctor/patient/complete_prescription',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                patient_id: patientId,
+                prescriptions: prescriptions,
+                csrf_token: getCSRFToken()
+            }),
+            success: function(response) {
+                if (response.success) {
+                    $('#prescription-feedback').html('<div class="alert alert-success">Prescription saved successfully! You can continue adding more prescriptions or proceed to the next section.</div>');
+                    
+                    // Keep form enabled - don't clear or disable anything
+                    // Allow doctor to add more prescriptions after saving
+                    $('#complete-prescription').prop('disabled', false);
+                } else {
+                    $('#prescription-feedback').html('<div class="alert alert-danger">Error: ' + (response.error || 'Failed to save prescription') + '</div>');
+                    $('#complete-prescription').prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                $('#prescription-feedback').html('<div class="alert alert-danger">Error: ' + (xhr.responseJSON?.error || 'Failed to connect to server') + '</div>');
+                $('#complete-prescription').prop('disabled', false);
+            }
+        });
+    });
+
+    // Handle Complete Services button
+    $('#complete-services').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        const serviceIds = $('#service_id').val() || [];
+        const notes = String($('textarea[name="service_notes"]').val() || '').trim();
+
+        if (!serviceIds.length) {
+            alert('Please select at least one service.');
+            return;
+        }
+
+        if (!confirm('Mark the selected services as completed?')) {
+            return;
+        }
+
+        const $feedback = $('#services-feedback');
+        $feedback.hide().removeClass('text-danger text-success').text('');
+
+        $.ajax({
+            url: '/doctor/complete_services',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                patient_id: patientId,
+                service_ids: serviceIds,
+                notes: notes
+            }),
+            success: function(resp) {
+                if (resp && resp.success) {
+                    $feedback.addClass('text-success').text(resp.message || 'Services completed.').show();
+                    try { $('#service_id').val(null).trigger('change'); } catch (e) { /* ignore */ }
+                    try { $('textarea[name="service_notes"]').val(''); } catch (e) { /* ignore */ }
+                } else {
+                    $feedback.addClass('text-danger').text((resp && resp.error) ? resp.error : 'Failed to complete services.').show();
+                }
+            },
+            error: function(xhr) {
+                let msg = 'Failed to complete services.';
+                try {
+                    const r = xhr.responseJSON;
+                    if (r && r.error) msg = r.error;
+                } catch (e) { /* ignore */ }
+                $feedback.addClass('text-danger').text(msg).show();
+            }
+        });
+    });
+
+    // Form navigation with draft auto-save (survives refresh/power loss)
+    const MMC_DRAFT_KEY = 'mmc.doctor.draft:new_patient:v1';
+    let currentSection = 0;
+    const sections = $('.form-section');
+    const progressSteps = $('.progress-step');
+
+    function mmcParseAgeYearsBestEffort() {
+        const raw = String($('#age').val() || '').trim().toLowerCase();
+        if (!raw) return null;
+
+        // If units are explicit, assume paediatric unless clearly "years".
+        if (/\b(week|weeks|wk|wks)\b/.test(raw)) return 0;
+        if (/\b(month|months|mo|mos)\b/.test(raw)) return 0;
+
+        const m = raw.match(/(\d+(?:\.\d+)?)/);
+        if (!m) return null;
+        const n = Number.parseFloat(m[1]);
+        if (!Number.isFinite(n)) return null;
+
+        // If user typed "years" we're in years; otherwise assume years (adult UI).
+        return Math.floor(n);
+    }
+
+    function mmcSetOptionalSectionEnabled(sectionKey, enabled) {
+        const $section = $('#' + sectionKey + '-section');
+        const $step = progressSteps.filter('[data-step="' + sectionKey + '"]');
+        if (!$section.length || !$step.length) return;
+
+        if (enabled) {
+            // Keep non-active sections hidden (CSS uses `.form-section { display:none }`).
+            // Only clear inline display:none used to disable optional sections.
+            $section.removeClass('mmc-disabled');
+            try { $section.css('display', ''); } catch (e) { /* ignore */ }
+            $step.removeClass('mmc-disabled').show();
+        } else {
+            // Disable navigation to this section and ensure it can't remain active/visible.
+            $section.addClass('mmc-disabled').removeClass('active');
+            try { $section.css('display', ''); } catch (e) { /* ignore */ }
+            $step.addClass('mmc-disabled').removeClass('active').hide();
+        }
+    }
+
+    function mmcShouldEnableObgyn() {
+        const gender = String($('#gender').val() || '').trim().toLowerCase();
+        if (gender !== 'female') return false;
+        const years = mmcParseAgeYearsBestEffort();
+        if (years === null) return false;
+        return years >= 18;
+    }
+
+    function mmcIsPeds() {
+        const years = mmcParseAgeYearsBestEffort();
+        if (years === null) return false;
+        return years < 18;
+    }
+
+    function mmcUpdateOptionalSections(opts) {
+        const o = (opts && typeof opts === 'object') ? opts : {};
+        const jump = (o.jump !== false);
+
+        const isPeds = mmcIsPeds();
+
+        // Paediatrics-only flow sections
+        mmcSetOptionalSectionEnabled('peds_past_history', isPeds);
+        mmcSetOptionalSectionEnabled('peds_family_history', isPeds);
+        mmcSetOptionalSectionEnabled('peds_social_history', isPeds);
+        mmcSetOptionalSectionEnabled('clinical_impression', isPeds);
+
+        // Adult-only sections
+        mmcSetOptionalSectionEnabled('smhx', !isPeds);
+        mmcSetOptionalSectionEnabled('obgyn', !isPeds && mmcShouldEnableObgyn());
+
+        // Inline paediatrics-only UI elements
+        $('.mmc-peds-only').toggle(isPeds);
+
+        // Labels that differ between adult vs paediatric intake
+        try {
+            if (isPeds) {
+                $('#nok_name_label').text('Informant Name');
+                $('#nok_contact_label').text('Informant Contact');
+                $('#cc_label').text('Chief Complaint* (Parent/Child words)');
+                $('#ros_cns_label').text('Neurologic');
+            } else {
+                $('#nok_name_label').text('Next of Kin Name');
+                $('#nok_contact_label').text('Next of Kin Contact');
+                $('#cc_label').text('Chief Complaint*');
+                $('#ros_cns_label').text('CNS');
+            }
+        } catch (e) { /* ignore */ }
+
+        // Renumber visible steps for a cleaner UX (since some steps are conditional)
+        try {
+            progressSteps.filter(':visible').each(function(i) {
+                const $s = $(this).find('span').first();
+                if ($s.length) $s.text(String(i + 1));
+            });
+        } catch (e) { /* ignore */ }
+
+        if (!jump) return;
+
+        // If we are currently on a disabled section, jump to the nearest enabled.
+        try { showSection(currentSection, 0); } catch (e) { /* ignore */ }
+    }
+
+    function safeLoadDraft() {
+        try {
+            const raw = window.localStorage.getItem(MMC_DRAFT_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function safeSaveDraft(state) {
+        try {
+            window.localStorage.setItem(MMC_DRAFT_KEY, JSON.stringify(state));
+        } catch (e) {
+            // ignore quota/disabled storage
+        }
+    }
+
+    function clearDraft() {
+        try {
+            window.localStorage.removeItem(MMC_DRAFT_KEY);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function collectDraftValues() {
+        const values = {};
+        const $form = $('#patientForm');
+        const elements = $form.find('input[name], textarea[name], select[name]').toArray();
+
+        // Count inputs per name to distinguish checkbox groups.
+        const nameCounts = {};
+        elements.forEach((el) => {
+            const name = el && el.name;
+            if (!name || name === 'csrf_token') return;
+            nameCounts[name] = (nameCounts[name] || 0) + 1;
+        });
+
+        function setValue(name, val) {
+            if (name === 'csrf_token') return;
+            if (values[name] === undefined) {
+                values[name] = val;
+            } else if (Array.isArray(values[name])) {
+                values[name].push(val);
+            } else {
+                values[name] = [values[name], val];
+            }
+        }
+
+        elements.forEach((el) => {
+            if (!el || !el.name || el.name === 'csrf_token') return;
+            const name = el.name;
+            const tag = (el.tagName || '').toLowerCase();
+            const type = (el.type || '').toLowerCase();
+
+            if (type === 'radio') {
+                if (el.checked) setValue(name, el.value);
+                return;
+            }
+
+            if (type === 'checkbox') {
+                const isGroup = (nameCounts[name] || 0) > 1;
+                if (isGroup) {
+                    if (el.checked) setValue(name, el.value);
+                } else {
+                    setValue(name, !!el.checked);
+                }
+                return;
+            }
+
+            if (tag === 'select' && el.multiple) {
+                const selected = $(el).val() || [];
+                setValue(name, Array.isArray(selected) ? selected : [selected]);
+                return;
+            }
+
+            setValue(name, $(el).val());
+        });
+
+        return values;
+    }
+
+    function applyDraftValues(values) {
+        if (!values || typeof values !== 'object') return;
+
+        const $form = $('#patientForm');
+
+        function nameSelector(n) {
+            // Avoid depending on CSS.escape (not available in some browsers).
+            const s = String(n)
+                .replace(/\\/g, '\\\\')
+                .replace(/\]/g, '\\]')
+                .replace(/\"/g, '\\"');
+            return `[name="${s}"]`;
+        }
+
+        Object.keys(values).forEach((name) => {
+            if (!name || name === 'csrf_token') return;
+            const stored = values[name];
+            const $els = $form.find(nameSelector(name));
+            if (!$els.length) return;
+
+            // Handle checkbox groups (array of checked values)
+            const first = $els.get(0);
+            const type = (first && first.type ? String(first.type).toLowerCase() : '');
+            const tag = (first && first.tagName ? String(first.tagName).toLowerCase() : '');
+
+            if (type === 'radio') {
+                $els.each(function () {
+                    this.checked = String(this.value) === String(stored);
+                });
+                return;
+            }
+
+            if (type === 'checkbox') {
+                if (Array.isArray(stored)) {
+                    const set = new Set(stored.map((v) => String(v)));
+                    $els.each(function () {
+                        this.checked = set.has(String(this.value));
+                    });
+                } else {
+                    // Single boolean checkbox
+                    const checked = !!stored;
+                    $els.each(function () {
+                        this.checked = checked;
+                    });
+                }
+                return;
+            }
+
+            if (tag === 'select' && first && first.multiple) {
+                const arr = Array.isArray(stored) ? stored : [stored];
+                $els.val(arr).trigger('change');
+                return;
+            }
+
+            // Multiple inputs with same name (e.g., dynamic prescriptions) - restore in DOM order
+            if (Array.isArray(stored) && $els.length > 1) {
+                $els.each(function (idx) {
+                    const v = stored[idx];
+                    if (v !== undefined) $(this).val(v);
+                });
+                return;
+            }
+
+            $els.val(stored);
+        });
+
+        // Some fields have dependent UI (e.g., patient type -> number)
+        try {
+            $('#patient_type').trigger('change');
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function saveDraftNow() {
+        const sectionId = String($('#current_section').val() || '').trim();
+        const patientId = String($('#patient_id').val() || '').trim();
+        safeSaveDraft({
+            version: 1,
+            updated_at: new Date().toISOString(),
+            url: window.location.pathname + window.location.search,
+            current_section_id: sectionId,
+            current_section_index: currentSection,
+            patient_id: patientId,
+            scroll_y: window.scrollY || 0,
+            values: collectDraftValues()
+        });
+    }
+
+    let __mmcDraftTimer = null;
+    function scheduleDraftSave() {
+        if (__mmcDraftTimer) window.clearTimeout(__mmcDraftTimer);
+        __mmcDraftTimer = window.setTimeout(() => {
+            __mmcDraftTimer = null;
+            saveDraftNow();
+        }, 400);
+    }
+    
+    function mmcIsSectionDisabled(idx) {
+        const $sec = sections.eq(idx);
+        // Sections are hidden by default unless `.active`; do NOT treat `:hidden` as disabled.
+        return !$sec.length || $sec.hasClass('mmc-disabled');
+    }
+
+    function mmcResolveSectionIndex(startIndex, direction) {
+        let idx = Number.isFinite(startIndex) ? startIndex : 0;
+        idx = Math.max(0, Math.min(idx, sections.length - 1));
+        if (!mmcIsSectionDisabled(idx)) return idx;
+
+        const step = direction > 0 ? 1 : direction < 0 ? -1 : 1;
+        let i = idx;
+        while (i >= 0 && i < sections.length) {
+            if (!mmcIsSectionDisabled(i)) return i;
+            i += step;
+        }
+        // Fallback: scan the other direction
+        i = idx;
+        while (i >= 0 && i < sections.length) {
+            if (!mmcIsSectionDisabled(i)) return i;
+            i -= step;
+        }
+        return Math.max(0, Math.min(idx, sections.length - 1));
+    }
+
+    function showSection(index, direction = 0) {
+        const resolved = mmcResolveSectionIndex(index, direction);
+        currentSection = resolved;
+
+        sections.removeClass('active').eq(resolved).addClass('active');
+        progressSteps.removeClass('active').eq(resolved).addClass('active');
+        $('#current_section').val(sections.eq(resolved).attr('id').replace('-section', ''));
+
+        // Persist where the doctor is within the wizard
+        scheduleDraftSave();
+        
+        // Update navigation buttons
+        $('#prevBtn').toggle(resolved !== 0);
+        $('#nextBtn').toggle(resolved < sections.length - 1);
+        $('#endBtn').toggle(resolved === sections.length - 1);
+    }
+
+    function mmcResetWizardToStart() {
+        // Preserve the current patient type so the next form loads with the same OP/IP selection and a fresh number.
+        let prevPatientType = '';
+        try { prevPatientType = String($('#patient_type').val() || '').trim().toUpperCase(); } catch (e) { prevPatientType = ''; }
+
+        // Clear the draft from localStorage
+        clearDraft();
+
+        // Reset form to start fresh for next patient
+        try { $('#patientForm')[0].reset(); } catch (e) { /* ignore */ }
+        try { $('#patient_id').val(''); } catch (e) { /* ignore */ }
+        try { $('#reserved_patient_number').val(''); } catch (e) { /* ignore */ }
+        try { $('#patient_number').val(''); } catch (e) { /* ignore */ }
+
+        // Restore/preset patient type and trigger a fresh number preview (without reserving).
+        try {
+            const preset = String(MMC_PRESET_PATIENT_TYPE || '').trim().toUpperCase();
+            let typeToSet = preset || prevPatientType;
+            if (typeToSet !== 'OP' && typeToSet !== 'IP') typeToSet = '';
+
+            // Ensure lock state is applied consistently after form reset.
+            $('#patient_type').prop('disabled', Boolean(MMC_LOCK_PATIENT_TYPE));
+            // Remove any stale hidden field; the change handler will re-add it if locked.
+            $('#patient_type_locked_hidden').remove();
+
+            if (typeToSet) {
+                $('#patient_type').val(typeToSet);
+                $('#patient_type').trigger('change');
+            }
+        } catch (e) { /* ignore */ }
+
+        // Re-evaluate optional steps after reset (e.g., hide OB/GYN)
+        try { mmcUpdateOptionalSections({ jump: false }); } catch (e) { /* ignore */ }
+
+        // Clear all prescription draft rows
+        try { $('#prescription-items').empty(); } catch (e) { /* ignore */ }
+
+        currentSection = 0;
+        showSection(0);
+        try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+    }
+
+    // Handle End button click - save and reset for next patient
+    $('#endBtn').click(function(e) {
+        e.preventDefault();
+        
+        // Save the final management section
+        saveCurrentSection().then(() => {
+            // Clear the draft from localStorage
+            try {
+                localStorage.removeItem(MMC_DRAFT_KEY);
+            } catch (err) {
+                console.warn('Could not clear draft:', err);
+            }
+            
+            // Show success message
+            alert('Patient record completed successfully!');
+            
+            mmcResetWizardToStart();
+        }).catch(error => {
+            console.error('Error completing patient record:', error);
+            if (confirm('Error saving final section: ' + error + '\n\nDo you still want to close and start a new patient?')) {
+                // Reset anyway if user confirms
+                mmcResetWizardToStart();
+            }
+        });
+    });
+    
+    // Archive the current patient draft (server-side encrypted snapshot) and reset the wizard.
+    $('#archivePatientBtn').on('click', function() {
+        const patientId = String($('#patient_id').val() || '').trim();
+        if (!patientId) {
+            alert('Please save patient biodata first.');
+            return;
+        }
+
+        if (!confirm('Archive this patient and continue later from Archived Patients?')) {
+            return;
+        }
+
+        // Capture the latest in-browser state, then send the full draft snapshot.
+        saveDraftNow();
+        const draft = safeLoadDraft() || {};
+
+        $.ajax({
+            url: `/doctor/patient/${encodeURIComponent(patientId)}/archive`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ draft: draft }),
+            success: function(resp) {
+                if (resp && resp.success) {
+                    alert('Patient archived. You can resume from Archived Patients.');
+                    mmcResetWizardToStart();
+                } else {
+                    alert((resp && resp.error) ? resp.error : 'Failed to archive patient.');
+                }
+            },
+            error: function(xhr) {
+                let msg = 'Failed to archive patient.';
+                try {
+                    const r = xhr.responseJSON;
+                    if (r && r.error) msg = r.error;
+                } catch (e) { /* ignore */ }
+                alert(msg);
+            }
+        });
+    });
+
+    // Cancel: wipe the draft and (best-effort) delete the patient record (numbers are not reused).
+    $('#cancelPatientBtn').on('click', function() {
+        if (!confirm('Cancel this patient entry? This will delete the draft and reset the form.')) {
+            return;
+        }
+
+        const patientId = String($('#patient_id').val() || '').trim();
+        if (!patientId) {
+            mmcResetWizardToStart();
+            return;
+        }
+
+        $.ajax({
+            url: `/doctor/patient/${encodeURIComponent(patientId)}/cancel`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function(resp) {
+                if (resp && resp.success) {
+                    let msg = 'Cancelled.';
+                    if (resp.hard_deleted) msg = 'Patient deleted.';
+                    else if (resp.soft_deleted) msg = 'Patient removed from list (could not fully delete due to linked records).';
+                    alert(msg);
+                    mmcResetWizardToStart();
+                } else {
+                    alert((resp && resp.error) ? resp.error : 'Failed to cancel patient.');
+                }
+            },
+            error: function(xhr) {
+                let msg = 'Failed to cancel patient.';
+                try {
+                    const r = xhr.responseJSON;
+                    if (r && r.error) msg = r.error;
+                } catch (e) { /* ignore */ }
+                alert(msg);
+            }
+        });
+    });
+
+    // Update section validation (summary is now optional)
+    function validateCurrentSection() {
+        const currentSectionId = sections.eq(currentSection).attr('id');
+        
+        // Summary section is now optional - no validation needed
+        // All other validations remain the same
+        
+        return true;
+    }
+
+    function saveCurrentSection() {
+        return new Promise((resolve, reject) => {
+            if (!validateCurrentSection()) {
+                reject('Please complete the current section properly');
+                return;
+            }
+            
+            const formData = $('#patientForm').serialize();
+            
+            $.ajax({
+                url: '/doctor/patient/new',
+                method: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        if (response.patient_id) {
+                            $('#patient_id').val(response.patient_id);
+                        }
+                        // Ensure the UI shows the exact reserved/saved number after biodata save.
+                        if (response.patient_number) {
+                            try {
+                                const pn = String(response.patient_number);
+                                $('#patient_number').val(pn);
+                                $('#reserved_patient_number').val(pn);
+                            } catch (e) { /* ignore */ }
+                        }
+                        scheduleDraftSave();
+                        resolve(response);
+                    } else {
+                        reject(response.error || 'Failed to save data');
+                    }
+                },
+                error: function(xhr) {
+                    reject(xhr.responseJSON?.error || 'Failed to save data');
+                }
+            });
+        });
+    }
+    
+    $('#nextBtn').click(function() {
+        saveCurrentSection().then(() => {
+            if (currentSection < sections.length - 1) {
+                showSection(currentSection + 1, +1);
+                
+                // If moving to diagnosis section and summary exists, offer to generate diagnosis
+                if (sections.eq(currentSection).attr('id') === 'diagnosis-section') {
+                    autoGenerateDiagnosisIfSummaryExists();
+                }
+            }
+        }).catch(error => {
+            console.error('Error saving section:', error);
+            alert('Error saving section: ' + error);
+        });
+    });
+    
+    $('#prevBtn').click(function() {
+        if (currentSection > 0) {
+            showSection(currentSection - 1, -1);
+        }
+    });
+
+    // Restore draft (fields + patient_id + current section)
+    (function restoreDraft() {
+        let draft = safeLoadDraft();
+
+        // Resume flow: prefer the encrypted server snapshot over any local draft (avoids mixing patients).
+        if (MMC_IS_RESUME && MMC_RESUME_DRAFT && typeof MMC_RESUME_DRAFT === 'object') {
+            draft = MMC_RESUME_DRAFT;
+            try { safeSaveDraft(draft); } catch (e) { /* ignore */ }
+        }
+
+        if (!draft || draft.version !== 1) {
+            currentSection = 0;
+            showSection(0);
+            // If storage is unavailable but we are resuming, keep the reserved number visible.
+            if (MMC_IS_RESUME) {
+                try {
+                    if (MMC_RESUME_PATIENT_ID) $('#patient_id').val(String(MMC_RESUME_PATIENT_ID));
+                } catch (e) { /* ignore */ }
+                try {
+                    if (MMC_RESUME_PATIENT_NUMBER) {
+                        $('#reserved_patient_number').val(String(MMC_RESUME_PATIENT_NUMBER));
+                        $('#patient_number').val(String(MMC_RESUME_PATIENT_NUMBER));
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            return;
+        }
+
+        // Restore form values first
+        applyDraftValues(draft.values);
+        // Enable/disable optional sections (e.g., OB/GYN) based on restored biodata.
+        mmcUpdateOptionalSections({ jump: false });
+
+        if (draft.patient_id) {
+            $('#patient_id').val(draft.patient_id);
+        }
+        // Ensure the reserved number is present during resume even if an older draft omitted it.
+        if (MMC_IS_RESUME && MMC_RESUME_PATIENT_NUMBER) {
+            try {
+                const cur = String($('#reserved_patient_number').val() || '').trim();
+                if (!cur) $('#reserved_patient_number').val(String(MMC_RESUME_PATIENT_NUMBER));
+            } catch (e) { /* ignore */ }
+        }
+
+        // Prefer restoring by section id (safer across wizard re-ordering), then fall back to index.
+        let restoredFromSid = false;
+        const sid = String(draft.current_section_id || '').trim();
+        if (sid) {
+            const wanted = sid + '-section';
+            const found = sections.toArray().findIndex((el) => (el && el.id) === wanted);
+            if (found >= 0) {
+                currentSection = found;
+                restoredFromSid = true;
+            }
+        }
+        if (!restoredFromSid) {
+            const idx = Number(draft.current_section_index);
+            if (Number.isFinite(idx) && idx >= 0 && idx < sections.length) {
+                currentSection = idx;
+            } else {
+                currentSection = 0;
+            }
+        }
+
+        showSection(currentSection);
+
+        // Restore scroll position
+        const y = Number(draft.scroll_y || 0);
+        if (Number.isFinite(y) && y > 0) {
+            window.setTimeout(() => {
+                try { window.scrollTo(0, y); } catch (e) { /* ignore */ }
+            }, 50);
+        }
+    })();
+
+    // Keep optional steps in sync with biodata (e.g., show OB/GYN only for adult females)
+    mmcUpdateOptionalSections({ jump: false });
+    $('#gender, #age').on('input change', function () {
+        mmcUpdateOptionalSections();
+    });
+
+    // Keep draft up to date while the doctor types
+    $('#patientForm').on('input change', 'input, textarea, select', scheduleDraftSave);
+    window.addEventListener('pagehide', saveDraftNow);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') saveDraftNow();
+    });
+    $('#endBtn').on('click', function () {
+        clearDraft();
+    });
+
+    // ==================== AI INTEGRATION ====================
+    
+    // Assistant Review Systems Questions
+    $('#suggest-review-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        const chiefComplaint = $('#chief_complaint').val().trim();
+        
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+        
+        if (!chiefComplaint) {
+            alert('Please enter chief complaint first');
+            return;
+        }
+        
+        $('#review-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...');
+        
+        $.ajax({
+            url: '/doctor/patient/assistant/review_systems',
+            method: 'POST',
+            data: { 
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#review-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Suggested Review of Systems Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    );
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: Paediatrics Past History Questions
+    $('#suggest-peds-past-history-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#peds-past-history-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/peds_past_history_questions',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#peds-past-history-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Past History Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: Paediatrics Family / Genetic History Questions
+    $('#suggest-peds-family-history-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#peds-family-history-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/peds_family_social_questions',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                scope: 'family',
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#peds-family-history-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Paediatric Family / Genetic Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: Paediatrics Social History Questions
+    $('#suggest-peds-social-history-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#peds-social-history-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/peds_family_social_questions',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                scope: 'social',
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#peds-social-history-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Paediatric Social Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: Adult/General Social-Medical History Questions
+    $('#suggest-smhx-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#smhx-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/history_questions',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#smhx-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Social and Medical History Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: Examination guidance
+    $('#suggest-exam-guidance').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#exam-guidance-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating guidance...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/exam_guidance',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#exam-guidance-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Examination Guidance</h5>
+                            ${formatAssistantText(response.guidance)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate guidance');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant: OB/GYN Questions
+    $('#suggest-obgyn-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        $('#obgyn-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...').show();
+
+        $.ajax({
+            url: '/doctor/patient/assistant/obgyn_questions',
+            method: 'POST',
+            data: {
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#obgyn-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>OB/GYN Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant HPI Questions
+    $('#suggest-hpi-questions').click(function() {
+        const patientId = $('#patient_id').val();
+        const chiefComplaint = $('#chief_complaint').val().trim();
+        
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+        
+        if (!chiefComplaint) {
+            alert('Please enter chief complaint first');
+            return;
+        }
+        
+        $('#hpi-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating questions...');
+        
+        $.ajax({
+            url: '/doctor/patient/assistant/hpi_questions',
+            method: 'POST',
+            data: { 
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#hpi-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Suggested HPI Questions</h5>
+                            ${formatAssistantText(response.questions)}
+                        </div>`
+                    );
+                } else {
+                    showAssistantError(response.error || 'Failed to generate questions');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Assistant Generate HPI Content
+    $('#generate-hpi-content').click(function() {
+        const patientId = $('#patient_id').val();
+        
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+        
+        $('#hpi_details').val('Generating HPI content...');
+        
+        $.ajax({
+            url: '/doctor/patient/assistant/generate_hpi',
+            method: 'POST',
+            data: { 
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#hpi_details').val(response.hpi_content);
+                    showAssistantSuccess('HPI content generated successfully');
+                } else {
+                    showAssistantError(response.error || 'Failed to generate HPI');
+                    $('#hpi_details').val('');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+                $('#hpi_details').val('');
+            }
+        });
+    });
+
+    // Doctor Assistant diagnosis suggestions - Now reads from summary section
+    $('#suggest-diagnosis').click(function() {
+        const patientId = $('#patient_id').val();
+        const clinicalSummary = $('#patient_summary').val().trim();
+        
+        if (!patientId) {
+            alert('Please save patient data first');
+            return;
+        }
+        
+        if (!clinicalSummary) {
+            alert('Please enter a clinical summary in the summary section first. The AI needs this information to generate accurate diagnoses.');
+            $('#summary-section').addClass('highlight-required');
+            return;
+        }
+        
+        $('#assistant-diagnosis-loading').show();
+        $('#assistant-diagnosis-results').hide();
+        $('#diagnosis-placeholder').hide();
+        
+        // First save the current summary section to ensure data is available
+        saveCurrentSection().then(() => {
+            // Now generate diagnosis
+            $.ajax({
+                url: '/doctor/patient/assistant/diagnosis',
+                method: 'POST',
+                data: { 
+                    patient_id: patientId,
+                    patient_summary: clinicalSummary,  // Send the summary
+                    csrf_token: getCSRFToken()
+                },
+                success: function(response) {
+                    $('#assistant-diagnosis-loading').hide();
+                    if (response.success) {
+                        $('#assistant-diagnosis-text').html(formatAssistantText(response.diagnosis));
+                        $('#assistant-diagnosis-results').show();
+                        $('#diagnosis-placeholder').hide();
+                        
+                        // Show source of diagnosis
+                        if (response.source === 'clinical_summary') {
+                            showAssistantSuccess('Diagnosis generated from clinical summary');
+                        }
+                    } else {
+                        showAssistantError(response.error || 'Failed to generate diagnosis');
+                        $('#diagnosis-placeholder').show();
+                    }
+                },
+                error: function(xhr) {
+                    $('#assistant-diagnosis-loading').hide();
+                    showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+                    $('#diagnosis-placeholder').show();
+                }
+            });
+        }).catch(error => {
+            $('#assistant-diagnosis-loading').hide();
+            showAssistantError('Error saving summary section: ' + error);
+            $('#diagnosis-placeholder').show();
+        });
+    });
+
+    // Auto-generate diagnosis when entering diagnosis section if summary exists
+    function autoGenerateDiagnosisIfSummaryExists() {
+        const clinicalSummary = $('#patient_summary').val().trim();
+        if (clinicalSummary && $('#enable-assistant').is(':checked')) {
+            setTimeout(() => {
+                if (confirm('You have a clinical summary entered. Would you like AI to generate diagnosis suggestions based on it?')) {
+                    $('#suggest-diagnosis').click();
+                }
+            }, 1000);
+        }
+    }
+
+    // Apply AI diagnosis to form
+    $('#apply-assistant-diagnosis').click(function() {
+        const raw = ($('#assistant-diagnosis-text').text() || '').trim();
+
+        function _cleanSection(text) {
+            return (text || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/^\s*[-•]\s*/gm, '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
+        function _extractSection(text, headerRegex, stopRegex) {
+            const normalized = (text || '').replace(/\r\n/g, '\n');
+            const headerMatch = normalized.match(headerRegex);
+            if (!headerMatch) return '';
+            const startIndex = headerMatch.index + headerMatch[0].length;
+            const rest = normalized.slice(startIndex);
+            const stopMatch = rest.match(stopRegex);
+            const section = stopMatch ? rest.slice(0, stopMatch.index) : rest;
+            return _cleanSection(section);
+        }
+
+        // Primary/Working diagnosis section
+        let workingDx = _extractSection(
+            raw,
+            /(?:^|\n)\s*(?:1\s*\.)?\s*(?:PRIMARY\s+WORKING\s+DIAGNOSIS|WORKING\s+DIAGNOSIS)\s*[:\-]?\s*(?:\n+|\s+)/i,
+            /(?:\n\s*(?:2\s*\.)?\s*(?:DIFFERENTIAL\s+DIAGNOSES?|DIFFERENTIALS?)\b)|(?:\n\s*(?:3\s*\.)?\s*KEY\s+CLINICAL\s+FINDINGS\b)|$/i
+        );
+
+        // Differential diagnoses section
+        let differentialDx = _extractSection(
+            raw,
+            /(?:^|\n)\s*(?:2\s*\.)?\s*(?:DIFFERENTIAL\s+DIAGNOSES?|DIFFERENTIALS?)\s*[:\-]?\s*(?:\n+|\s+)/i,
+            /(?:\n\s*(?:3\s*\.)?\s*KEY\s+CLINICAL\s+FINDINGS\b)|(?:\n\s*(?:4\s*\.)?\s*RECOMMENDED\s+INVESTIGATIONS\b)|(?:\n\s*(?:5\s*\.)?\s*CLINICAL\s+PEARLS\b)|$/i
+        );
+
+        // Fallback heuristics if headings are missing/changed
+        if (!workingDx) {
+            const firstLine = raw.split(/\r?\n/).map(l => l.trim()).find(Boolean);
+            workingDx = _cleanSection(firstLine || raw);
+        }
+        if (!differentialDx) {
+            // Try extracting after a simple 'Differential' keyword
+            differentialDx = _extractSection(
+                raw,
+                /(?:^|\n)\s*(?:DIFFERENTIAL\s+DIAGNOSES?|DIFFERENTIALS?)\s*[:\-]?\s*(?:\n+|\s+)/i,
+                /(?:\n\s*(?:KEY\s+CLINICAL\s+FINDINGS|RECOMMENDED\s+INVESTIGATIONS|CLINICAL\s+PEARLS)\b)|$/i
+            );
+        }
+
+        $('#working_diagnosis').val(workingDx).trigger('input');
+        $('#differential_diagnosis').val(differentialDx).trigger('input');
+
+        $(this).html('<i class="fas fa-check"></i> Applied').prop('disabled', true);
+        showAssistantSuccess('AI suggestions applied to Working Dx and Differentials');
+    });
+
+    // Assistant Treatment Plan
+    $('#suggest-treatment').click(function() {
+        const patientId = $('#patient_id').val();
+        const diagnosis = $('#working_diagnosis').val().trim();
+        
+        if (!patientId) {
+            alert('Please save patient data first');
+            return;
+        }
+        
+        if (!diagnosis) {
+            alert('Please enter a working diagnosis first');
+            return;
+        }
+        
+        $('#treatment-suggestions').html('<div class="spinner-border spinner-border-sm" role="status"></div> Generating treatment plan...').show();
+        
+        $.ajax({
+            url: '/doctor/patient/assistant/treatment',
+            method: 'POST',
+            data: { 
+                patient_id: patientId,
+                csrf_token: getCSRFToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#treatment-suggestions').data('assistantPlan', response.treatment_plan || '');
+                    $('#treatment-suggestions').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Suggested Treatment Plan</h5>
+                            ${formatAssistantText(response.treatment_plan)}
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-primary" id="apply-assistant-treatment">
+                                    <i class="fas fa-check"></i> Apply to Treatment / Follow-up
+                                </button>
+                            </div>
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to generate treatment plan');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    function _splitTreatmentAndFollowUp(rawText) {
+        const raw = String(rawText || '').trim();
+        if (!raw) return { treatment: '', followUp: '' };
+
+        // Preferred: strict headings from the AI prompt
+        const treatmentMatch = raw.match(/(?:^|\n)\s*TREATMENT\s+PLAN\s*[:\-]?\s*(?:\n+|$)([\s\S]*?)(?=(?:\n\s*FOLLOW[\-\s]*UP\s+PLAN\b)|$)/i);
+        const followMatch = raw.match(/(?:^|\n)\s*FOLLOW[\-\s]*UP\s+PLAN\s*[:\-]?\s*(?:\n+|$)([\s\S]*?)$/i);
+
+        const treatment = (treatmentMatch && treatmentMatch[1] ? treatmentMatch[1].trim() : '');
+        const followUp = (followMatch && followMatch[1] ? followMatch[1].trim() : '');
+
+        if (treatment || followUp) {
+            return { treatment: treatment || raw, followUp };
+        }
+
+        // Fallback: look for a follow-up heading
+        const idx = raw.search(/(?:^|\n)\s*FOLLOW[\-\s]*UP\b/i);
+        if (idx >= 0) {
+            const a = raw.slice(0, idx).trim();
+            const b = raw.slice(idx).trim();
+            return { treatment: a || raw, followUp: b };
+        }
+
+        return { treatment: raw, followUp: '' };
+    }
+
+    // Apply Assistant Treatment Plan to textareas (never auto-populate prescriptions)
+    $('#treatment-suggestions').on('click', '#apply-assistant-treatment', function() {
+        const raw = ($('#treatment-suggestions').data('assistantPlan') || '').toString();
+        const parts = _splitTreatmentAndFollowUp(raw);
+
+        if (parts.treatment) {
+            $('#treatment_plan').val(parts.treatment).trigger('input');
+        }
+        if (parts.followUp) {
+            $('#follow_up').val(parts.followUp).trigger('input');
+        }
+
+        $(this).html('<i class="fas fa-check"></i> Applied').prop('disabled', true);
+        showAssistantSuccess('AI suggestions applied to Treatment / Follow-up');
+    });
+
+    // Lab Results Analysis
+    $('#analyze-lab-results').click(function() {
+        const patientId = $('#patient_id').val();
+        const labText = $('#lab-results-text').val().trim();
+        const labTestId = ($('#lab-analysis-test').val() || '').toString().trim();
+        const doctorReport = $('#lab-doctor-report-text').val().trim();
+        const labFile = ($('#lab-analysis-file')[0] && $('#lab-analysis-file')[0].files && $('#lab-analysis-file')[0].files[0]) ? $('#lab-analysis-file')[0].files[0] : null;
+        
+        if (!patientId) {
+            alert('Please save patient data first');
+            return;
+        }
+        
+        if (!labText && !labFile) {
+            alert('Please paste lab results or upload a supported file');
+            return;
+        }
+        
+        $('#lab-analysis-results').html('<div class="spinner-border spinner-border-sm" role="status"></div> Analyzing results...').show();
+
+        const fd = new FormData();
+        fd.append('patient_id', patientId);
+        fd.append('csrf_token', getCSRFToken());
+        if (labText) fd.append('lab_text', labText);
+        if (doctorReport) fd.append('doctor_report', doctorReport);
+        if (labTestId) fd.append('lab_test_id', labTestId);
+        if (labFile) fd.append('lab_file', labFile);
+
+        $.ajax({
+            url: '/doctor/patient/assistant/analyze_lab',
+            method: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    $('#lab-analysis-results').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Lab Results Analysis</h5>
+                            ${formatAssistantText(response.analysis)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to analyze lab results');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Imaging Results Analysis
+    $('#analyze-imaging-results').click(function() {
+        const patientId = $('#patient_id').val();
+        const imagingText = $('#imaging-results-text').val().trim();
+        const imagingTestId = ($('#imaging-analysis-test').val() || '').toString().trim();
+        const doctorReport = $('#imaging-doctor-report-text').val().trim();
+        const imagingFile = ($('#imaging-analysis-file')[0] && $('#imaging-analysis-file')[0].files && $('#imaging-analysis-file')[0].files[0]) ? $('#imaging-analysis-file')[0].files[0] : null;
+
+        if (!patientId) {
+            alert('Please save patient data first');
+            return;
+        }
+
+        if (!imagingText && !imagingFile) {
+            alert('Please paste an imaging report/findings or upload a supported file');
+            return;
+        }
+
+        $('#imaging-analysis-results').html('<div class="spinner-border spinner-border-sm" role="status"></div> Analyzing imaging...').show();
+
+        const fd = new FormData();
+        fd.append('patient_id', patientId);
+        fd.append('csrf_token', getCSRFToken());
+        if (imagingText) fd.append('imaging_text', imagingText);
+        if (doctorReport) fd.append('doctor_report', doctorReport);
+        if (imagingTestId) fd.append('imaging_test_id', imagingTestId);
+        if (imagingFile) fd.append('imaging_file', imagingFile);
+
+        $.ajax({
+            url: '/doctor/patient/assistant/analyze_imaging',
+            method: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    $('#imaging-analysis-results').html(
+                        `<div class="alert alert-success">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h5>Imaging Analysis</h5>
+                            ${formatAssistantText(response.analysis)}
+                        </div>`
+                    ).show();
+                } else {
+                    showAssistantError(response.error || 'Failed to analyze imaging');
+                }
+            },
+            error: function(xhr) {
+                showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+            }
+        });
+    });
+
+    // Live preview for summary textarea (display-only; does not change saved content)
+    function updateSummaryPreview() {
+        const val = ($('#patient_summary').val() || '').trim();
+        const html = formatAssistantText(val);
+        if (val) {
+            $('#patientSummaryPreview').html(html).show();
+        } else {
+            $('#patientSummaryPreview').html('').hide();
+        }
+    }
+
+    $('#patient_summary').on('input', updateSummaryPreview);
+    updateSummaryPreview();
+
+    // Helper function to show AI errors
+    function showAssistantError(message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), 'danger');
+            return;
+        }
+        alert(String(message ?? ''));
+    }
+
+    // Helper function to show AI success
+    function showAssistantSuccess(message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), 'success');
+            return;
+        }
+        alert(String(message ?? ''));
+    }
+
+    // Assistant Generate Clinical Summary
+    $('#generate-summary-assistant').click(function() {
+        const patientId = $('#patient_id').val();
+        if (!patientId) {
+            alert('Please save patient biodata first');
+            return;
+        }
+
+        // Ensure latest section data is saved before generating summary
+        $('#patient_summary').val('Generating clinical summary...');
+
+        saveCurrentSection().then(() => {
+            $.ajax({
+                url: '/doctor/patient/assistant/generate_summary',
+                method: 'POST',
+                data: {
+                    patient_id: patientId,
+                    csrf_token: getCSRFToken()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#patient_summary').val(response.summary_text);
+                        updateSummaryPreview();
+                        showAssistantSuccess('Clinical summary generated');
+                    } else {
+                        showAssistantError(response.error || 'Failed to generate summary');
+                        $('#patient_summary').val('');
+                        updateSummaryPreview();
+                    }
+                },
+                error: function(xhr) {
+                    showAssistantError(xhr.responseJSON?.error || 'Failed to connect to AI service');
+                    $('#patient_summary').val('');
+                    updateSummaryPreview();
+                }
+            });
+        }).catch(error => {
+            showAssistantError('Error saving current section: ' + error);
+            $('#patient_summary').val('');
+            updateSummaryPreview();
+        });
+    });
+
+    // Auto-suggest HPI questions when focusing on HPI field
+    $('#hpi_details').focus(function() {
+        if ($('#chief_complaint').val() && $('#hpi-suggestions').is(':empty')) {
+            $('#suggest-hpi-questions').click();
+        }
+    });
+
+    // Auto-suggest review questions when focusing on any review field
+    $('textarea[name="cns"], textarea[name="cvs"], textarea[name="rs"], textarea[name="git"], textarea[name="gut"], textarea[name="msk"]').focus(function() {
+        if ($('#chief_complaint').val() && $('#review-suggestions').is(':empty')) {
+            $('#suggest-review-questions').click();
+        }
+    });
+
+    // Auto-suggest treatment when focusing on treatment plan field
+    $('#treatment_plan').focus(function() {
+        if ($('#working_diagnosis').val() && $('#treatment-suggestions').is(':empty')) {
+            $('#suggest-treatment').click();
+        }
+    });
+
+    // Highlight summary section when diagnosis needs it
+    function highlightSummaryRequirement() {
+        $('#summary-section').addClass('highlight-required');
+        setTimeout(() => {
+            $('#summary-section').removeClass('highlight-required');
+        }, 3000);
+    }
+    });
+})();
+</script>
+
+<style>
+/* Split Screen Layout */
+.split-screen-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.assistant-suggestions-panel {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-input-panel {
+    flex: 2;
+    min-width: 400px;
+}
+
+.panel-header {
+    padding: 12px 15px;
+    font-weight: bold;
+}
+
+.panel-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.assistant-suggestions-content {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 500px;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #e9ecef;
+}
+
+/* Assistant Assistance Cards */
+.assistant-card {
+    border-left: 4px solid #17a2b8;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.assistant-card .card-header {
+    background-color: #17a2b8;
+    padding: 10px 15px;
+}
+
+.assistant-card .card-body {
+    padding: 15px;
+    background-color: #f8f9fa;
+}
+
+/* Form Progress */
+.patient-form-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.form-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.form-progress::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ddd;
+    z-index: 1;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+.progress-step span {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #ddd;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.progress-step p {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 0;
+    max-width: 80px;
+    word-break: break-word;
+}
+
+.progress-step.active span {
+    background: #007bff;
+    color: white;
+}
+
+.progress-step.active p {
+    color: #007bff;
+    font-weight: bold;
+}
+
+/* Form Sections */
+.form-section {
+    display: none;
+    padding: 20px 0;
+}
+
+.form-section.active {
+    display: block;
+}
+
+.form-section h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section h4 {
+    color: #34495e;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+/* Navigation Buttons */
+.form-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-navigation .btn {
+    min-width: 120px;
+    padding: 10px 20px;
+    font-weight: 500;
+}
+
+/* Prescription Items */
+.prescription-item {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #eee;
+}
+
+/* HPI Tips */
+.hpi-tips {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+.hpi-tips ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
+
+.hpi-tips li {
+    margin-bottom: 5px;
+}
+
+/* Summary Section Styling */
+.summary-importance {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.summary-importance strong {
+    color: #1976d2;
+}
+
+/* Highlight for required sections */
+.highlight-required {
+    border: 2px solid #dc3545 !important;
+    border-radius: 8px;
+    animation: pulse-highlight 2s ease-in-out;
+}
+
+@keyframes pulse-highlight {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Clinical Summary Styling */
+.clinical-summary-content {
+    line-height: 1.6;
+    font-size: 14px;
+    white-space: pre-line;
+}
+
+#patient_summary {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 481px) and (max-width: 767px) {
+    .split-screen-container {
+        flex-direction: column;
+    }
+    
+    .assistant-suggestions-panel,
+    .form-input-panel {
+        min-width: 100%;
+        max-width: 100%;
+    }
+    
+    .assistant-suggestions-content {
+        max-height: 300px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .form-progress {
+        flex-wrap: wrap;
+    }
+    
+    .progress-step {
+        width: 25%;
+        margin-bottom: 15px;
+    }
+    
+    .progress-step p {
+        font-size: 10px;
+    }
+    
+    .form-navigation {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .form-navigation .btn {
+        width: 100%;
+    }
+    
+    .prescription-item .form-group {
+        margin-bottom: 10px;
+    }
+    
+    .prescription-item .form-group.col-md-3,
+    .prescription-item .form-group.col-md-2,
+    .prescription-item .form-group.col-md-1 {
+        width: 100%;
+    }
+}
+
+/* Compact prescription row (matches patient_details) */
+.prescription-item.compact-rx .form-group {
+    margin-bottom: 6px;
+}
+
+.prescription-item.compact-rx .form-control {
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+.prescription-item.compact-rx .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+.prescription-item.compact-rx .view-dosage-btn {
+    margin-top: 4px !important;
+}
+
+/* Select2 Styling */
+.select2-container--default .select2-selection--multiple {
+    min-height: 38px;
+    border: 1px solid #ced4da;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    border: 1px solid #ced4da;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+/* Compact prescription entry rows */
+.prescription-item.form-row.compact-rx {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 576px) {
+    .prescription-item.form-row.compact-rx {
+        flex-wrap: wrap;
+    }
+}
+
+.prescription-item.compact-rx .form-group {
+    margin-bottom: 0;
+}
+
+.prescription-item.compact-rx .form-control {
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+}
+
+.prescription-item.compact-rx .btn.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+}
+
+.prescription-item.compact-rx .form-check {
+    margin: 0;
+}
+
+.prescription-item.compact-rx .form-check-input {
+    width: 12px;
+    height: 12px;
+    margin-top: 0;
+}
+
+.prescription-item.compact-rx .form-check-label {
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.prescription-item.compact-rx .select2-container {
+    min-width: 0;
+}
+
+.prescription-item.compact-rx .select2-container--default .select2-selection--single {
+    height: 32px;
+}
+
+.prescription-item.compact-rx .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 30px;
+    font-size: 0.85rem;
+}
+
+.prescription-item.compact-rx .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 30px;
+}
+
+/* Alert Styling */
+.alert-info {
+    background-color: #e7f4ff;
+    border-color: #b8daff;
+    color: #004085;
+}
+
+.alert-success {
+    background-color: #e6ffed;
+    border-color: #b3ffc6;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #ffebee;
+    border-color: #ffcdd2;
+    color: #721c24;
+}
+</style>
+{% endblock %}
+
+
+
+
+

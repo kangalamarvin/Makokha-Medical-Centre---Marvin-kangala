@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="container-fluid">
+    <h2 class="mb-4">Drug Inventory</h2>
+    
+    <!-- Inventory Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Total Drugs</h5>
+                    <p class="card-text display-4">{{ total_drugs }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">In Stock</h5>
+                    <p class="card-text display-4">{{ total_drugs - out_of_stock - low_stock }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Low Stock</h5>
+                    <p class="card-text display-4">{{ low_stock }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Out of Stock</h5>
+                    <p class="card-text display-4">{{ out_of_stock }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inventory Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Drug List</h5>
+            <div>
+                <input type="text" id="inventorySearch" class="form-control" placeholder="Search drugs...">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="inventoryTable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Drug ID</th>
+                            <th>Name</th>
+                            <th>Batch</th>
+                            <th>Expiry</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for drug in drugs %}
+                        <tr>
+                            <td>{{ drug.drug_number }}</td>
+                            <td>{{ drug.name }}</td>
+                            <td>{{ drug.batch_number or '-' }}</td>
+                            <td>{{ drug.expiry_date.strftime('%Y-%m-%d') if drug.expiry_date else '-' }}</td>
+                            <td>Ksh {{ "%.2f"|format(drug.selling_price) }}</td>
+                            <td>{{ drug.remaining_quantity }}</td>
+                            <td>
+                                {% if drug.remaining_quantity == 0 %}
+                                <span class="badge bg-danger">Out of Stock</span>
+                                {% elif drug.remaining_quantity < 10 %}
+                                <span class="badge bg-warning">Low Stock</span>
+                                {% else %}
+                                <span class="badge bg-success">In Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info view-dosage" data-drug-id="{{ drug.id }}">
+                                    <i class="fas fa-info-circle"></i> Dosage
+                                </button>
+                                <button class="btn btn-sm btn-primary edit-drug" data-drug-id="{{ drug.id }}">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dosage Modal -->
+<div class="modal fade" id="dosageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dosage Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="dosageContent">
+                Loading dosage information...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function splitToBulletItems(text) {
+        const raw = (text === null || text === undefined) ? '' : String(text);
+        let t = raw.replace(/\r/g, '').trim();
+        if (!t) return [];
+        t = t.replace(/\s*•\s*/g, '\n• ');
+        const lines = t.split('\n').map(s => s.trim()).filter(Boolean);
+        const items = [];
+        for (const line of lines) {
+            const cleaned = line
+                .replace(/^([•\u2022\-*]+\s*)/, '')
+                .replace(/^\d+[\).]\s*/, '')
+                .trim();
+            if (cleaned) items.push(cleaned);
+        }
+        return items.length ? items : [t];
+    }
+
+    function renderBullets(text, emptyLabel) {
+        const items = splitToBulletItems(text);
+        if (!items.length) return `<span class="text-muted">${escapeHtml(emptyLabel || 'Not specified')}</span>`;
+        const lis = items.map(i => `<li>${escapeHtml(i)}</li>`).join('');
+        return `<ul class="mb-0" style="padding-left: 1.25rem;">${lis}</ul>`;
+    }
+
+    function renderAdminStyleDosage(payload) {
+        const d = payload && payload.dosage ? payload.dosage : null;
+        const drug = payload && payload.drug ? payload.drug : {};
+        if (!d) {
+            return `
+                <div class="alert alert-info mb-0">No dosage information available for this drug.</div>
+            `;
+        }
+
+        return `
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Basic Information</h5>
+                    <table class="table table-bordered">
+                        <tr><th>Drug Number</th><td>${escapeHtml(drug.drug_number || '-')}</td></tr>
+                        <tr><th>Drug Name</th><td>${escapeHtml(drug.name || '-')}</td></tr>
+                    </table>
+
+                    <h5>Medical Information</h5>
+                    <table class="table table-bordered">
+                        <tr><th>Indication</th><td>${renderBullets(d.indication, 'Not specified')}</td></tr>
+                        <tr><th>Contraindication</th><td>${renderBullets(d.contraindication, 'Not specified')}</td></tr>
+                        <tr><th>Drug Interaction</th><td>${renderBullets(d.interaction, 'Not specified')}</td></tr>
+                        <tr><th>Side Effects</th><td>${renderBullets(d.side_effects, 'Not specified')}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h5>Dosage Information</h5>
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">Pediatrics</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_peds, 'Not specified')}</div></div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">Adults</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_adults, 'Not specified')}</div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">Geriatrics</div>
+                        <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.dosage_geriatrics, 'Not specified')}</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <h5>Important Notes</h5>
+                <div class="card">
+                    <div class="card-body"><div class="card-text dosage-points">${renderBullets(d.important_notes, 'Not specified')}</div></div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Initialize DataTable
+    $('#inventoryTable').DataTable({
+        responsive: true,
+        dom: '<"top"f>rt<"bottom"lip><"clear">',
+        pageLength: 25
+    });
+    
+    // View dosage information
+    $('.view-dosage').click(function() {
+        const drugId = $(this).data('drug-id');
+        $('#dosageContent').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
+        
+        $.get(`/pharmacist/drug/${drugId}/dosage`, function(data) {
+            $('#dosageContent').html(renderAdminStyleDosage(data));
+            $('#dosageModal').modal('show');
+        }).fail(function() {
+            $('#dosageContent').html(`
+                <div class="alert alert-danger">
+                    Failed to load dosage information
+                </div>
+            `);
+            $('#dosageModal').modal('show');
+        });
+    });
+});
+</script>
+{% endblock %}

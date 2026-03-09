@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0"><i class="bi bi-flask"></i> Lab Technician Dashboard</h2>
+        <div class="d-flex gap-2">
+            {% if mmc_base_role == 'doctor' and mmc_active_role == 'labtech' %}
+                <form method="post" action="{{ url_for('switch_role_to_doctor') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Doctor
+                    </button>
+                </form>
+            {% endif %}
+            <a class="btn btn-primary" href="{{ url_for('labtech_lab_requests') }}">
+                <i class="bi bi-list-check"></i> View Lab Requests
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted">Pending</div>
+                            <div class="fs-3 fw-bold">{{ pending_count }}</div>
+                        </div>
+                        <div class="text-warning fs-2"><i class="bi bi-hourglass-split"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted">Completed (7 days)</div>
+                            <div class="fs-3 fw-bold">{{ completed_7d_count }}</div>
+                        </div>
+                        <div class="text-success fs-2"><i class="bi bi-check-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted">Cancelled (7 days)</div>
+                            <div class="fs-3 fw-bold">{{ cancelled_7d_count }}</div>
+                        </div>
+                        <div class="text-danger fs-2"><i class="bi bi-x-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Recent Pending Requests</strong>
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('labtech_lab_requests', status='pending') }}">All pending</a>
+        </div>
+        <div class="card-body">
+            {% if recent_pending %}
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Test</th>
+                            <th>Requested</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in recent_pending %}
+                        <tr>
+                            <td>#{{ req.id }}</td>
+                            <td>{{ req.patient.decrypted_name if req.patient else 'N/A' }}</td>
+                            <td>{{ req.test.name if req.test else 'N/A' }}</td>
+                            <td>{{ req.created_at|eat_time('%Y-%m-%d %H:%M') }}</td>
+                            <td><span class="badge bg-warning text-dark">Pending</span></td>
+                            <td>
+                                <a class="btn btn-success btn-sm" href="{{ url_for('labtech_lab_request_detail', request_id=req.id) }}">
+                                    <i class="bi bi-pencil-square"></i> Enter Result
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-muted">No pending requests.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

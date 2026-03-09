@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Backup Access Users - {{ config['APP_NAME'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4">
+                <i class="fas fa-users-cog"></i> Manage Backup Access Users
+            </h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Add New Backup User Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle"></i> Add New Backup Access User
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Add another admin to backup access. OTP is sent to their email for verification, then set a password.
+                    </p>
+
+                    {% if add_stage == 'otp_sent' %}
+                        <div class="alert alert-info">
+                            OTP sent to <strong>{{ pending_user_email }}</strong>. Enter it below.
+                        </div>
+                        <form method="POST" action="{{ url_for('backup_add_user') }}" class="form-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="verify_otp">
+                            <div class="form-group mr-2 flex-grow-1">
+                                <label for="otp_code" class="mr-2">OTP:</label>
+                                <input type="text" class="form-control" id="otp_code" name="otp_code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit OTP" maxlength="6" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Verify OTP
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('backup_add_user') }}" class="form-inline mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="resend_otp">
+                            <button type="submit" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i> Resend OTP
+                            </button>
+                        </form>
+                    {% elif add_stage == 'verified' %}
+                        <div class="alert alert-success">
+                            Email verified for <strong>{{ pending_user_email }}</strong>. Set a password.
+                        </div>
+                        <form method="POST" action="{{ url_for('backup_add_user') }}" class="form-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="set_password">
+                            <div class="form-group mr-2">
+                                <label for="password" class="mr-2">Password:</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="form-group mr-2">
+                                <label for="confirm_password" class="mr-2">Confirm:</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-key"></i> Set Password
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('backup_add_user') }}" class="form-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="request_otp">
+                            <div class="form-group mr-2 flex-grow-1">
+                                <label for="admin_user_id" class="mr-2">Select Admin:</label>
+                                <select class="form-control" id="admin_user_id" name="admin_user_id" required>
+                                    <option value="">-- Select an admin --</option>
+                                    {% for admin in admins %}
+                                        <option value="{{ admin.id }}">
+                                            {{ admin.first_name }} {{ admin.last_name }} ({{ admin.email }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-envelope"></i> Send OTP
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Current Backup Users -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Current Backup Access Users ({{ backup_users|length }})
+                    </h5>
+                </div>
+
+                {% if backup_users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Verified</th>
+                                    <th>Last Successful Login</th>
+                                    <th>Failed Attempts</th>
+                                    <th>Linked Admin</th>
+                                    <th>Registered Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in backup_users %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ user.email }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if user.is_active %}
+                                                <span class="badge badge-success">Active</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Locked</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.is_verified %}
+                                                <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
+                                            {% else %}
+                                                <span class="text-warning"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.last_successful_login %}
+                                                {{ user.last_successful_login.strftime('%Y-%m-%d %H:%M:%S') }}
+                                            {% else %}
+                                                <span class="text-muted">Never</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.failed_attempts > 0 %}
+                                                <span class="badge badge-warning">{{ user.failed_attempts }}</span>
+                                            {% else %}
+                                                <span class="text-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.created_by_admin_id %}
+                                                {% set admin = user.created_by_admin %}
+                                                {% if admin %}
+                                                    {{ admin.first_name }} {{ admin.last_name }} (ID: {{ admin.id }})
+                                                {% else %}
+                                                    <span class="text-muted">Unknown</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Not linked</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <!-- Toggle Active/Lock -->
+                                                <form method="POST" action="{{ url_for('backup_toggle_user', user_id=user.id) }}" style="display:inline;">
+                                                    {{ csrf_token() }}
+                                                    <button 
+                                                        type="submit" 
+                                                        class="btn btn-sm {% if user.is_active %}btn-warning{% else %}btn-info{% endif %}"
+                                                        title="{% if user.is_active %}Lock this user{% else %}Unlock this user{% endif %}"
+                                                    >
+                                                        {% if user.is_active %}
+                                                            <i class="fas fa-lock"></i> Lock
+                                                        {% else %}
+                                                            <i class="fas fa-unlock"></i> Unlock
+                                                        {% endif %}
+                                                    </button>
+                                                </form>
+
+                                                <!-- Remove User -->
+                                                <form method="POST" action="{{ url_for('backup_remove_user', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove backup access for {{ user.email }}? This cannot be undone.');">
+                                                    {{ csrf_token() }}
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Remove backup access">
+                                                        <i class="fas fa-trash"></i> Remove
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="card-body text-center text-muted py-5">
+                        <p>
+                            <i class="fas fa-inbox" style="font-size: 40px; opacity: 0.3;"></i>
+                        </p>
+                        <p>No backup access users registered yet.</p>
+                        <small>Add one using the form above to allow other admins to access backups.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-group form {
+        margin: 0 2px;
+    }
+</style>
+{% endblock %}

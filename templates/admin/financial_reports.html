@@ -1,0 +1,1469 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+    <!-- Header Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800" style="font-weight: 600;">
+                <i class="fas fa-chart-bar"></i> Financial Reports & Analysis
+            </h1>
+            <small class="text-gray-600">Comprehensive financial metrics and performance analysis</small>
+        </div>
+    </div>
+
+    <!-- Compact Date Range Filter at Top -->
+    <div class="card border-0 shadow-sm mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
+        <div class="card-body p-3">
+            <div class="row align-items-end g-2">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label for="global-start-date" class="form-label text-white mb-2" style="font-size: 0.85rem; font-weight: 600;">From</label>
+                    <input type="date" id="global-start-date" class="form-control form-control-sm" style="border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; font-size: 0.9rem;">
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <label for="global-end-date" class="form-label text-white mb-2" style="font-size: 0.85rem; font-weight: 600;">To</label>
+                    <input type="date" id="global-end-date" class="form-control form-control-sm" style="border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; font-size: 0.9rem;">
+                </div>
+                <div class="col-12 col-sm-12 col-lg-3">
+                    <button class="btn btn-light btn-sm w-100" id="apply-date-range-btn" style="border-radius: 6px; font-weight: 600; transition: all 0.3s;">
+                        <i class="fas fa-search"></i> Apply
+                    </button>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <button type="button" class="btn btn-outline-light btn-sm w-100" id="clear-date-range-btn" style="border-radius: 6px; font-weight: 600; transition: all 0.3s; display: none;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+            <div id="date-range-display" class="text-white mt-2" style="font-size: 0.9rem; display: none;">
+                <i class="fas fa-check-circle"></i> <span id="range-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compact Navigation Buttons with Different Colors -->
+    <div class="row mb-4 g-2">
+        <div class="col-6 col-sm-3">
+            <button type="button" class="btn w-100 active report-nav-btn" id="daily-btn" data-target="daily" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                <i class="fas fa-sun"></i><br><small>Daily</small>
+            </button>
+        </div>
+        <div class="col-6 col-sm-3">
+            <button type="button" class="btn w-100 report-nav-btn" id="weekly-btn" data-target="weekly" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);">
+                <i class="fas fa-calendar-week"></i><br><small>Weekly</small>
+            </button>
+        </div>
+        <div class="col-6 col-sm-3">
+            <button type="button" class="btn w-100 report-nav-btn" id="monthly-btn" data-target="monthly" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none; color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);">
+                <i class="fas fa-chart-column"></i><br><small>Monthly</small>
+            </button>
+        </div>
+        <div class="col-6 col-sm-3">
+            <button type="button" class="btn w-100 report-nav-btn" id="yearly-btn" data-target="yearly" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border: none; color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(67, 233, 123, 0.3);">
+                <i class="fas fa-chart-pie"></i><br><small>Yearly</small>
+            </button>
+        </div>
+    </div>
+
+    <!-- Daily Dashboard Section -->
+    <div id="daily-section" class="dashboard-section">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
+            <div class="card-header py-2 px-4" style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px 10px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" style="font-size: 1rem;">Daily Financial Report</h6>
+                    <input type="date" id="daily-date" class="form-control form-control-sm" style="width: 140px; border-radius: 5px;">
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div id="daily-content" class="loading-placeholder">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                        <p class="mt-2 text-muted">Loading daily report...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Dashboard Section -->
+    <div id="weekly-section" class="dashboard-section" style="display: none;">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
+            <div class="card-header py-2 px-4" style="background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 10px 10px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" style="font-size: 1rem;">Weekly Financial Report</h6>
+                    <input type="date" id="weekly-date" class="form-control form-control-sm" style="width: 140px; border-radius: 5px;">
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div id="weekly-content" class="loading-placeholder">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                        <p class="mt-2 text-muted">Loading weekly report...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Dashboard Section -->
+    <div id="monthly-section" class="dashboard-section" style="display: none;">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
+            <div class="card-header py-2 px-4" style="background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 10px 10px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" style="font-size: 1rem;">Monthly Financial Report</h6>
+                    <div>
+                        <select id="monthly-year" class="form-control form-control-sm" style="width: 90px; display: inline-block; margin-right: 5px; border-radius: 5px;"></select>
+                        <select id="monthly-month" class="form-control form-control-sm" style="width: 110px; display: inline-block; border-radius: 5px;"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div id="monthly-content" class="loading-placeholder">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                        <p class="mt-2 text-muted">Loading monthly report...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yearly Dashboard Section -->
+    <div id="yearly-section" class="dashboard-section" style="display: none;">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
+            <div class="card-header py-2 px-4" style="background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%); color: white; border-radius: 10px 10px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold" style="font-size: 1rem;">Yearly Financial Report</h6>
+                    <div class="d-flex align-items-center">
+                        <select id="yearly-year" class="form-control form-control-sm" style="width: 110px; border-radius: 5px;"></select>
+                        <select id="yearly-month" class="form-control form-control-sm" style="width: 130px; border-radius: 5px; margin-left: 6px;"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div id="yearly-content" class="loading-placeholder">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                        <p class="mt-2 text-muted">Loading yearly report...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .dashboard-section {
+        animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .report-nav-btn {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    /* Slightly smaller icons across all sections on this page */
+    .container-fluid i.fas,
+    .container-fluid i.far,
+    .container-fluid i.fa {
+        font-size: 0.95em;
+    }
+
+    .report-nav-btn i {
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .report-nav-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .report-nav-btn.active {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .loading-placeholder {
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .date-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    /* Style for date input placeholders */
+    .form-control-sm {
+        font-size: 0.85rem;
+    }
+
+    #global-start-date::placeholder,
+    #global-end-date::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    #global-start-date,
+    #global-end-date {
+        color-scheme: light;
+        color: #333;
+    }
+
+    #global-start-date::-webkit-calendar-picker-indicator,
+    #global-end-date::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
+
+    /* Date inputs in headers */
+    #daily-date,
+    #weekly-date,
+    #monthly-year,
+    #monthly-month,
+    #yearly-year {
+        color: #333 !important;
+        background-color: white !important;
+    }
+
+    .btn:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* Financial report tables: bold outer border, normal inner borders */
+    .dashboard-section .table {
+        border-collapse: collapse;
+        border: 2px solid #2c2c2c;
+    }
+
+    .dashboard-section .table th,
+    .dashboard-section .table td {
+        border: 1px solid #e1e5ea;
+    }
+
+    @media (max-width: 576px) {
+        .report-nav-btn {
+            font-size: 0.75rem;
+            padding: 0.5rem 0.25rem;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+
+        .d-flex {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+
+<script>
+    // Load Chart.js library for professional charts
+    if (!window.Chart) {
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
+        document.head.appendChild(script);
+    }
+
+    // Custom date range state
+    let customDateRange = {
+        startDate: null,
+        endDate: null
+    };
+
+    function escHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Initialize date/month/year selectors
+    function initializeDateControls() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // Daily date input - set to today
+        const dailyDateInput = document.getElementById('daily-date');
+        if (dailyDateInput) dailyDateInput.value = todayStr;
+        
+        // Weekly date input - set to today
+        const weeklyDateInput = document.getElementById('weekly-date');
+        if (weeklyDateInput) weeklyDateInput.value = todayStr;
+        
+        // Monthly year and month selectors
+        const monthlyYearSelect = document.getElementById('monthly-year');
+        const monthlyMonthSelect = document.getElementById('monthly-month');
+        
+        if (monthlyYearSelect && monthlyMonthSelect) {
+            // Clear existing options
+            monthlyYearSelect.innerHTML = '';
+            monthlyMonthSelect.innerHTML = '';
+            
+            // Populate years (current year and 4 years back)
+            for (let i = 0; i < 5; i++) {
+                const year = today.getFullYear() - i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (i === 0) option.selected = true;
+                monthlyYearSelect.appendChild(option);
+            }
+            
+            // Populate months
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = String(index + 1).padStart(2, '0');
+                option.textContent = month;
+                if (index === today.getMonth()) option.selected = true;
+                monthlyMonthSelect.appendChild(option);
+            });
+        }
+        
+        // Yearly year selector
+        const yearlyYearSelect = document.getElementById('yearly-year');
+        if (yearlyYearSelect) {
+            yearlyYearSelect.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const year = today.getFullYear() - i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (i === 0) option.selected = true;
+                yearlyYearSelect.appendChild(option);
+            }
+        }
+
+        // Yearly month selector (optional filter)
+        const yearlyMonthSelect = document.getElementById('yearly-month');
+        if (yearlyMonthSelect) {
+            yearlyMonthSelect.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'All Months';
+            allOption.selected = true;
+            yearlyMonthSelect.appendChild(allOption);
+
+            const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = String(index + 1).padStart(2, '0');
+                option.textContent = month;
+                yearlyMonthSelect.appendChild(option);
+            });
+        }
+        
+        // Set global date inputs to today
+        const globalStartDate = document.getElementById('global-start-date');
+        const globalEndDate = document.getElementById('global-end-date');
+        if (globalStartDate) globalStartDate.value = todayStr;
+        if (globalEndDate) globalEndDate.value = todayStr;
+    }
+
+    // Load daily dashboard
+    function loadDailyDashboard() {
+        const contentDiv = document.getElementById('daily-content');
+        if (!contentDiv) return;
+        
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2 text-muted">Loading daily report...</p></div>';
+        
+        let url = '/api/financial/dashboard/daily';
+        
+        // Use custom date range if available, otherwise use date picker
+        if (customDateRange.startDate && customDateRange.endDate) {
+            url += `?startDate=${customDateRange.startDate}&endDate=${customDateRange.endDate}`;
+        } else {
+            const dateInput = document.getElementById('daily-date');
+            const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+            url += `?date=${date}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                return response.text();
+            })
+            .then(html => {
+                contentDiv.innerHTML = html;                // Ensure charts inside the newly inserted fragment initialize
+                if (typeof createYearlyCharts === 'function') {
+                    setTimeout(() => { try { createYearlyCharts(); } catch (e) { console.error('createYearlyCharts error', e); } }, 50);
+                }            })
+            .catch(error => {
+                console.error('Error:', error);
+                const msg = escHtml(error && error.message ? error.message : 'Error');
+                contentDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error loading dashboard: ${msg}</div>`;
+            });
+    }
+
+    // Load weekly dashboard
+    function loadWeeklyDashboard() {
+        const contentDiv = document.getElementById('weekly-content');
+        if (!contentDiv) return;
+        
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2 text-muted">Loading weekly report...</p></div>';
+        
+        let url = '/api/financial/dashboard/weekly';
+        
+        // Use custom date range if available, otherwise use date picker
+        if (customDateRange.startDate && customDateRange.endDate) {
+            url += `?startDate=${customDateRange.startDate}&endDate=${customDateRange.endDate}`;
+        } else {
+            const dateInput = document.getElementById('weekly-date');
+            const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+            url += `?date=${date}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                return response.text();
+            })
+            .then(html => {
+                contentDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const msg = escHtml(error && error.message ? error.message : 'Error');
+                contentDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error loading dashboard: ${msg}</div>`;
+            });
+    }
+
+    // Load monthly dashboard
+    function loadMonthlyDashboard() {
+        const contentDiv = document.getElementById('monthly-content');
+        if (!contentDiv) return;
+        
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2 text-muted">Loading monthly report...</p></div>';
+        
+        let url = '/api/financial/dashboard/monthly';
+        
+        // Use custom date range if available, otherwise use month/year pickers
+        if (customDateRange.startDate && customDateRange.endDate) {
+            url += `?startDate=${customDateRange.startDate}&endDate=${customDateRange.endDate}`;
+        } else {
+            const yearInput = document.getElementById('monthly-year');
+            const monthInput = document.getElementById('monthly-month');
+            const year = yearInput ? yearInput.value : new Date().getFullYear();
+            const month = monthInput ? monthInput.value : String(new Date().getMonth() + 1).padStart(2, '0');
+            url += `?year=${year}&month=${month}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                return response.text();
+            })
+            .then(html => {
+                contentDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const msg = escHtml(error && error.message ? error.message : 'Error');
+                contentDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error loading dashboard: ${msg}</div>`;
+            });
+    }
+
+    // Load yearly dashboard
+    function loadYearlyDashboard() {
+        const contentDiv = document.getElementById('yearly-content');
+        if (!contentDiv) return;
+        
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2 text-muted">Loading yearly report...</p></div>';
+        
+        let url = '/api/financial/dashboard/yearly';
+        
+        // Use custom date range if available, otherwise use year picker
+        if (customDateRange.startDate && customDateRange.endDate) {
+            url += `?startDate=${customDateRange.startDate}&endDate=${customDateRange.endDate}`;
+        } else {
+            const yearInput = document.getElementById('yearly-year');
+            const year = yearInput ? yearInput.value : new Date().getFullYear();
+            url += `?year=${year}`;
+        }
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load dashboard');
+                return response.text();
+            })
+            .then(html => {
+                contentDiv.innerHTML = html;
+                // 🔥 CRITICAL: Force chart initialization AFTER DOM insertion + layout recalc
+                setTimeout(() => {
+                    if (typeof createYearlyCharts === 'function') {
+                        console.log('🟢 Initializing yearly charts after AJAX load...');
+                        try { 
+                            createYearlyCharts(); 
+                        } catch (e) { 
+                            console.error('❌ Error in createYearlyCharts:', e); 
+                        }
+                    }
+                    if (typeof initializeYearlyDetailControls === 'function') {
+                        try {
+                            initializeYearlyDetailControls();
+                        } catch (e) {
+                            console.error('❌ Error in initializeYearlyDetailControls:', e);
+                        }
+                    }
+                }, 300);  // 300ms allows canvas to measure dimensions
+            })
+            .catch(error => {
+                console.error('Yearly dashboard load error:', error);
+                const msg = escHtml(error && error.message ? error.message : 'Error');
+                contentDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error loading dashboard: ${msg}</div>`;
+            });
+    }
+
+    function getMonthIndexFromName(name) {
+        if (!name) return null;
+        const normalized = String(name).toLowerCase().slice(0, 3);
+        const map = {
+            jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+            jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+        };
+        return map[normalized] || null;
+    }
+
+    function normalizeYearlyMonthlyData(rawMonthlyData) {
+        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const monthMap = new Map();
+        (rawMonthlyData || []).forEach(m => {
+            let monthIndex = Number(m.month || m.month_number || m.month_index || m.month_num || m.month_no || 0);
+            if (!monthIndex && (m.month_name || m.month_abbr)) {
+                monthIndex = getMonthIndexFromName(m.month_name || m.month_abbr);
+            }
+            if (monthIndex >= 1 && monthIndex <= 12) {
+                monthMap.set(monthIndex, m);
+            }
+        });
+
+        return monthNames.map((name, i) => {
+            const monthIndex = i + 1;
+            const existing = monthMap.get(monthIndex) || {};
+            return {
+                month: monthIndex,
+                month_name: existing.month_name || name,
+                month_abbr: existing.month_abbr || name.substring(0, 3),
+                revenue: Number(existing.revenue || 0),
+                expense: Number(existing.expense || 0),
+                profit: Number(existing.profit || 0),
+                margin: Number(existing.margin || 0),
+                pharmacy_revenue: Number(existing.pharmacy_revenue || 0),
+                lab_revenue: Number(existing.lab_revenue || 0),
+                imaging_revenue: Number(existing.imaging_revenue || 0),
+                consultation_revenue: Number(existing.consultation_revenue || 0),
+                insurance_revenue: Number(existing.insurance_revenue || 0),
+                other_revenue: Number(existing.other_revenue || 0),
+                payroll_expense: Number(existing.payroll_expense || 0),
+                pharmacy_expense: Number(existing.pharmacy_expense || 0),
+                equipment_expense: Number(existing.equipment_expense || 0),
+                utilities_expense: Number(existing.utilities_expense || 0),
+                debt_payment: Number(existing.debt_payment || 0),
+                other_expense: Number(existing.other_expense || 0)
+            };
+        });
+    }
+
+    // ============ YEARLY CHARTS INITIALIZATION (AJAX-Safe) ============
+    function createYearlyCharts() {
+        // Check Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not yet loaded, retrying...');
+            setTimeout(createYearlyCharts, 100);
+            return;
+        }
+
+        // Read data from embedded JSON element
+        const dataEl = document.getElementById('yearly-chart-data');
+        let rawMonthlyData = [];
+        if (dataEl && dataEl.dataset && dataEl.dataset.monthly) {
+            try { rawMonthlyData = JSON.parse(dataEl.dataset.monthly || '[]'); } catch (e) { console.error('Parse error:', e); rawMonthlyData = []; }
+        }
+
+        const monthlyData = normalizeYearlyMonthlyData(rawMonthlyData);
+
+        // Extract data (ensure all 12 months)
+        const monthLabels = monthlyData.map(m => { const a = m.month_abbr || m.month_name || ''; return typeof a === 'string' ? a.substring(0, 3) : ''; });
+        const revenues = monthlyData.map(m => Number(m.revenue || 0));
+        const expenses = monthlyData.map(m => Number(m.expense || 0));
+        const profits = monthlyData.map(m => Number(m.profit || 0));
+
+        // Get canvases
+        const incomeExpenseEl = document.getElementById('yearly-income-vs-expense-chart');
+        const profitTrendEl = document.getElementById('yearly-profit-trend-chart');
+        const expensesBreakdownEl = document.getElementById('yearly-expenses-breakdown-chart');
+        const incomeBreakdownEl = document.getElementById('yearly-income-breakdown-chart');
+
+        if (!incomeExpenseEl || !profitTrendEl || !expensesBreakdownEl || !incomeBreakdownEl) {
+            console.warn('⚠ Yearly chart canvases not found');
+            return;
+        }
+
+        // Verify canvas sizing (debug)
+        console.log('📊 Yearly charts canvas sizing:');
+        console.log('  income-expense: ' + incomeExpenseEl.offsetWidth + '×' + incomeExpenseEl.offsetHeight);
+        console.log('  profit-trend: ' + profitTrendEl.offsetWidth + '×' + profitTrendEl.offsetHeight);
+
+        // Cleanup old instances
+        if (window._yearlyIncomeExpenseChart) window._yearlyIncomeExpenseChart.destroy();
+        if (window._yearlyProfitTrendChart) window._yearlyProfitTrendChart.destroy();
+        if (window._yearlyExpensesBreakdownChart) window._yearlyExpensesBreakdownChart.destroy();
+        if (window._yearlyIncomeBreakdownChart) window._yearlyIncomeBreakdownChart.destroy();
+
+        // Bar: Income vs Expenses
+        window._yearlyIncomeExpenseChart = new Chart(incomeExpenseEl.getContext('2d'), {
+            type: 'bar',
+            data: { 
+                labels: monthLabels, 
+                datasets: [ 
+                    { label: 'Income', data: revenues, backgroundColor: '#28a745', borderColor: '#1e7e34', borderWidth: 1 }, 
+                    { label: 'Expenses', data: expenses, backgroundColor: '#dc3545', borderColor: '#b21f2d', borderWidth: 1 } 
+                ] 
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } }, scales: { x: { title: { display: true, text: 'Month' }, ticks: { autoSkip: false } }, y: { title: { display: true, text: 'KES' }, beginAtZero: true } } }
+        });
+
+        // Line: Profit Trend
+        window._yearlyProfitTrendChart = new Chart(profitTrendEl.getContext('2d'), {
+            type: 'line',
+            data: { labels: monthLabels, datasets: [ { label: 'Monthly Profit', data: profits, borderColor: '#000', backgroundColor: 'rgba(173,216,230,0.25)', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#000' } ] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } }, scales: { x: { title: { display: true, text: 'Month' }, ticks: { autoSkip: false } }, y: { title: { display: true, text: 'Profit (KES)' }, beginAtZero: true } } }
+        });
+
+        // Doughnut: Expenses
+        const expenseLabels = ['Payroll','Pharmacy','Equipment','Utilities','Debt Service','Other'];
+        const expenseValues = [ 
+            monthlyData.reduce((s,m)=>s+Number(m.payroll_expense||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.pharmacy_expense||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.equipment_expense||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.utilities_expense||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.debt_payment||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.other_expense||0),0) 
+        ];
+        const expenseColors = ['#DC3545', '#FF6F61', '#FF8C42', '#FFA600', '#8E44AD', '#6C757D'];
+        window._yearlyExpensesBreakdownChart = new Chart(expensesBreakdownEl.getContext('2d'), { 
+            type: 'doughnut', 
+            data: { labels: expenseLabels, datasets: [{ data: expenseValues, backgroundColor: expenseColors, borderColor: '#fff', borderWidth: 2 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } } 
+        });
+
+        // Pie: Income Sources
+        const incomeLabels = ['Pharmacy','Lab Tests','Imaging','Consultation','Insurance','Other'];
+        const incomeValues = [ 
+            monthlyData.reduce((s,m)=>s+Number(m.pharmacy_revenue||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.lab_revenue||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.imaging_revenue||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.consultation_revenue||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.insurance_revenue||0),0), 
+            monthlyData.reduce((s,m)=>s+Number(m.other_revenue||0),0) 
+        ];
+        const incomeColors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4', '#FFC107'];
+        window._yearlyIncomeBreakdownChart = new Chart(incomeBreakdownEl.getContext('2d'), { 
+            type: 'pie', 
+            data: { labels: incomeLabels, datasets: [{ data: incomeValues, backgroundColor: incomeColors, borderColor: '#fff', borderWidth: 2 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } } 
+        });
+
+        console.log('✅ Yearly charts initialized successfully');
+    }
+
+    const yearlySelectionState = {
+        incomeSource: 'all',
+        expenseCategory: 'all',
+        month: 'all',
+        dailyData: null
+    };
+
+    function getYearlyMonthlyDataFromDom() {
+        const dataEl = document.getElementById('yearly-chart-data');
+        if (dataEl && dataEl.dataset && dataEl.dataset.monthly) {
+            try { return JSON.parse(dataEl.dataset.monthly || '[]'); } catch (e) { console.error('Parse error:', e); }
+        }
+        return [];
+    }
+
+    function initializeYearlyDetailControls() {
+        const monthlyData = normalizeYearlyMonthlyData(getYearlyMonthlyDataFromDom());
+        if (!monthlyData || monthlyData.length === 0) return;
+
+        yearlySelectionState.incomeSource = 'all';
+        yearlySelectionState.expenseCategory = 'all';
+
+        const incomeButtons = document.querySelectorAll('.income-source-btn');
+        incomeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const source = this.dataset.source || 'all';
+                yearlySelectionState.incomeSource = source;
+                showIncomeSourceDetails(source, monthlyData);
+                updateYearlyChartsForIncomeSource(source, monthlyData);
+                updateYearlyTablesForSelection();
+                renderYearlyDailyTables();
+
+                const colorMap = {
+                    'all': 'success',
+                    'pharmacy': 'primary',
+                    'lab': 'info',
+                    'imaging': 'warning',
+                    'consultation': 'secondary',
+                    'insurance': 'danger',
+                    'other': 'dark'
+                };
+
+                incomeButtons.forEach(b => {
+                    b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-info', 'btn-warning', 'btn-secondary', 'btn-danger', 'btn-dark');
+                    b.classList.add('btn-outline-' + (colorMap[b.dataset.source] || 'success'));
+                });
+                this.classList.remove('btn-outline-' + (colorMap[source] || 'success'));
+                this.classList.add('btn-' + (colorMap[source] || 'success'), 'active');
+            });
+        });
+
+        const expenseButtons = document.querySelectorAll('.expenses-category-btn');
+        expenseButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.dataset.category || 'all';
+                yearlySelectionState.expenseCategory = category;
+                showExpensesCategoryDetails(category, monthlyData);
+                updateYearlyChartsForExpenseCategory(category, monthlyData);
+                updateYearlyTablesForSelection();
+                renderYearlyDailyTables();
+
+                const colorMap = {
+                    'all': 'danger',
+                    'payroll': 'primary',
+                    'pharmacy': 'info',
+                    'equipment': 'warning',
+                    'utilities': 'secondary',
+                    'debt': 'dark',
+                    'other': 'dark'
+                };
+
+                expenseButtons.forEach(b => {
+                    b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-info', 'btn-warning', 'btn-secondary', 'btn-danger', 'btn-dark');
+                    b.classList.add('btn-outline-' + (colorMap[b.dataset.category] || 'danger'));
+                });
+                this.classList.remove('btn-outline-' + (colorMap[category] || 'danger'));
+                this.classList.add('btn-' + (colorMap[category] || 'danger'), 'active');
+            });
+        });
+
+        const yearlyMonthSelect = document.getElementById('yearly-month');
+        if (yearlyMonthSelect) {
+            yearlyMonthSelect.addEventListener('change', updateYearlyDailyBreakdownFromSelection);
+        }
+
+        const defaultIncomeBtn = document.querySelector('.income-source-btn[data-source="all"]');
+        if (defaultIncomeBtn && !defaultIncomeBtn.classList.contains('active')) {
+            defaultIncomeBtn.click();
+        }
+
+        const defaultExpenseBtn = document.querySelector('.expenses-category-btn[data-category="all"]');
+        if (defaultExpenseBtn && !defaultExpenseBtn.classList.contains('active')) {
+            defaultExpenseBtn.click();
+        }
+
+        setupYearlyExportAndPrint();
+
+        updateYearlyTablesForSelection();
+        updateYearlyDailyBreakdownFromSelection();
+    }
+
+    function updateYearlyTablesForSelection() {
+        const incomeSource = yearlySelectionState.incomeSource || 'all';
+        const expenseCategory = yearlySelectionState.expenseCategory || 'all';
+
+        document.querySelectorAll('[data-income-source]').forEach(row => {
+            const source = row.getAttribute('data-income-source');
+            row.style.display = (incomeSource === 'all' || source === incomeSource) ? '' : 'none';
+        });
+
+        document.querySelectorAll('[data-expense-category]').forEach(row => {
+            const category = row.getAttribute('data-expense-category');
+            row.style.display = (expenseCategory === 'all' || category === expenseCategory) ? '' : 'none';
+        });
+    }
+
+    function updateYearlyDailyBreakdownFromSelection() {
+        const monthSelect = document.getElementById('yearly-month');
+        const yearSelect = document.getElementById('yearly-year');
+        const dailySection = document.getElementById('yearly-daily-breakdown');
+        const dailyEmpty = document.getElementById('yearly-daily-empty');
+
+        if (!monthSelect || !yearSelect) return;
+
+        const monthValue = monthSelect.value || 'all';
+        yearlySelectionState.month = monthValue;
+
+        if (monthValue === 'all') {
+            if (dailySection) dailySection.style.display = 'none';
+            if (dailyEmpty) dailyEmpty.style.display = 'block';
+            return;
+        }
+
+        if (dailySection) dailySection.style.display = 'block';
+        if (dailyEmpty) dailyEmpty.style.display = 'none';
+
+        const yearValue = yearSelect.value || new Date().getFullYear();
+        fetch(`/api/financial/dashboard/yearly/daily_breakdown?year=${yearValue}&month=${monthValue}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load daily breakdown');
+                return response.json();
+            })
+            .then(data => {
+                yearlySelectionState.dailyData = Array.isArray(data.daily) ? data.daily : [];
+                renderYearlyDailyTables();
+            })
+            .catch(error => {
+                console.error('Daily breakdown error:', error);
+                yearlySelectionState.dailyData = [];
+                renderYearlyDailyTables();
+            });
+    }
+
+    function setupYearlyExportAndPrint() {
+        const exportBtn = document.getElementById('yearly-export-csv');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                const yearSelect = document.getElementById('yearly-year');
+                const monthSelect = document.getElementById('yearly-month');
+                const yearValue = yearSelect ? yearSelect.value : new Date().getFullYear();
+                const monthValue = monthSelect ? (monthSelect.value || 'all') : 'all';
+                window.location.href = `/api/financial/dashboard/yearly/export?year=${yearValue}&month=${monthValue}`;
+            });
+        }
+
+        const printBtn = document.getElementById('yearly-print-report');
+        if (printBtn) {
+            printBtn.addEventListener('click', function() {
+                const yearlyContent = document.getElementById('yearly-content');
+                if (!yearlyContent) {
+                    window.print();
+                    return;
+                }
+
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    window.print();
+                    return;
+                }
+
+                printWindow.document.write('<html><head><title>Yearly Financial Report</title>');
+                printWindow.document.write('<style>body{font-family:Arial,sans-serif;margin:16px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ccc;padding:6px;} .card{border:1px solid #ddd;margin-bottom:12px;padding:10px;} .chart-widget{border:1px solid #ddd;}</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(yearlyContent.innerHTML);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                printWindow.print();
+            });
+        }
+    }
+
+    function renderYearlyDailyTables() {
+        const dailyData = yearlySelectionState.dailyData || [];
+        const breakdownBody = document.getElementById('yearly-daily-breakdown-body');
+        const incomeTitle = document.getElementById('yearly-daily-income-title');
+        const expenseTitle = document.getElementById('yearly-daily-expense-title');
+        const monthLabel = document.getElementById('yearly-daily-month-label');
+        const monthSelect = document.getElementById('yearly-month');
+
+        if (!breakdownBody) return;
+
+        const sourceLabels = {
+            'pharmacy': 'Pharmacy',
+            'lab': 'Lab Tests',
+            'imaging': 'Imaging',
+            'consultation': 'Consultation',
+            'insurance': 'Insurance',
+            'other': 'Other',
+            'all': 'Total Income'
+        };
+
+        const expenseLabels = {
+            'payroll': 'Payroll',
+            'pharmacy': 'Pharmacy Stock',
+            'equipment': 'Equipment',
+            'utilities': 'Utilities',
+            'debt': 'Debt Service',
+            'other': 'Other',
+            'all': 'Total Expenses'
+        };
+
+        if (incomeTitle) incomeTitle.textContent = sourceLabels[yearlySelectionState.incomeSource] || 'Income';
+        if (expenseTitle) expenseTitle.textContent = expenseLabels[yearlySelectionState.expenseCategory] || 'Expenses';
+        if (monthLabel && monthSelect) {
+            const monthText = monthSelect.options[monthSelect.selectedIndex]?.textContent || '';
+            monthLabel.textContent = monthText;
+        }
+
+        breakdownBody.innerHTML = '';
+
+        if (!dailyData.length) {
+            breakdownBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No daily data available</td></tr>';
+            return;
+        }
+
+        const incomeKeyMap = {
+            'pharmacy': 'pharmacy',
+            'lab': 'lab',
+            'imaging': 'imaging',
+            'consultation': 'consultation',
+            'insurance': 'insurance',
+            'other': 'other'
+        };
+        const expenseKeyMap = {
+            'payroll': 'payroll',
+            'pharmacy': 'pharmacy',
+            'equipment': 'equipment',
+            'utilities': 'utilities',
+            'debt': 'debt',
+            'other': 'other'
+        };
+
+        dailyData.forEach(day => {
+            const dateStr = day.date || '';
+            const totalIncome = Number(day.total_revenue || 0);
+            const totalExpense = Number(day.total_expense || 0);
+            const netProfit = Number(day.net_profit || 0);
+            const margin = Number(day.profit_margin || 0);
+
+            const incomeValue = yearlySelectionState.incomeSource === 'all'
+                ? totalIncome
+                : Number((day.revenue_breakdown || {})[incomeKeyMap[yearlySelectionState.incomeSource]] || 0);
+            const expenseValue = yearlySelectionState.expenseCategory === 'all'
+                ? totalExpense
+                : Number((day.expense_breakdown || {})[expenseKeyMap[yearlySelectionState.expenseCategory]] || 0);
+
+            breakdownBody.innerHTML += `
+                <tr>
+                    <td>${dateStr}</td>
+                    <td class="text-right">KES ${totalIncome.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="text-right">KES ${totalExpense.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="text-right">KES ${netProfit.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="text-center">${margin.toFixed(2)}%</td>
+                    <td class="text-right">KES ${incomeValue.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="text-right">KES ${expenseValue.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function updateYearlyChartsForIncomeSource(source, monthlyData) {
+        if (typeof Chart === 'undefined') return;
+
+        const sourceKeys = {
+            'pharmacy': 'pharmacy_revenue',
+            'lab': 'lab_revenue',
+            'imaging': 'imaging_revenue',
+            'consultation': 'consultation_revenue',
+            'insurance': 'insurance_revenue',
+            'other': 'other_revenue'
+        };
+
+        const sourceColors = {
+            'pharmacy': '#4CAF50',
+            'lab': '#2196F3',
+            'imaging': '#FF9800',
+            'consultation': '#9C27B0',
+            'insurance': '#00BCD4',
+            'other': '#FFC107'
+        };
+
+        let data = [];
+        if (source === 'all') {
+            data = monthlyData.map(m => Number(m.revenue || 0));
+        } else {
+            const key = sourceKeys[source];
+            data = monthlyData.map(m => Number(m[key] || 0));
+        }
+
+        if (window._yearlyIncomeExpenseChart) {
+            window._yearlyIncomeExpenseChart.data.datasets[0].data = data;
+            window._yearlyIncomeExpenseChart.data.datasets[0].label = source === 'all' ? 'Total Income' : sourceKeys[source];
+            window._yearlyIncomeExpenseChart.data.datasets[0].backgroundColor = source === 'all' ? '#28a745' : sourceColors[source];
+            window._yearlyIncomeExpenseChart.update();
+        }
+
+        const expensesConstant = monthlyData.map(m => Number(m.expense || 0));
+        const profits = data.map((val, idx) => val - expensesConstant[idx]);
+
+        if (window._yearlyProfitTrendChart) {
+            window._yearlyProfitTrendChart.data.datasets[0].data = profits;
+            window._yearlyProfitTrendChart.data.datasets[0].label = source === 'all' ? 'Net Profit' : 'Profit from ' + sourceKeys[source];
+            window._yearlyProfitTrendChart.data.datasets[0].borderColor = source === 'all' ? '#000' : sourceColors[source];
+            window._yearlyProfitTrendChart.update();
+        }
+
+        if (window._yearlyIncomeBreakdownChart) {
+            const incomeTotals = [
+                monthlyData.reduce((s, m) => s + Number(m.pharmacy_revenue || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.lab_revenue || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.imaging_revenue || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.consultation_revenue || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.insurance_revenue || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.other_revenue || 0), 0)
+            ];
+
+            if (source === 'all') {
+                window._yearlyIncomeBreakdownChart.data.datasets[0].data = incomeTotals;
+            } else {
+                const indexMap = {
+                    'pharmacy': 0,
+                    'lab': 1,
+                    'imaging': 2,
+                    'consultation': 3,
+                    'insurance': 4,
+                    'other': 5
+                };
+                const selectedIndex = indexMap[source];
+                const filtered = incomeTotals.map((val, idx) => idx === selectedIndex ? val : 0);
+                window._yearlyIncomeBreakdownChart.data.datasets[0].data = filtered;
+            }
+            window._yearlyIncomeBreakdownChart.update();
+        }
+    }
+
+    function updateYearlyChartsForExpenseCategory(category, monthlyData) {
+        if (typeof Chart === 'undefined') return;
+
+        const categoryKeys = {
+            'payroll': 'payroll_expense',
+            'pharmacy': 'pharmacy_expense',
+            'equipment': 'equipment_expense',
+            'utilities': 'utilities_expense',
+            'debt': 'debt_payment',
+            'other': 'other_expense'
+        };
+
+        const categoryColors = {
+            'payroll': '#DC3545',
+            'pharmacy': '#FF6F61',
+            'equipment': '#FF8C42',
+            'utilities': '#FFA600',
+            'debt': '#8E44AD',
+            'other': '#6C757D'
+        };
+
+        let data = [];
+        if (category === 'all') {
+            data = monthlyData.map(m => Number(m.expense || 0));
+        } else {
+            const key = categoryKeys[category];
+            data = monthlyData.map(m => Number(m[key] || 0));
+        }
+
+        const revenuesConstant = monthlyData.map(m => Number(m.revenue || 0));
+        const profits = revenuesConstant.map((val, idx) => val - data[idx]);
+
+        if (window._yearlyIncomeExpenseChart) {
+            window._yearlyIncomeExpenseChart.data.datasets[1].data = data;
+            window._yearlyIncomeExpenseChart.data.datasets[1].label = category === 'all' ? 'Total Expenses' : categoryKeys[category];
+            window._yearlyIncomeExpenseChart.data.datasets[1].backgroundColor = category === 'all' ? '#dc3545' : categoryColors[category];
+            window._yearlyIncomeExpenseChart.update();
+        }
+
+        if (window._yearlyProfitTrendChart) {
+            window._yearlyProfitTrendChart.data.datasets[0].data = profits;
+            window._yearlyProfitTrendChart.data.datasets[0].label = category === 'all' ? 'Net Profit' : 'Profit after ' + categoryKeys[category];
+            window._yearlyProfitTrendChart.data.datasets[0].borderColor = category === 'all' ? '#000' : categoryColors[category];
+            window._yearlyProfitTrendChart.update();
+        }
+
+        if (window._yearlyExpensesBreakdownChart) {
+            const expenseTotals = [
+                monthlyData.reduce((s, m) => s + Number(m.payroll_expense || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.pharmacy_expense || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.equipment_expense || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.utilities_expense || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.debt_payment || 0), 0),
+                monthlyData.reduce((s, m) => s + Number(m.other_expense || 0), 0)
+            ];
+
+            if (category === 'all') {
+                window._yearlyExpensesBreakdownChart.data.datasets[0].data = expenseTotals;
+            } else {
+                const indexMap = {
+                    'payroll': 0,
+                    'pharmacy': 1,
+                    'equipment': 2,
+                    'utilities': 3,
+                    'debt': 4,
+                    'other': 5
+                };
+                const selectedIndex = indexMap[category];
+                const filtered = expenseTotals.map((val, idx) => idx === selectedIndex ? val : 0);
+                window._yearlyExpensesBreakdownChart.data.datasets[0].data = filtered;
+            }
+            window._yearlyExpensesBreakdownChart.update();
+        }
+    }
+
+    function showIncomeSourceDetails(source, monthlyData) {
+        const detailsDiv = document.getElementById('income-source-details');
+        const titleEl = document.getElementById('income-source-title');
+        const bodyEl = document.getElementById('income-source-details-body');
+
+        if (!detailsDiv || !titleEl || !bodyEl) return;
+
+        const sourceLabels = {
+            'pharmacy': 'Pharmacy Income',
+            'lab': 'Lab Tests Income',
+            'imaging': 'Imaging Income',
+            'consultation': 'Consultation Income',
+            'insurance': 'Insurance Income',
+            'other': 'Other Income',
+            'all': 'Total Income (All Sources)'
+        };
+
+        const sourceKeys = {
+            'pharmacy': 'pharmacy_revenue',
+            'lab': 'lab_revenue',
+            'imaging': 'imaging_revenue',
+            'consultation': 'consultation_revenue',
+            'insurance': 'insurance_revenue',
+            'other': 'other_revenue'
+        };
+
+        titleEl.textContent = sourceLabels[source] || 'Income';
+        bodyEl.innerHTML = '';
+
+        let totalAmount = 0;
+        const rows = [];
+
+        if (source === 'all') {
+            monthlyData.forEach(month => {
+                const amount = Number(month.revenue || 0);
+                totalAmount += amount;
+                rows.push({ month: month.month_name || '', amount });
+            });
+        } else {
+            const key = sourceKeys[source];
+            monthlyData.forEach(month => {
+                const amount = Number(month[key] || 0);
+                totalAmount += amount;
+                rows.push({ month: month.month_name || '', amount });
+            });
+        }
+
+        rows.forEach(row => {
+            const pct = totalAmount > 0 ? ((row.amount / totalAmount) * 100).toFixed(2) : '0.00';
+            bodyEl.innerHTML += `
+                <tr>
+                    <td>${row.month}</td>
+                    <td class="text-right"><strong>KES ${row.amount.toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                    <td class="text-center">${pct}%</td>
+                </tr>
+            `;
+        });
+
+        detailsDiv.style.display = 'block';
+    }
+
+    function showExpensesCategoryDetails(category, monthlyData) {
+        const detailsDiv = document.getElementById('expenses-category-details');
+        const titleEl = document.getElementById('expenses-category-title');
+        const bodyEl = document.getElementById('expenses-category-details-body');
+
+        if (!detailsDiv || !titleEl || !bodyEl) return;
+
+        const categoryLabels = {
+            'payroll': 'Payroll Expenses',
+            'pharmacy': 'Pharmacy Stock Expenses',
+            'equipment': 'Equipment Expenses',
+            'utilities': 'Utilities Expenses',
+            'debt': 'Debt Service Expenses',
+            'other': 'Other Expenses',
+            'all': 'Total Expenses (All Categories)'
+        };
+
+        const categoryKeys = {
+            'payroll': 'payroll_expense',
+            'pharmacy': 'pharmacy_expense',
+            'equipment': 'equipment_expense',
+            'utilities': 'utilities_expense',
+            'debt': 'debt_payment',
+            'other': 'other_expense'
+        };
+
+        titleEl.textContent = categoryLabels[category] || 'Expenses';
+        bodyEl.innerHTML = '';
+
+        let totalAmount = 0;
+        const rows = [];
+
+        if (category === 'all') {
+            monthlyData.forEach(month => {
+                const amount = Number(month.expense || 0);
+                totalAmount += amount;
+                rows.push({ month: month.month_name || '', amount });
+            });
+        } else {
+            const key = categoryKeys[category];
+            monthlyData.forEach(month => {
+                const amount = Number(month[key] || 0);
+                totalAmount += amount;
+                rows.push({ month: month.month_name || '', amount });
+            });
+        }
+
+        rows.forEach(row => {
+            const pct = totalAmount > 0 ? ((row.amount / totalAmount) * 100).toFixed(2) : '0.00';
+            bodyEl.innerHTML += `
+                <tr>
+                    <td>${row.month}</td>
+                    <td class="text-right"><strong>KES ${row.amount.toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                    <td class="text-center">${pct}%</td>
+                </tr>
+            `;
+        });
+
+        detailsDiv.style.display = 'block';
+    }
+    function setupApplyDateRangeListener() {
+        const btn = document.getElementById('apply-date-range-btn');
+        if (!btn) return;
+        
+        btn.addEventListener('click', function() {
+            const startDate = document.getElementById('global-start-date').value;
+            const endDate = document.getElementById('global-end-date').value;
+            const button = this;
+            
+            if (!startDate || !endDate) {
+                button.style.backgroundColor = '#dc3545';
+                button.innerHTML = '<i class="fas fa-exclamation-circle"></i> Select dates';
+                setTimeout(() => {
+                    button.style.backgroundColor = '';
+                    button.innerHTML = '<i class="fas fa-search"></i> Apply';
+                }, 1500);
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                button.style.backgroundColor = '#dc3545';
+                button.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid range';
+                setTimeout(() => {
+                    button.style.backgroundColor = '';
+                    button.innerHTML = '<i class="fas fa-search"></i> Apply';
+                }, 1500);
+                return;
+            }
+            
+            // Store custom date range
+            customDateRange.startDate = startDate;
+            customDateRange.endDate = endDate;
+            
+            // Visual feedback
+            button.style.transform = 'scale(0.95)';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+            
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Display active range
+            const displayDiv = document.getElementById('date-range-display');
+            const rangeText = document.getElementById('range-text');
+            const clearBtn = document.getElementById('clear-date-range-btn');
+            
+            if (rangeText) rangeText.textContent = `${formatDate(startDate)} to ${formatDate(endDate)}`;
+            if (displayDiv) displayDiv.style.display = 'block';
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+            
+            // Reload all dashboards
+            reloadAllDashboards();
+            
+            // Reset button
+            setTimeout(() => {
+                button.innerHTML = '<i class="fas fa-check"></i> Applied!';
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-search"></i> Apply';
+                }, 1000);
+            }, 500);
+        });
+    }
+
+    // Event listener for Clear Date Range button
+    function setupClearDateRangeListener() {
+        const btn = document.getElementById('clear-date-range-btn');
+        if (!btn) return;
+        
+        btn.addEventListener('click', function() {
+            const button = this;
+            
+            // Visual feedback
+            button.style.transform = 'scale(0.95)';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+            
+            // Clear custom date range
+            customDateRange.startDate = null;
+            customDateRange.endDate = null;
+            
+            // Clear input fields
+            const startDateInput = document.getElementById('global-start-date');
+            const endDateInput = document.getElementById('global-end-date');
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput) endDateInput.value = '';
+            
+            // Hide display
+            const displayDiv = document.getElementById('date-range-display');
+            if (displayDiv) {
+                displayDiv.style.opacity = '0';
+                setTimeout(() => {
+                    displayDiv.style.display = 'none';
+                    displayDiv.style.opacity = '1';
+                }, 300);
+            }
+            
+            // Reset button
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+                button.innerHTML = '<i class="fas fa-times"></i> Clear';
+            }, 100);
+            
+            // Reload dashboards
+            reloadAllDashboards();
+        });
+    }
+
+    // Helper function to format date
+    function formatDate(dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    // Reload current dashboard
+    function reloadAllDashboards() {
+        const activeSection = document.querySelector('.dashboard-section:not([style*="display: none"])') || 
+                            document.getElementById('daily-section');
+        if (!activeSection) {
+            loadDailyDashboard();
+            return;
+        }
+        
+        const target = activeSection.id.replace('-section', '');
+        
+        switch(target) {
+            case 'daily':
+                loadDailyDashboard();
+                break;
+            case 'weekly':
+                loadWeeklyDashboard();
+                break;
+            case 'monthly':
+                loadMonthlyDashboard();
+                break;
+            case 'yearly':
+                loadYearlyDashboard();
+                break;
+            default:
+                loadDailyDashboard();
+        }
+    }
+
+    // Setup tab switching
+    function setupTabSwitching() {
+        document.querySelectorAll('.report-nav-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = this.getAttribute('data-target');
+                
+                // Hide all sections
+                document.querySelectorAll('.dashboard-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                
+                // Remove active class from all buttons
+                document.querySelectorAll('.report-nav-btn').forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                // Show target section
+                const targetSection = document.getElementById(target + '-section');
+                if (targetSection) targetSection.style.display = 'block';
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Visual feedback
+                this.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 150);
+                
+                // Load appropriate dashboard
+                switch(target) {
+                    case 'daily':
+                        loadDailyDashboard();
+                        break;
+                    case 'weekly':
+                        loadWeeklyDashboard();
+                        break;
+                    case 'monthly':
+                        loadMonthlyDashboard();
+                        break;
+                    case 'yearly':
+                        loadYearlyDashboard();
+                        break;
+                }
+            });
+        });
+    }
+
+    // Setup change listeners for date/month/year selectors
+    function setupChangeListeners() {
+        const dailyDate = document.getElementById('daily-date');
+        if (dailyDate) dailyDate.addEventListener('change', loadDailyDashboard);
+        
+        const weeklyDate = document.getElementById('weekly-date');
+        if (weeklyDate) weeklyDate.addEventListener('change', loadWeeklyDashboard);
+        
+        const monthlyYear = document.getElementById('monthly-year');
+        if (monthlyYear) monthlyYear.addEventListener('change', loadMonthlyDashboard);
+        
+        const monthlyMonth = document.getElementById('monthly-month');
+        if (monthlyMonth) monthlyMonth.addEventListener('change', loadMonthlyDashboard);
+        
+        const yearlyYear = document.getElementById('yearly-year');
+        if (yearlyYear) yearlyYear.addEventListener('change', loadYearlyDashboard);
+
+        const yearlyMonth = document.getElementById('yearly-month');
+        if (yearlyMonth) yearlyMonth.addEventListener('change', updateYearlyDailyBreakdownFromSelection);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeDateControls();
+        setupTabSwitching();
+        setupApplyDateRangeListener();
+        setupClearDateRangeListener();
+        setupChangeListeners();
+        loadDailyDashboard();
+    });
+</script>
+
+{% endblock %}

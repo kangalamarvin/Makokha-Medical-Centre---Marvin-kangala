@@ -1,0 +1,490 @@
+/* Pharmacy Dashboard Styles */
+.pharmacist-tabs {
+    display: flex;
+    flex-direction: column;
+}
+
+.pharmacist-tabs .tab {
+    display: none;
+}
+
+.pharmacist-tabs .tab.active {
+    display: block;
+}
+
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.tab-header h3 {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+}
+
+.tab-header h3 i {
+    margin-right: 10px;
+    color: var(--primary-color);
+}
+
+.tab-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.notification-badges {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: white;
+}
+
+.badge i {
+    margin-right: 8px;
+}
+
+.badge-warning {
+    background-color: var(--warning-color);
+}
+
+.badge-danger {
+    background-color: var(--danger-color);
+}
+
+.badge-info {
+    background-color: var(--info-color);
+}
+
+.badge-success {
+    background-color: var(--success-color);
+}
+
+/* Dispense Drugs Section */
+.dispense-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.drug-selection, .cart-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.search-box {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.search-box i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-color);
+}
+
+.drug-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.drug-card {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    transition: var(--transition);
+}
+
+.drug-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.drug-info h5 {
+    margin-bottom: 5px;
+    color: var(--dark-color);
+}
+
+.drug-info p {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.drug-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 0.9rem;
+}
+
+.drug-meta .price {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.drug-meta .stock {
+    color: var(--primary-color);
+}
+
+.drug-actions .btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+}
+
+/* Cart Styles */
+.cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.cart-header h4 {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.cart-header h4 i {
+    margin-right: 10px;
+    color: var(--primary-color);
+}
+
+.cart-actions .btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+}
+
+.cart-items {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-info h5 {
+    margin-bottom: 5px;
+    color: var(--dark-color);
+}
+
+.cart-item-info p {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.cart-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cart-item-quantity {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cart-item-quantity button {
+    width: 25px;
+    height: 25px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--light-color);
+    color: var(--dark-color);
+    cursor: pointer;
+}
+
+.cart-item-quantity input {
+    width: 40px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 3px;
+}
+
+.cart-item-delete {
+    color: var(--danger-color);
+    cursor: pointer;
+}
+
+.empty-cart {
+    text-align: center;
+    padding: 30px;
+    color: var(--gray-color);
+}
+
+.empty-cart i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: var(--gray-color);
+}
+
+.cart-footer {
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cart-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Sales Table */
+.sales-table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+/* Refund Section */
+.refund-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.refund-search {
+    margin-bottom: 20px;
+}
+
+.input-group {
+    display: flex;
+}
+
+.input-group input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group-append .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.refund-results {
+    margin-top: 20px;
+}
+
+.sale-details {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.sale-details h5 {
+    margin-bottom: 15px;
+    color: var(--dark-color);
+}
+
+.details-row {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--gray-color);
+    min-width: 120px;
+}
+
+.detail-value {
+    flex: 1;
+}
+
+.refund-items {
+    margin-bottom: 20px;
+}
+
+.refund-items-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.refund-items-table th, .refund-items-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+.refund-items-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.btn-select-refund {
+    background-color: transparent;
+    border: 1px solid var(--gray-color);
+    color: var(--gray-color);
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-select-refund.selected {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.refund-actions {
+    text-align: right;
+}
+
+/* Inventory Table */
+.inventory-table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+/* Doctor Dashboard */
+.patient-form {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.form-section {
+    display: none;
+}
+
+.form-section.active {
+    display: block;
+}
+
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* Patient Details */
+.patient-details-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+}
+
+.patient-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.info-item {
+    margin-bottom: 10px;
+}
+
+.info-label {
+    font-weight: 500;
+    color: var(--gray-color);
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+}
+
+/* Tabs */
+.tab-buttons {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--gray-color);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .dispense-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .patient-info {
+        grid-template-columns: 1fr;
+    }
+}

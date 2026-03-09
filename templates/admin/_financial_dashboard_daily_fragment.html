@@ -1,0 +1,532 @@
+<!-- Daily Financial Dashboard Fragment (for AJAX loading) -->
+
+<style>
+    .financial-dashboard-container {
+        font-size: 9px;
+    }
+    
+    .financial-dashboard-container * {
+        font-size: 9px !important;
+    }
+    
+    .financial-card {
+        border-left: 4px solid;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+
+    .financial-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .financial-card.revenue {
+        border-left-color: #28a745;
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.05) 0%, transparent 100%);
+    }
+
+    .financial-card.expense {
+        border-left-color: #dc3545;
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, transparent 100%);
+    }
+
+    .financial-card.profit {
+        border-left-color: #007bff;
+        background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, transparent 100%);
+    }
+
+    .financial-card.outstanding {
+        border-left-color: #ffc107;
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, transparent 100%);
+    }
+
+    .financial-table {
+        font-size: 0.95rem;
+    }
+
+    .financial-table thead {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .financial-table tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .badge-metric {
+        display: inline-block;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+</style>
+
+<div class="financial-dashboard-container">
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card financial-card revenue h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-success font-weight-bold text-uppercase mb-1" style="font-size: 0.85rem;">Total Revenue</div>
+                        <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.total_revenue) }}</div>
+                    </div>
+                    <i class="fas fa-arrow-trending-up" style="color: #28a745; font-size: 1.5rem; opacity: 0.3;"></i>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    {% if metrics.revenue_change_pct >= 0 %}
+                        <span class="badge-metric" style="background: rgba(40, 167, 69, 0.2); color: #28a745;">
+                            <i class="fas fa-arrow-up"></i> {{ "{:.1f}%".format(metrics.revenue_change_pct) }}
+                        </span>
+                    {% else %}
+                        <span class="badge-metric" style="background: rgba(220, 53, 69, 0.2); color: #dc3545;">
+                            <i class="fas fa-arrow-down"></i> {{ "{:.1f}%".format(abs(metrics.revenue_change_pct)) }}
+                        </span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card financial-card expense h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-danger font-weight-bold text-uppercase mb-1" style="font-size: 0.85rem;">Total Expenses</div>
+                        <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.total_expense) }}</div>
+                    </div>
+                    <i class="fas fa-chart-line" style="color: #dc3545; font-size: 1.5rem; opacity: 0.3;"></i>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    {% if metrics.expense_change_pct >= 0 %}
+                        <span class="badge-metric" style="background: rgba(220, 53, 69, 0.2); color: #dc3545;">
+                            <i class="fas fa-arrow-up"></i> {{ "{:.1f}%".format(metrics.expense_change_pct) }}
+                        </span>
+                    {% else %}
+                        <span class="badge-metric" style="background: rgba(40, 167, 69, 0.2); color: #28a745;">
+                            <i class="fas fa-arrow-down"></i> {{ "{:.1f}%".format(abs(metrics.expense_change_pct)) }}
+                        </span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card financial-card profit h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-info font-weight-bold text-uppercase mb-1" style="font-size: 0.85rem;">Net Profit</div>
+                        <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.net_profit) }}</div>
+                    </div>
+                    <i class="fas fa-wallet" style="color: #007bff; font-size: 1.5rem; opacity: 0.3;"></i>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    {% if metrics.profit_change_pct >= 0 %}
+                        <span class="badge-metric" style="background: rgba(40, 167, 69, 0.2); color: #28a745;">
+                            <i class="fas fa-arrow-up"></i> {{ "{:.1f}%".format(metrics.profit_change_pct) }}
+                        </span>
+                    {% else %}
+                        <span class="badge-metric" style="background: rgba(220, 53, 69, 0.2); color: #dc3545;">
+                            <i class="fas fa-arrow-down"></i> {{ "{:.1f}%".format(abs(metrics.profit_change_pct)) }}
+                        </span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card financial-card outstanding h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-warning font-weight-bold text-uppercase mb-1" style="font-size: 0.85rem;">Outstanding</div>
+                        <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.outstanding_debtor + metrics.outstanding_insurance) }}</div>
+                    </div>
+                    <i class="fas fa-hourglass" style="color: #ffc107; font-size: 1.5rem; opacity: 0.3;"></i>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    <span class="badge-metric" style="background: rgba(255, 193, 7, 0.2); color: #ffc107;">
+                        {{ metrics.outstanding_debtor_count + metrics.outstanding_insurance_count }} items
+                    </span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Multi-Day Range Report -->
+{% if is_range and daily_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h6 class="mb-0 font-weight-bold">Daily Report: {{ date_range_label }} ({{ num_days }} days)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-striped">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Date</th>
+                                <th class="text-right">Revenue</th>
+                                <th class="text-right">Expenses</th>
+                                <th class="text-right">Profit</th>
+                                <th class="text-right">Margin %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in daily_data %}
+                            <tr>
+                                <td><strong>{{ day.date.strftime('%a, %b %d, %Y') }}</strong></td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(day.revenue) }}</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(day.expense) }}</td>
+                                <td class="text-right font-weight-bold {% if day.profit >= 0 %}text-success{% else %}text-danger{% endif %}">KES {{ "{:,.0f}".format(day.profit) }}</td>
+                                <td class="text-right">{{ "{:.1f}%".format(day.margin) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Professional Financial Analysis Charts -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white py-3">
+                <h6 class="mb-0 font-weight-bold">📊 Financial Performance Analysis</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container" style="position: relative; height: 250px;">
+                            <canvas id="daily-revenue-vs-expense-chart"></canvas>
+                        </div>
+                        <p class="text-center text-muted mt-2" style="font-size: 8px;"><strong>Revenue vs Expenses Comparison</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container" style="position: relative; height: 250px;">
+                            <canvas id="daily-profit-margin-chart"></canvas>
+                        </div>
+                        <p class="text-center text-muted mt-2" style="font-size: 8px;"><strong>Daily Profit & Margin Trend</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold">Revenue Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="daily-revenue-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold">Expense Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="daily-expense-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Tables Row -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-list-check"></i> Revenue by Category</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover financial-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Category</th>
+                                <th class="text-right" style="width: 25%;">Amount</th>
+                                <th class="text-right" style="width: 25%;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set rev_categories = [
+                                ('Pharmacy', metrics.revenue_breakdown.pharmacy),
+                                ('Lab', metrics.revenue_breakdown.lab),
+                                ('Imaging', metrics.revenue_breakdown.imaging),
+                                ('Consultation', metrics.revenue_breakdown.consultation),
+                                ('Insurance', metrics.revenue_breakdown.insurance),
+                                ('Other', metrics.revenue_breakdown.other)
+                            ] %}
+                            {% for name, amount in rev_categories %}
+                                {% if amount > 0 %}
+                                    <tr>
+                                        <td><strong>{{ name }}</strong></td>
+                                        <td class="text-right text-success font-weight-bold">KES {{ "{:,.0f}".format(amount) }}</td>
+                                        <td class="text-right"><span class="badge bg-light text-dark">{{ "{:.1f}%".format((amount / metrics.total_revenue * 100) if metrics.total_revenue > 0 else 0) }}</span></td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                            {% if metrics.total_revenue == 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">No revenue recorded</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-receipt"></i> Expenses by Category</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover financial-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Category</th>
+                                <th class="text-right" style="width: 25%;">Amount</th>
+                                <th class="text-right" style="width: 25%;">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set exp_categories = [
+                                ('Payroll', metrics.expense_breakdown.payroll),
+                                ('Pharmacy', metrics.expense_breakdown.pharmacy),
+                                ('Equipment', metrics.expense_breakdown.equipment),
+                                ('Utilities', metrics.expense_breakdown.utilities),
+                                ('Debt Service', metrics.expense_breakdown.debt),
+                                ('Other', metrics.expense_breakdown.other)
+                            ] %}
+                            {% for name, amount in exp_categories %}
+                                {% if amount > 0 %}
+                                    <tr>
+                                        <td><strong>{{ name }}</strong></td>
+                                        <td class="text-right text-danger font-weight-bold">KES {{ "{:,.0f}".format(amount) }}</td>
+                                        <td class="text-right"><span class="badge bg-light text-dark">{{ "{:.1f}%".format((amount / metrics.total_expense * 100) if metrics.total_expense > 0 else 0) }}</span></td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                            {% if metrics.total_expense == 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">No expenses recorded</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-money-bill-wave"></i> Cash Flow by Method</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover financial-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Method</th>
+                                <th class="text-right" style="width: 25%;">Inflow</th>
+                                <th class="text-right" style="width: 25%;">Outflow</th>
+                                <th class="text-right" style="width: 25%;">Net</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for method, data in cashflow_breakdown.items() %}
+                                <tr>
+                                    <td><strong>{{ method|title }}</strong></td>
+                                    <td class="text-right text-success font-weight-bold">KES {{ "{:,.0f}".format(data.inflow) }}</td>
+                                    <td class="text-right text-danger font-weight-bold">KES {{ "{:,.0f}".format(data.outflow) }}</td>
+                                    <td class="text-right font-weight-bold {% if data.net >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        KES {{ "{:,.0f}".format(data.net) }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom py-3">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-exclamation-circle"></i> Outstanding Amounts</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover financial-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th class="text-right">Amount</th>
+                                <th class="text-right">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Debtor Balances</strong></td>
+                                <td class="text-right font-weight-bold text-warning">KES {{ "{:,.0f}".format(metrics.outstanding_debtor) }}</td>
+                                <td class="text-right"><span class="badge bg-warning text-dark">{{ metrics.outstanding_debtor_count }}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Insurance Claims</strong></td>
+                                <td class="text-right font-weight-bold text-warning">KES {{ "{:,.0f}".format(metrics.outstanding_insurance) }}</td>
+                                <td class="text-right"><span class="badge bg-warning text-dark">{{ metrics.outstanding_insurance_count }}</span></td>
+                            </tr>
+                            <tr style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, transparent 100%);">
+                                <td><strong>Total Outstanding</strong></td>
+                                <td class="text-right font-weight-bold text-warning">KES {{ "{:,.0f}".format(metrics.outstanding_debtor + metrics.outstanding_insurance) }}</td>
+                                <td class="text-right"><span class="badge bg-warning text-dark font-weight-bold">{{ metrics.outstanding_debtor_count + metrics.outstanding_insurance_count }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // @ts-nocheck
+    // htmlhint empty-attributes:false, attr-unsafe-chars:false
+    // Initialize charts once Chart.js is available
+    function initDailyCharts() {
+        if (typeof Chart === 'undefined') {
+            setTimeout(initDailyCharts, 100);
+            return;
+        }
+
+        // Revenue data from server
+        // noinspection JSUnresolvedVariable
+        const revenueData = [
+            {{ metrics.revenue_breakdown.pharmacy }},
+            {{ metrics.revenue_breakdown.lab }},
+            {{ metrics.revenue_breakdown.imaging }},
+            {{ metrics.revenue_breakdown.consultation }},
+            {{ metrics.revenue_breakdown.insurance }},
+            {{ metrics.revenue_breakdown.other }}
+        ];
+
+        // Expense data from server
+        // noinspection JSUnresolvedVariable
+        const expenseData = [
+            {{ metrics.expense_breakdown.payroll }},
+            {{ metrics.expense_breakdown.pharmacy }},
+            {{ metrics.expense_breakdown.equipment }},
+            {{ metrics.expense_breakdown.utilities }},
+            {{ metrics.expense_breakdown.debt }},
+            {{ metrics.expense_breakdown.other }}
+        ];
+
+        const revenueCtx = document.getElementById('daily-revenue-chart');
+        if (revenueCtx) {
+            new Chart(revenueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pharmacy', 'Lab', 'Imaging', 'Consultation', 'Insurance', 'Other'],
+                    datasets: [{
+                        data: revenueData,
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const expenseCtx = document.getElementById('daily-expense-chart');
+        if (expenseCtx) {
+            new Chart(expenseCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Payroll', 'Pharmacy', 'Equipment', 'Utilities', 'Debt', 'Other'],
+                    datasets: [{
+                        data: expenseData,
+                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#17a2b8', '#6c757d', '#e83e8c'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    initDailyCharts();
+</script>
+    
+</div> <!-- End of financial-dashboard-container -->
+
+</div> <!-- End of financial-dashboard-container -->

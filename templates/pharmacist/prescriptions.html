@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy Management System - Prescriptions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px 20px;
+        }
+        .table-responsive {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 0.35em 0.65em;
+        }
+        .toast {
+            z-index: 1100;
+        }
+        .drug-image {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            margin-right: 10px;
+        }
+        .navbar {
+            background-color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: white !important;
+        }
+        h2 {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-clinic-medical me-2"></i>
+                Pharmacy Management System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-user me-1"></i> Pharmacist</a>
+                    </li>
+                    <li class="nav-item">
+                        <form id="logout-form" action="{{ url_for('logout') }}" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+<a class="nav-link" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="mb-4"><i class="fas fa-prescription-bottle-alt me-2"></i>Pending Prescriptions</h2>
+                
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Prescriptions to Dispense</h5>
+                            <div>
+                                <button class="btn btn-sm btn-light" id="refreshPrescriptionsBtn">
+                                    <i class="fas fa-sync me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="prescriptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Prescription ID</th>
+                                        <th>Patient</th>
+                                        <th>Doctor</th>
+                                        <th>Date</th>
+                                        <th>Items</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Will be populated via AJAX -->
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prescription Details Modal -->
+    <div class="modal fade" id="prescriptionDetailsModal" tabindex="-1" aria-labelledby="prescriptionDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="prescriptionDetailsModalLabel">Prescription Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="prescriptionDetailsContent">
+                    <!-- Content will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="dispensePrescriptionBtn">
+                        <i class="fas fa-pills me-1"></i> Dispense
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dispense Confirmation Modal -->
+    <div class="modal fade" id="dispenseModal" tabindex="-1" aria-labelledby="dispenseModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="dispenseModalLabel">Dispense Prescription</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod">
+                            <option value="cash">Cash</option>
+                            <option value="insurance">Insurance</option>
+                            <option value="mpesa">M-Pesa</option>
+                            <option value="card">Credit Card</option>
+                        </select>
+                    </div>
+                    <div id="dispenseErrors" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmDispenseBtn">
+                        <i class="fas fa-check me-1"></i> Confirm Dispense
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <script>
+    $(document).ready(function() {
+        let currentPrescriptionId = null;
+
+        function esc(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function safeToastType(type) {
+            const allowed = new Set(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark']);
+            return allowed.has(type) ? type : 'secondary';
+        }
+        
+        // Sample data for demonstration (replace with actual API calls)
+        const samplePrescriptions = [
+            {
+                id: 1001,
+                patient_name: "John Doe",
+                patient_number: "OP-12345",
+                doctor_name: "Smith",
+                created_at: "2023-10-15 14:30",
+                items_count: 3,
+                status: "pending"
+            },
+            {
+                id: 1002,
+                patient_name: "Jane Smith",
+                patient_number: "IP-67890",
+                doctor_name: "Johnson",
+                created_at: "2023-10-16 09:15",
+                items_count: 2,
+                status: "pending"
+            },
+            {
+                id: 1003,
+                patient_name: "Robert Brown",
+                patient_number: "OP-54321",
+                doctor_name: "Williams",
+                created_at: "2023-10-16 11:45",
+                items_count: 4,
+                status: "dispensed"
+            }
+        ];
+
+        const samplePrescriptionDetails = {
+            id: 1001,
+            patient_name: "John Doe",
+            patient_number: "OP-12345",
+            doctor_name: "Smith",
+            notes: "Take after meals. Complete full course.",
+            status: "pending",
+            created_at: "2023-10-15 14:30",
+            items: [
+                {
+                    drug_name: "Amoxicillin",
+                    drug_number: "DRG-001",
+                    dosage: "500mg",
+                    frequency: "Twice daily",
+                    duration: "7 days",
+                    quantity: 14,
+                    notes: "",
+                    drug: {
+                        remaining_quantity: 50
+                    }
+                },
+                {
+                    drug_name: "Paracetamol",
+                    drug_number: "DRG-002",
+                    dosage: "500mg",
+                    frequency: "As needed",
+                    duration: "5 days",
+                    quantity: 10,
+                    notes: "For fever",
+                    drug: {
+                        remaining_quantity: 8
+                    }
+                },
+                {
+                    drug_name: "Vitamin C",
+                    drug_number: "DRG-003",
+                    dosage: "1000mg",
+                    frequency: "Once daily",
+                    duration: "10 days",
+                    quantity: 10,
+                    notes: "",
+                    drug: {
+                        remaining_quantity: 25
+                    }
+                }
+            ]
+        };
+        
+        // Load prescriptions
+        function loadPrescriptions() {
+            $('#prescriptionsTable tbody').html(`
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            `);
+            
+            // Simulate API call with timeout
+            setTimeout(() => {
+                let html = '';
+                if (samplePrescriptions && samplePrescriptions.length > 0) {
+                    samplePrescriptions.forEach(prescription => {
+                        const pidStr = String(prescription.id ?? '');
+                        const pidPadded = /^\d+$/.test(pidStr) ? pidStr.padStart(4, '0') : pidStr;
+                        const patientName = esc(prescription.patient_name);
+                        const patientNumber = esc(prescription.patient_number);
+                        const doctorName = esc(prescription.doctor_name);
+                        const createdAt = esc(prescription.created_at);
+                        const itemsCount = Number.isFinite(Number(prescription.items_count)) ? Number(prescription.items_count) : 0;
+
+                        const statusBadge = prescription.status === 'pending' ? 
+                            '<span class="badge bg-warning">Pending</span>' : 
+                            '<span class="badge bg-success">Dispensed</span>';
+                        
+                        const actionBtn = prescription.status === 'pending' ?
+                            `<button class="btn btn-sm btn-primary view-prescription" data-id="${esc(pidStr)}">
+                                <i class="fas fa-eye me-1"></i> View
+                            </button>` :
+                            `<button class="btn btn-sm btn-secondary" disabled>
+                                <i class="fas fa-check me-1"></i> Dispensed
+                            </button>`;
+                        
+                        html += `
+                            <tr>
+                                <td>PR-${esc(pidPadded)}</td>
+                                <td>${patientName} (${patientNumber})</td>
+                                <td>Dr. ${doctorName}</td>
+                                <td>${createdAt}</td>
+                                <td>${itemsCount}</td>
+                                <td>${statusBadge}</td>
+                                <td>${actionBtn}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html = '<tr><td colspan="7" class="text-center">No pending prescriptions found</td></tr>';
+                }
+                $('#prescriptionsTable tbody').html(html);
+            }, 1000);
+        }
+        
+        // Load prescription details
+        $(document).on('click', '.view-prescription', function() {
+            const prescriptionId = $(this).data('id');
+            currentPrescriptionId = prescriptionId;
+            
+            $('#prescriptionDetailsContent').html(`
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `);
+            
+            // Simulate API call with timeout
+            setTimeout(() => {
+                let itemsHtml = '';
+                let allInStock = true;
+                
+                samplePrescriptionDetails.items.forEach(item => {
+                    const remainingQty = Number(item?.drug?.remaining_quantity ?? 0);
+                    const neededQty = Number(item?.quantity ?? 0);
+                    const inStock = remainingQty >= neededQty;
+                    if (!inStock) allInStock = false;
+
+                    const drugName = esc(item?.drug_name);
+                    const drugNumber = esc(item?.drug_number);
+                    const dosage = esc(item?.dosage);
+                    const frequency = esc(item?.frequency);
+                    const duration = esc(item?.duration);
+                    const notes = esc(item?.notes || '-');
+                    
+                    const stockStatus = inStock ? 
+                        `<span class="badge bg-success">In Stock (${remainingQty})</span>` : 
+                        `<span class="badge bg-danger">Low Stock (${remainingQty} available, needs ${neededQty})</span>`;
+                    
+                    itemsHtml += `
+                        <tr>
+                            <td>${drugName} (${drugNumber})</td>
+                            <td>${dosage}</td>
+                            <td>${frequency}</td>
+                            <td>${duration}</td>
+                            <td>${neededQty}</td>
+                            <td>${stockStatus}</td>
+                            <td>${notes}</td>
+                        </tr>
+                    `;
+                });
+                
+                const statusBadge = samplePrescriptionDetails.status === 'pending' ? 
+                    '<span class="badge bg-warning">Pending</span>' : 
+                    '<span class="badge bg-success">Dispensed</span>';
+                
+                const content = `
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> ${esc(samplePrescriptionDetails.patient_name)} (${esc(samplePrescriptionDetails.patient_number)})</p>
+                            <p><strong>Doctor:</strong> ${esc(samplePrescriptionDetails.doctor_name)}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Prescription Date:</strong> ${esc(samplePrescriptionDetails.created_at)}</p>
+                            <p><strong>Status:</strong> ${statusBadge}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Drug</th>
+                                    <th>Dosage</th>
+                                    <th>Frequency</th>
+                                    <th>Duration</th>
+                                    <th>Qty</th>
+                                    <th>Stock Status</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    ${samplePrescriptionDetails.notes ? `
+                    <div class="alert alert-info mt-3">
+                        <strong>Doctor's Notes:</strong> ${esc(samplePrescriptionDetails.notes)}
+                    </div>
+                    ` : ''}
+                    
+                    <div class="alert ${allInStock ? 'alert-success' : 'alert-warning'} mt-3">
+                        <i class="fas ${allInStock ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>
+                        ${allInStock ? 
+                            'All items are available in stock and ready for dispensing' : 
+                            'Some items have insufficient stock. Please verify before dispensing'}
+                    </div>
+                `;
+                
+                $('#prescriptionDetailsContent').html(content);
+                $('#dispensePrescriptionBtn').prop('disabled', !allInStock);
+                $('#prescriptionDetailsModal').modal('show');
+            }, 1000);
+        });
+        
+        // Show dispense modal
+        $(document).on('click', '#dispensePrescriptionBtn', function() {
+            $('#dispenseErrors').addClass('d-none').empty();
+            $('#dispenseModal').modal('show');
+        });
+        
+        // Confirm dispense
+        $('#confirmDispenseBtn').click(function() {
+            if (!currentPrescriptionId) return;
+            
+            const paymentMethod = $('#paymentMethod').val();
+            const $btn = $(this);
+            
+            $btn.prop('disabled', true).html(`
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Dispensing...
+            `);
+            
+            // Simulate API call with timeout
+            setTimeout(() => {
+                // Simulate successful response
+                const response = {
+                    success: true,
+                    sale_id: 5001,
+                    sale_number: "SALE-2023-5001",
+                    total_amount: 2450.00
+                };
+                
+                if (response.success) {
+                    $('#dispenseModal').modal('hide');
+                    $('#prescriptionDetailsModal').modal('hide');
+                    
+                    // Show success toast/notification
+                    showToast('success', 'Prescription Dispensed', `
+                        Prescription dispensed successfully!\nSale Number: ${esc(response.sale_number)}\nTotal Amount: KES ${Number(response.total_amount).toFixed(2)}
+                    `.trim());
+                    
+                    // Refresh prescriptions list
+                    loadPrescriptions();
+                } else {
+                    $('#dispenseErrors')
+                        .html(`<i class="fas fa-exclamation-circle me-2"></i>Failed to dispense prescription`)
+                        .removeClass('d-none');
+                }
+                
+                $btn.prop('disabled', false).html(`
+                    <i class="fas fa-check me-1"></i> Confirm Dispense
+                `);
+            }, 1500);
+        });
+        
+        // Show toast notification
+        function showToast(type, title, message) {
+            const safeType = safeToastType(type);
+            const safeTitle = esc(title);
+            const safeMessage = esc(message).replace(/\n/g, '<br>');
+            const toast = $(`
+                <div class="toast align-items-center text-white bg-${safeType} border-0 position-fixed bottom-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <strong>${safeTitle}</strong><br>
+                            ${safeMessage}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `);
+            
+            $('body').append(toast);
+            const bsToast = new bootstrap.Toast(toast[0]);
+            bsToast.show();
+            
+            toast.on('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+        
+        // Refresh prescriptions
+        $('#refreshPrescriptionsBtn').click(function() {
+            loadPrescriptions();
+        });
+        
+        // Initial load
+        loadPrescriptions();
+    });
+    </script>
+</body>
+</html>

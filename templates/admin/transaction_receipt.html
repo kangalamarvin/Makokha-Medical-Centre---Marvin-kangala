@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction Receipt</title>
+  <style>
+    @page { size: auto; margin: 8mm; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .receipt-container { max-width: 700px; margin: 0 auto; }
+    .receipt-header { text-align: center; margin-bottom: 20px; }
+    .receipt-details { margin-bottom: 20px; }
+    .receipt-items table { width: 100%; border-collapse: collapse; }
+    .receipt-items th, .receipt-items td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .receipt-items th { background-color: #f2f2f2; }
+    .receipt-total { margin-top: 20px; text-align: right; font-weight: bold; }
+    .no-print { margin-bottom: 15px; text-align: right; }
+    .btn { display: inline-block; padding: 10px 16px; border: 1px solid #333; background: #fff; color: #333; text-decoration: none; cursor: pointer; }
+    .btn + .btn { margin-left: 8px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+      .signature-placeholder,
+      .signature-drawing { display: none !important; }
+      .signature-display button,
+      .signature-display .btn,
+      #penModeIndicator { display: none !important; }
+      .signature-display img { border: none !important; max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-container" data-receipt-root="1">
+    <div class="no-print">
+      <button class="btn" type="button" id="printTransactionReceiptBtn">Print / Save PDF</button>
+      {% set email_share_endpoint = url_for('api_transaction_share_email', transaction_id=transaction.id) %}
+      {% set email_fallback_pdf = url_for('api_transaction_receipt_pdf', transaction_id=transaction.id) %}
+      {% set email_button_class = 'btn' %}
+      {% include 'components/email_share_button.html' %}
+      {% set whatsapp_share_endpoint = url_for('api_transaction_share_whatsapp', transaction_id=transaction.id) %}
+      {% set whatsapp_fallback_pdf = url_for('api_transaction_receipt_pdf', transaction_id=transaction.id) %}
+      {% set whatsapp_default_phone = '' %}
+      {% set whatsapp_button_class = 'btn' %}
+      {% include 'components/whatsapp_share_button.html' %}
+    </div>
+
+    <div class="receipt-header">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" style="height: 52px; display:block; margin:0 auto 8px auto;">
+      <div>makokhamedicalcentre2025@gmail.com</div>
+      <div style="font-size: 0.9rem;">+254 741256531 / +254 713580997</div>
+      <h3>Transaction Receipt</h3>
+    </div>
+
+    <div class="receipt-details">
+      <p><strong>Receipt #:</strong> {{ transaction.receipt_number or ('TX-' ~ transaction.id) }}</p>
+      <p><strong>Transaction #:</strong> {{ transaction.transaction_number }}</p>
+      <p><strong>Type:</strong> {{ transaction.transaction_type|capitalize }}</p>
+      <p><strong>Date:</strong> {{ transaction.created_at|eat_time('%Y-%m-%d %H:%M EAT') if transaction.created_at else '' }}</p>
+      {% if transaction.receipt_reprinted_at %}
+        <p><strong>Reprinted:</strong> {{ transaction.receipt_reprinted_at|eat_time('%Y-%m-%d %H:%M EAT') }}</p>
+      {% endif %}
+      <p><strong>Processed By:</strong> {{ transaction.user.username if transaction.user else '' }}</p>
+      {% if transaction.notes %}
+        <p><strong>Notes:</strong> {{ transaction.notes }}</p>
+      {% endif %}
+    </div>
+
+    {% if sale %}
+      <div class="receipt-items">
+        <h4>Sale Items</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Drug</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in sale.items %}
+              <tr>
+                <td>{{ item.drug_name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>KSh {{ "%.2f"|format(item.unit_price) }}</td>
+                <td>KSh {{ "%.2f"|format(item.total_price) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="receipt-total">Total: KSh {{ "%.2f"|format(sale.total_amount) }}</div>
+
+      <div class="receipt-details" style="margin-top: 12px;">
+        <h4>Payment Summary</h4>
+        <p><strong>Payment Method:</strong> {{ (sale.payment_method or 'cash')|upper }}</p>
+        <p><strong>Amount:</strong> KSh {{ "%.2f"|format(sale.total_amount or 0) }}</p>
+        {% if (sale.payment_method or 'cash') == 'cash' %}
+          <p><strong>Amount Given (Cash):</strong> {% if amount_given is defined and amount_given is not none %}KSh {{ "%.2f"|format(amount_given) }}{% else %}N/A{% endif %}</p>
+          {% set _bal = (change if (change is defined and change is not none) else ((amount_given or 0) - (sale.total_amount or 0))) if (amount_given is defined and amount_given is not none) else none %}
+          <p><strong>{{ 'Change' if (_bal is not none and _bal >= 0) else 'Balance Due' if (_bal is not none and _bal < 0) else 'Change' }}:</strong>
+            {% if _bal is not none %}KSh {{ "%.2f"|format(_bal) }}{% else %}N/A{% endif %}
+          </p>
+        {% endif %}
+      </div>
+
+    {% elif refund %}
+      <div class="receipt-items">
+        <h4>Refund Items</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in refund.items %}
+              <tr>
+                <td>{{ item.sale_item.drug_name if item.sale_item else 'Item' }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>KSh {{ "%.2f"|format(item.unit_price) }}</td>
+                <td>KSh {{ "%.2f"|format(item.total_price) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="receipt-total">Refund Total: KSh {{ "%.2f"|format(refund.total_amount) }}</div>
+
+    {% elif expense %}
+      <div class="receipt-details">
+        <h4>Expense</h4>
+        <p><strong>Category:</strong> {{ expense.category if expense else '' }}</p>
+        <p><strong>Description:</strong> {{ expense.description if expense else '' }}</p>
+      </div>
+      <div class="receipt-total">Amount: KSh {{ "%.2f"|format(transaction.amount) }}</div>
+
+    {% elif purchase %}
+      <div class="receipt-details">
+        <h4>Purchase</h4>
+        <p><strong>Supplier:</strong> {{ purchase.supplier if purchase else '' }}</p>
+        <p><strong>Invoice #:</strong> {{ purchase.invoice_number if purchase else '' }}</p>
+      </div>
+      <div class="receipt-total">Amount: KSh {{ "%.2f"|format(transaction.amount) }}</div>
+
+    {% else %}
+      <div class="receipt-total">Amount: KSh {{ "%.2f"|format(transaction.amount) }}</div>
+    {% endif %}
+
+    <div style="margin-top: 24px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap;">
+        <div style="flex:0 0 45%;min-width:250px;">
+          {% include 'components/signature_pad.html' %}
+        </div>
+        <div style="flex:0 0 45%;min-width:200px;">
+          {{ generate_rubber_stamp() }}
+        </div>
+      </div>
+    </div>
+
+    <div class="receipt-header" style="margin-top: 10px;">
+      {{ render_receipt_verification_qr('transaction', transaction.id, transaction.receipt_number or transaction.transaction_number) }}
+    </div>
+
+    <div class="receipt-header" style="margin-top: 16px;">
+      <div>Thank you for your purchase.</div>
+      <div>Goods sold are not returnable without original receipt.</div>
+    </div>
+
+  </div>
+  <script>
+    document.getElementById('printTransactionReceiptBtn')?.addEventListener('click', function() {
+      const basePdfUrl = {{ url_for('api_transaction_receipt_pdf', transaction_id=transaction.id)|tojson }};
+      const params = new URLSearchParams(window.location.search || '');
+      const forward = new URLSearchParams();
+      if (params.has('amount_given')) {
+        forward.set('amount_given', params.get('amount_given'));
+      }
+      if (params.has('change')) {
+        forward.set('change', params.get('change'));
+      }
+      const url = forward.toString() ? (basePdfUrl + '?' + forward.toString()) : basePdfUrl;
+      const win = window.open(url, '_blank');
+      if (!win) {
+        window.location.href = url;
+      }
+    });
+  </script>
+</body>
+</html>

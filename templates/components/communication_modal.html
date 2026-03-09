@@ -1,0 +1,2144 @@
+<!-- Communication Modal - WhatsApp-like Interface -->
+<div id="communication-modal" class="communication-modal" style="display: none;">
+    <div class="communication-container" id="communication-drag-container">
+        <!-- Header -->
+        <div class="communication-header" id="communication-drag-handle">
+            <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Messages</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-light" id="open-call-history" title="Call log" aria-label="Call log">
+                        <i class="bi bi-clock-history"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" id="open-comm-settings" title="Settings" aria-label="Settings">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" id="minimize-chat" title="Minimize">
+                        <i class="bi bi-dash-lg"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" id="close-chat" title="Close">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="communication-content">
+            <!-- Sidebar - User List -->
+            <div class="users-sidebar" id="users-sidebar">
+                <div class="users-search p-2">
+                    <input type="text" class="form-control" id="search-users" placeholder="Search users...">
+                </div>
+                <div class="users-list" id="users-list">
+                    <!-- Users will be loaded here dynamically -->
+                    <div class="text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 small">Loading users...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call History Panel (overlay) -->
+            <div class="call-history-panel" id="call-history-panel" style="display:none;">
+                <div class="call-history-header">
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-clock-history"></i>
+                            <strong>Call Log</strong>
+                        </div>
+                        <div class="small text-muted" id="call-history-meta">Loading...</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-call-history" title="Refresh">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="close-call-history" title="Close">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="call-history-filters px-3 py-2">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Call log filters">
+                        <button type="button" class="btn btn-outline-secondary active" data-call-filter="all">All</button>
+                        <button type="button" class="btn btn-outline-secondary" data-call-filter="missed">Missed</button>
+                        <button type="button" class="btn btn-outline-secondary" data-call-filter="incoming">Incoming</button>
+                        <button type="button" class="btn btn-outline-secondary" data-call-filter="outgoing">Outgoing</button>
+                        <button type="button" class="btn btn-outline-secondary" data-call-filter="failed">Failed</button>
+                    </div>
+                </div>
+
+                <div class="call-history-list" id="call-history-list">
+                    <div class="text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 small">Loading call history...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Communication Settings Panel (overlay) -->
+            <div class="comm-settings-panel" id="comm-settings-panel" style="display:none;">
+                <div class="comm-settings-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-gear"></i>
+                        <strong>Communication Settings</strong>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="close-comm-settings" title="Close">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="comm-settings-body p-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="comm-enable-notifications">
+                        <label class="form-check-label" for="comm-enable-notifications">Enable notifications</label>
+                    </div>
+
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="comm-enable-sounds">
+                        <label class="form-check-label" for="comm-enable-sounds">Enable sounds</label>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold">Message tone</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select" id="comm-message-tone">
+                                    <option value="chime">Chime</option>
+                                    <option value="pop">Pop</option>
+                                    <option value="beep">Beep</option>
+                                    <option value="none">None</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" id="comm-test-message-tone" title="Test message tone">
+                                    <i class="bi bi-volume-up"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold">Incoming call ringtone</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select" id="comm-call-ringtone">
+                                    <option value="classic">Classic</option>
+                                    <option value="fast">Fast</option>
+                                    <option value="slow">Slow</option>
+                                    <option value="none">None</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" id="comm-test-call-ringtone" title="Test call ringtone">
+                                    <i class="bi bi-volume-up"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="comm-reset-settings">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset defaults
+                        </button>
+                    </div>
+
+                    <div class="small text-muted mt-2">Settings are stored on this device for your account.</div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area" id="chat-area">
+                <div class="no-chat-selected">
+                    <i class="bi bi-chat-text display-1 text-muted"></i>
+                    <p class="text-muted mt-3">Select a user to start chatting</p>
+                </div>
+
+                <!-- Active Chat -->
+                <div class="active-chat" id="active-chat" style="display: none;">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-link back-to-users d-md-none" id="back-to-users-btn" title="Back">
+                                <i class="bi bi-arrow-left"></i>
+                            </button>
+                            <div class="user-avatar me-2" id="chat-user-avatar">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 chat-user-name-header" id="chat-user-name">User Name</h6>
+                                <small class="text-muted chat-user-status-text" id="chat-user-status">offline</small>
+                            </div>
+                            <div class="chat-actions">
+                                <button class="btn btn-sm btn-outline-secondary chat-action-btn" id="chat-search-btn" title="Search messages">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary chat-action-btn" id="voice-call-btn" title="Voice Call">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary chat-action-btn" id="video-call-btn" title="Video Call">
+                                    <i class="bi bi-camera-video-fill"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary chat-action-btn" id="chat-settings-btn" title="Chat settings">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="chat-search-bar" id="chat-search-bar" style="display: none;">
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="text" class="form-control form-control-sm" id="chat-search-input" placeholder="Search in this chat...">
+                            <button class="btn btn-sm btn-outline-secondary" id="chat-search-close" title="Close">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="small text-muted mt-1" id="chat-search-meta" style="display:none;"></div>
+                    </div>
+
+                    <!-- Messages Container -->
+                    <div class="messages-container" id="messages-container">
+                        <!-- Messages will be loaded here -->
+                    </div>
+
+                    <!-- Typing Indicator -->
+                    <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                        <span class="typing-dots">
+                            <span></span><span></span><span></span>
+                        </span>
+                        <span class="typing-text">typing...</span>
+                    </div>
+
+                    <!-- Reply Preview -->
+                    <div class="reply-preview" id="reply-preview" style="display: none;">
+                        <div class="reply-preview-content">
+                            <div class="reply-preview-label">Replying to</div>
+                            <div class="reply-preview-text" id="reply-preview-text"></div>
+                        </div>
+                        <button class="btn btn-sm btn-link" id="reply-cancel-btn" title="Cancel reply">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Message Input -->
+                    <div class="message-input">
+                        <button class="btn btn-link emoji-picker-btn" id="emoji-btn" title="Emoji" aria-label="Emoji">
+                            <i class="bi bi-emoji-smile"></i>
+                        </button>
+                        <textarea class="form-control message-input-field" id="message-input" placeholder="Type a message..." rows="1" autocomplete="off" autocorrect="off" autocapitalize="sentences"></textarea>
+                        <button class="btn btn-link send-message-btn" id="send-message-btn" aria-label="Send">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call Modal -->
+<div id="call-modal" class="call-modal" style="display: none;">
+    <div class="call-container">
+        <div class="call-content">
+            <!-- Outgoing Call -->
+            <div class="outgoing-call" id="outgoing-call" style="display: none;">
+                <div class="caller-info text-center">
+                    <div class="caller-avatar mb-3">
+                        <i class="bi bi-person-circle display-1"></i>
+                    </div>
+                    <h4 id="outgoing-callee-name">User Name</h4>
+                    <p class="text-muted" id="outgoing-call-status">Calling...</p>
+                </div>
+                <div class="call-actions mt-4">
+                    <button class="btn btn-danger btn-lg" id="cancel-call-btn">
+                        <i class="bi bi-telephone-x-fill me-2"></i>Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Incoming Call -->
+            <div class="incoming-call" id="incoming-call" style="display: none;">
+                <div class="caller-info text-center">
+                    <div class="caller-avatar mb-3">
+                        <i class="bi bi-person-circle display-1"></i>
+                    </div>
+                    <h4 id="incoming-caller-name">User Name</h4>
+                    <p class="text-muted" id="incoming-call-type">Incoming Voice Call</p>
+                </div>
+                <div class="call-actions mt-4">
+                    <button class="btn btn-success btn-lg me-2" id="accept-call-btn">
+                        <i class="bi bi-telephone-fill me-2"></i>Accept
+                    </button>
+                    <button class="btn btn-danger btn-lg" id="reject-call-btn">
+                        <i class="bi bi-telephone-x-fill me-2"></i>Reject
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Call -->
+            <div class="active-call" id="active-call" style="display: none;">
+                <!-- Dedicated audio element for voice calls (keeps audio playing even when video UI is hidden) -->
+                <audio id="remote-audio" autoplay style="display:none;"></audio>
+                <!-- Video Container -->
+                <div class="video-container" id="video-container" style="display: none;">
+                    <video id="remote-video" class="remote-video" autoplay playsinline></video>
+                    <video id="local-video" class="local-video" autoplay playsinline muted></video>
+                    <button class="btn btn-sm btn-secondary toggle-camera-btn" id="toggle-camera-btn">
+                        <i class="bi bi-camera-video-fill"></i>
+                    </button>
+                </div>
+
+                <!-- Voice Call Display -->
+                <div class="voice-call-display" id="voice-call-display" style="display: none;">
+                    <div class="caller-info text-center">
+                        <div class="caller-avatar mb-3">
+                            <i class="bi bi-person-circle display-1"></i>
+                        </div>
+                        <h4 id="active-caller-name">User Name</h4>
+                        <p class="text-muted" id="call-duration">00:00</p>
+                    </div>
+                </div>
+
+                <!-- Call Controls -->
+                <div class="call-controls">
+                    <button class="btn btn-secondary" id="mute-btn" title="Mute">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                    <button class="btn btn-danger" id="end-call-btn" title="End Call">
+                        <i class="bi bi-telephone-x-fill"></i>
+                    </button>
+                    <button class="btn btn-secondary" id="toggle-video-btn" style="display: none;" title="Toggle Video">
+                        <i class="bi bi-camera-video-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Communication Modal Styles */
+.communication-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 600px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+}
+
+.communication-container {
+    position: relative;
+}
+
+.call-history-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 10002;
+    background: white;
+    border-radius: 12px;
+    display: none;
+    flex-direction: column;
+}
+
+.comm-settings-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 10003;
+    background: white;
+    border-radius: 12px;
+    display: none;
+    flex-direction: column;
+}
+
+.comm-settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+}
+
+.comm-settings-body {
+    flex: 1;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.call-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+}
+
+.call-history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    background: #f8f9fa;
+}
+
+.call-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+
+.call-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f3f5;
+    flex: 0 0 auto;
+}
+
+.call-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.call-details {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.call-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.call-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.call-time {
+    font-size: 12px;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.call-badges {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.call-actions {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.communication-modal.minimized {
+    height: 60px;
+    overflow: hidden;
+}
+
+.communication-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.communication-header {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+}
+
+.communication-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Users Sidebar */
+.users-sidebar {
+    width: 280px;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+}
+
+.users-search {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.users-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.user-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.user-item:hover {
+    background: #e9ecef;
+}
+
+.user-item.active {
+    background: #d3e5ff;
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e9ecef;
+    font-size: 24px;
+    color: #6c757d;
+    position: relative;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.user-avatar .online-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background: #28a745;
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.user-info {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.unread-badge {
+    background: #0d6efd;
+    color: white;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Chat Area */
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.no-chat-selected {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.active-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background: white;
+    flex-shrink: 0;
+}
+
+/* Keep chat header controls on one row */
+.chat-header > .d-flex {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.chat-header .flex-grow-1 {
+    min-width: 0;
+}
+
+#chat-user-name,
+#chat-user-status {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.chat-action-btn {
+    padding: 4px 6px !important;
+    min-width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+.chat-action-btn i {
+    font-size: 13px;
+}
+
+/* Back button: icon-only, no background */
+.back-to-users {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #000 !important;
+}
+
+.back-to-users:hover,
+.back-to-users:focus,
+.back-to-users:active {
+    background: transparent !important;
+    color: #000 !important;
+    opacity: 0.85;
+}
+
+.chat-search-bar {
+    padding: 10px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #ffffff;
+}
+
+.chat-user-status {
+    font-size: 12px;
+}
+
+.chat-user-status.online {
+    color: #28a745;
+}
+
+/* Messages Container */
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 12px;
+    padding-bottom: 60px; /* keep last message visible above input */
+    background: #f8f9fa;
+}
+
+.message {
+    margin-bottom: 15px;
+    display: flex;
+}
+
+.message.sent {
+    justify-content: flex-end;
+}
+
+.message.received {
+    justify-content: flex-start;
+}
+
+.message-bubble {
+    max-width: 80%;
+    padding: 8px 11px;
+    border-radius: 12px;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message.sent .message-bubble {
+    background: white;
+    color: #333;
+    border-bottom-right-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.message.received .message-bubble {
+    background: #0d6efd;
+    color: white;
+    border-bottom-left-radius: 4px;
+}
+
+.message-time {
+    font-size: 11px;
+    margin-top: 4px;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-edited {
+    font-size: 10px;
+    opacity: 0.75;
+    margin-right: 4px;
+}
+
+.message-star {
+    font-size: 11px;
+    color: #f0ad4e;
+    margin-right: 4px;
+}
+
+.message-reply-preview {
+    border-left: 3px solid rgba(13, 110, 253, 0.7);
+    padding-left: 8px;
+    margin-bottom: 6px;
+    opacity: 0.9;
+}
+
+.message-reply-preview .reply-snippet {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-reactions {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.reaction-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.06);
+    font-size: 12px;
+}
+
+.message.received .reaction-chip {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.message.sent .message-time {
+    text-align: right;
+    justify-content: flex-end;
+}
+
+.message.received .message-time {
+    text-align: left;
+    justify-content: flex-start;
+}
+
+/* WhatsApp-style tick marks */
+.message-ticks {
+    display: inline-flex;
+    font-size: 13px;
+    margin-left: 3px;
+}
+
+.message-ticks.sent {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.message-ticks.delivered {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.message-ticks.read {
+    color: #0d6efd;
+}
+
+.message.sent .message-bubble .message-ticks.sent,
+.message.sent .message-bubble .message-ticks.delivered {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.message.sent .message-bubble .message-ticks.read {
+    color: #0d6efd;
+}
+    text-align: left;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    padding: 10px 20px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.typing-dots span {
+    width: 6px;
+    height: 6px;
+    background: #6c757d;
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-8px);
+    }
+}
+
+.typing-text {
+    font-size: 12px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.message-ticks.pending {
+    color: #6c757d;
+}
+
+/* Message Input */
+.message-input {
+    padding: 15px 20px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    flex-shrink: 0;
+}
+
+.reply-preview {
+    padding: 10px 15px;
+    border-top: 1px solid #e0e0e0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.reply-preview-content {
+    flex: 1;
+    min-width: 0;
+    border-left: 3px solid #0d6efd;
+    padding-left: 10px;
+}
+
+.reply-preview-label {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.reply-preview-text {
+    font-size: 13px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-input .message-input-field {
+    flex: 1;
+    resize: none;
+    overflow: hidden;
+}
+
+.emoji-picker-btn,
+.send-message-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Call Modal */
+.call-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.call-container {
+    width: 100%;
+    max-width: 800px;
+    height: 600px;
+    background: #1a1a1a;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.call-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.caller-info {
+    padding: 40px;
+}
+
+.caller-avatar {
+    font-size: 80px;
+}
+
+.call-actions {
+    display: flex;
+    gap: 20px;
+}
+
+/* Video Container */
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+.remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.local-video {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 200px;
+    height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid white;
+}
+
+.toggle-camera-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+}
+
+/* Voice Call Display */
+.voice-call-display {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Call Controls */
+.call-controls {
+    padding: 30px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.call-controls .btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 24px;
+}
+
+/* Responsive Design for All Screen Sizes */
+
+/* Back button hidden by default */
+#communication-modal .back-to-users,
+.back-to-users {
+    display: none !important;
+    padding: 0 !important;
+    margin-right: 4px;
+    font-size: 16px !important;
+    color: #000;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    flex-shrink: 0;
+    width: 28px !important;
+    height: 28px !important;
+    max-width: 28px !important;
+    min-width: 28px !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1 !important;
+}
+
+/* Extra Small Phones (320px - 480px) - MOBILE FIRST */
+@media (max-width: 480px) {
+    .communication-modal {
+        height: 100dvh !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        transform: none !important;
+        border-radius: 0;
+        max-width: 100%;
+    }
+
+    .communication-header {
+        padding: 10px 12px;
+        cursor: default;
+    }
+
+    .communication-header h5 {
+        font-size: 15px;
+    }
+
+    .users-sidebar {
+        width: 100%;
+        position: absolute;
+        height: 100%;
+        z-index: 2;
+        transition: transform 0.3s ease;
+        background: white;
+    }
+
+    .users-sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    .chat-area {
+        width: 100%;
+        position: relative;
+    }
+
+    /* Show back button on mobile */
+    #communication-modal .back-to-users,
+    .back-to-users {
+        display: inline-flex !important;
+        padding: 0 !important;
+        width: 28px !important;
+        height: 28px !important;
+        max-width: 28px !important;
+        min-width: 28px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+    }
+
+    /* User list optimizations */
+    .user-item {
+        padding: 10px 12px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-size: 13px;
+        line-height: 1.3;
+    }
+
+    .user-role {
+        font-size: 11px;
+    }
+
+    .unread-badge {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+
+    /* Chat header - SINGLE ROW layout with reduced sizes */
+    .chat-header {
+        padding: 8px 10px;
+    }
+
+    .chat-header .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        margin-right: 8px !important;
+    }
+
+    .chat-user-name-header {
+        font-size: 13px !important;
+        line-height: 1.2;
+        font-weight: 600;
+    }
+
+    .chat-user-status-text {
+        font-size: 10px !important;
+        display: block;
+        line-height: 1.1;
+        margin-top: 2px;
+    }
+
+    /* Chat action buttons - reduced size, single row */
+    .chat-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+        align-items: center;
+    }
+
+    .chat-action-btn {
+        padding: 3px 5px !important;
+        font-size: 12px !important;
+        min-width: 26px;
+        height: 26px;
+        border-radius: 6px;
+    }
+
+    .chat-action-btn i {
+        font-size: 12px;
+    }
+
+    /* Messages container */
+    .messages-container {
+        padding: 12px 8px;
+        padding-bottom: 60px; /* Extra space to ensure last message visible while typing */
+    }
+
+    .message-bubble {
+        max-width: 80%;
+        padding: 8px 11px;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .message-time {
+        font-size: 9px;
+        margin-top: 3px;
+    }
+
+    .message-ticks {
+        font-size: 11px;
+    }
+
+    .message-edited {
+        font-size: 9px;
+    }
+
+    .message-star {
+        font-size: 10px;
+    }
+
+    .message-reply-preview {
+        margin-bottom: 4px;
+        padding-left: 6px;
+    }
+
+    .message-reply-preview .reply-snippet {
+        font-size: 11px;
+    }
+
+    .reaction-chip {
+        padding: 2px 6px;
+        font-size: 11px;
+        gap: 3px;
+    }
+
+    /* Typing indicator - reduced */
+    .typing-indicator {
+        padding: 6px 12px;
+        position: sticky;
+        bottom: calc(44px + env(safe-area-inset-bottom));
+        z-index: 11;
+    }
+
+    .typing-dots span {
+        width: 5px;
+        height: 5px;
+    }
+
+    .typing-text {
+        font-size: 11px;
+    }
+
+    /* Reply preview */
+    .reply-preview {
+        padding: 8px 12px;
+    }
+
+    .reply-preview-label {
+        font-size: 10px;
+    }
+
+    .reply-preview-text {
+        font-size: 12px;
+    }
+
+    /* Message Input - OPTIMIZED for mobile typing */
+    #communication-modal .message-input,
+    .message-input {
+        padding: 8px 10px !important;
+        gap: 6px !important;
+        background: white;
+        position: sticky;
+        bottom: env(safe-area-inset-bottom);
+        z-index: 10;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+    }
+
+    /* Emoji picker button - reduced */
+    #communication-modal .emoji-picker-btn,
+    .emoji-picker-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #6c757d !important;
+        line-height: 1 !important;
+    }
+
+    /* Message input field - increased length, prevent rotation */
+    #communication-modal .message-input-field,
+    .message-input-field {
+        flex: 1 !important;
+        min-width: 0 !important;
+        font-size: 14px !important; /* Prevent zoom on iOS */
+        padding: 8px 10px !important;
+        min-height: 36px !important;
+        border-radius: 18px !important;
+        /* Prevent text rotation */
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        direction: ltr !important;
+        unicode-bidi: normal !important;
+    }
+
+    /* Send button - reduced */
+    #communication-modal .send-message-btn,
+    .send-message-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #0d6efd !important;
+        line-height: 1 !important;
+    }
+
+    #communication-modal .send-message-btn i,
+    .send-message-btn i {
+        font-size: 15px;
+    }
+
+    /* Search bar - reduced */
+    .chat-search-bar {
+        padding: 8px 12px;
+    }
+
+    .chat-search-bar input {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+    .chat-search-bar .btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    /* Call Modal for Small Phones */
+    .call-container {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        border-radius: 0;
+    }
+
+    .caller-info {
+        padding: 20px;
+    }
+
+    .caller-avatar {
+        font-size: 50px;
+    }
+
+    .call-actions .btn {
+        padding: 10px 18px;
+        font-size: 13px;
+    }
+
+    .local-video {
+        width: 90px;
+        height: 70px;
+        bottom: 12px;
+        right: 12px;
+    }
+
+    .call-controls {
+        padding: 18px 12px;
+        gap: 12px;
+    }
+
+    .call-controls .btn {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+}
+
+/* Small to Medium Phones (481px - 767px) - TABLET PORTRAIT */
+@media (min-width: 481px) and (max-width: 767px) {
+    .communication-modal {
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        transform: none !important;
+        border-radius: 0;
+        max-width: 100%;
+    }
+
+    .communication-header {
+        cursor: default;
+        padding: 12px 15px;
+    }
+
+    .users-sidebar {
+        width: 100%;
+        position: absolute;
+        height: 100%;
+        z-index: 2;
+        transition: transform 0.3s ease;
+        background: white;
+    }
+
+    .users-sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    .chat-area {
+        width: 100%;
+    }
+
+    /* Show back button */
+    #communication-modal .back-to-users,
+    .back-to-users {
+        display: inline-flex !important;
+        padding: 0 !important;
+        width: 28px !important;
+        height: 28px !important;
+        max-width: 28px !important;
+        min-width: 28px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+    }
+
+    /* Chat header - reduced sizes */
+    .chat-header {
+        padding: 10px 15px;
+    }
+
+    .chat-header .user-avatar {
+        width: 38px;
+        height: 38px;
+        font-size: 19px;
+    }
+
+    .chat-user-name-header {
+        font-size: 14px !important;
+        font-weight: 600;
+    }
+
+    .chat-user-status-text {
+        font-size: 11px !important;
+    }
+
+    /* Chat action buttons */
+    .chat-action-btn {
+        padding: 5px 8px !important;
+        font-size: 14px !important;
+        min-width: 32px;
+        height: 32px;
+    }
+
+    .chat-actions {
+        gap: 5px;
+    }
+
+    /* Messages */
+    .messages-container {
+        padding: 15px 12px;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 9px 12px;
+        font-size: 13.5px;
+    }
+
+    .message-time {
+        font-size: 9px;
+    }
+
+    /* Message input */
+    #communication-modal .message-input,
+    .message-input {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+    }
+
+    #communication-modal .emoji-picker-btn,
+    .emoji-picker-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #6c757d !important;
+        line-height: 1 !important;
+    }
+
+    #communication-modal .message-input-field,
+    .message-input-field {
+        flex: 1 !important;
+        min-width: 0 !important;
+        font-size: 14px !important;
+        padding: 8px 10px !important;
+        min-height: 36px !important;
+        border-radius: 18px !important;
+        /* Prevent text rotation */
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        direction: ltr !important;
+        unicode-bidi: normal !important;
+    }
+
+    #communication-modal .send-message-btn,
+    .send-message-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #0d6efd !important;
+        line-height: 1 !important;
+    }
+
+    #communication-modal .send-message-btn i,
+    .send-message-btn i {
+        font-size: 15px;
+    }
+
+    /* Call elements */
+    .local-video {
+        width: 110px;
+        height: 85px;
+    }
+
+    .call-controls .btn {
+        width: 52px;
+        height: 52px;
+        font-size: 20px;
+    }
+}
+
+/* Desktop & Tablet (768px+) - match the compact mobile look without changing layout */
+@media (min-width: 768px) {
+    #communication-modal .chat-header {
+        padding: 8px 10px;
+    }
+
+    #communication-modal .chat-header .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        margin-right: 8px !important;
+    }
+
+    #communication-modal .chat-user-name-header {
+        font-size: 13px !important;
+        line-height: 1.2;
+        font-weight: 600;
+    }
+
+    #communication-modal .chat-user-status-text {
+        font-size: 10px !important;
+        display: block;
+        line-height: 1.1;
+        margin-top: 2px;
+    }
+
+    #communication-modal .chat-actions {
+        gap: 4px;
+    }
+
+    #communication-modal .chat-action-btn {
+        padding: 3px 5px !important;
+        font-size: 12px !important;
+        min-width: 26px;
+        height: 26px;
+        border-radius: 6px;
+    }
+
+    #communication-modal .chat-action-btn i {
+        font-size: 12px;
+    }
+
+    #communication-modal .messages-container {
+        padding: 12px 8px;
+        padding-bottom: 60px;
+    }
+
+    #communication-modal .message-bubble {
+        max-width: 70%;
+        padding: 8px 11px;
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    #communication-modal .message-time {
+        font-size: 9px;
+        margin-top: 3px;
+    }
+
+    #communication-modal .message-edited {
+        font-size: 9px;
+    }
+
+    #communication-modal .reaction-chip {
+        padding: 2px 6px;
+        font-size: 11px;
+        gap: 3px;
+    }
+
+    #communication-modal .typing-indicator {
+        padding: 6px 12px;
+        position: sticky;
+        bottom: calc(44px + env(safe-area-inset-bottom));
+        z-index: 11;
+    }
+
+    #communication-modal .typing-dots span {
+        width: 5px;
+        height: 5px;
+    }
+
+    #communication-modal .typing-text {
+        font-size: 11px;
+    }
+
+    #communication-modal .reply-preview {
+        padding: 8px 12px;
+    }
+
+    #communication-modal .reply-preview-label {
+        font-size: 10px;
+    }
+
+    #communication-modal .reply-preview-text {
+        font-size: 12px;
+    }
+
+    #communication-modal .message-input {
+        padding: 8px 10px;
+        gap: 6px;
+        background: white;
+        position: sticky;
+        bottom: env(safe-area-inset-bottom);
+        z-index: 10;
+    }
+
+    #communication-modal .emoji-picker-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #6c757d !important;
+    }
+
+    #communication-modal .message-input-field {
+        flex: 1;
+        min-width: 0;
+        font-size: 14px !important;
+        padding: 8px 10px;
+        min-height: 36px;
+        border-radius: 18px;
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        direction: ltr !important;
+        unicode-bidi: normal !important;
+    }
+
+    #communication-modal .send-message-btn {
+        padding: 4px !important;
+        font-size: 18px !important;
+        min-width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #0d6efd !important;
+    }
+
+    #communication-modal .send-message-btn i {
+        font-size: 15px;
+    }
+
+    #communication-modal .chat-search-bar {
+        padding: 8px 12px;
+    }
+
+    #communication-modal .chat-search-bar input {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+    #communication-modal .chat-search-bar .btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+}
+
+/*
+ * Namespacing guard: prevent generic chat styles from other pages/stylesheets
+ * (e.g., WhatsApp-like UI) overriding the communication modal.
+ */
+#communication-modal .chat-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background: white;
+    flex-shrink: 0;
+}
+
+#communication-modal .chat-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+#communication-modal .chat-action-btn {
+    padding: 4px 6px !important;
+    min-width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+#communication-modal .chat-action-btn i {
+    font-size: 13px;
+}
+
+#communication-modal .messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 12px;
+    padding-bottom: 60px;
+    background: #f8f9fa;
+}
+
+#communication-modal .message-input {
+    background: white;
+}
+
+/* Tablets Portrait (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .communication-modal {
+        width: 90% !important;
+        height: 85% !important;
+        max-width: 700px;
+        max-height: 650px;
+    }
+
+    .users-sidebar {
+        width: 240px;
+    }
+
+    .message-bubble {
+        max-width: 65%;
+    }
+
+    .call-container {
+        max-width: 90%;
+        height: 80%;
+    }
+
+    .local-video {
+        width: 150px;
+        height: 110px;
+    }
+}
+
+/* Small Desktops (1025px - 1280px) */
+@media (min-width: 1025px) and (max-width: 1280px) {
+    .communication-modal {
+        width: 750px;
+        height: 580px;
+    }
+
+    .users-sidebar {
+        width: 260px;
+    }
+}
+
+/* Large Desktops (1281px - 1600px) */
+@media (min-width: 1281px) and (max-width: 1600px) {
+    .communication-modal {
+        width: 850px;
+        height: 650px;
+    }
+
+    .users-sidebar {
+        width: 300px;
+    }
+}
+
+/* Extra Large Desktops (1601px+) */
+@media (min-width: 1601px) {
+    .communication-modal {
+        width: 950px;
+        height: 700px;
+    }
+
+    .users-sidebar {
+        width: 320px;
+    }
+
+    .message-bubble {
+        max-width: 55%;
+    }
+}
+
+/* Landscape Phone Orientation */
+@media (max-width: 896px) and (orientation: landscape) {
+    .communication-modal {
+        width: 100% !important;
+        height: 100% !important;
+        transform: none !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+
+    .users-sidebar {
+        width: 35%;
+        min-width: 200px;
+    }
+
+    .messages-container {
+        padding: 15px;
+    }
+
+    .call-container {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .local-video {
+        width: 140px;
+        height: 105px;
+    }
+}
+
+/* Tablet Landscape */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    .communication-modal {
+        width: 85%;
+        height: 90%;
+        max-width: 900px;
+    }
+
+    .users-sidebar {
+        width: 280px;
+    }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .user-item {
+        padding: 15px;
+    }
+
+    .user-item:active {
+        background: #d3e5ff;
+    }
+
+    .message-input input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .users-search input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .btn {
+        min-height: 44px; /* Touch target size */
+        min-width: 44px;
+    }
+
+    .call-controls .btn {
+        min-width: 60px;
+        min-height: 60px;
+    }
+}
+
+/* High DPI Screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .communication-modal {
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+    }
+
+    .message-bubble {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Print Styles (Hide communication features when printing) */
+@media print {
+    .communication-modal,
+    .call-modal,
+    #communication-float-icon {
+        display: none !important;
+    }
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .communication-modal,
+    .users-sidebar,
+    .typing-dots span {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ========== Emoji Picker Styles ========== */
+#emoji-picker {
+    position: absolute;
+    bottom: 60px;
+    right: 10px;
+    background: white;
+    border: 1px solid var(--secondary-color);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+    z-index: 1000;
+    max-width: 320px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+#emoji-picker.show {
+    display: block;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 6px;
+}
+
+.emoji-item {
+    font-size: 22px;
+    cursor: pointer;
+    padding: 6px;
+    text-align: center;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.emoji-item:hover {
+    background-color: var(--hover-color);
+    transform: scale(1.15);
+}
+
+/* Mobile emoji picker adjustments */
+@media (max-width: 480px) {
+    #emoji-picker {
+        bottom: 50px;
+        right: 5px;
+        left: 5px;
+        max-width: 100%;
+        padding: 10px;
+        max-height: 260px;
+    }
+
+    .emoji-grid {
+        grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+        gap: 4px;
+    }
+
+    .emoji-item {
+        font-size: 20px;
+        padding: 5px;
+    }
+}
+
+/* Tablet emoji picker */
+@media (min-width: 481px) and (max-width: 767px) {
+    #emoji-picker {
+        bottom: 55px;
+        max-width: 340px;
+        max-height: 280px;
+    }
+
+    .emoji-grid {
+        grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+        gap: 5px;
+    }
+
+    .emoji-item {
+        font-size: 21px;
+    }
+}
+
+/* ========== Message Actions Popover ========== */
+.message-actions-popover {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    min-width: 180px;
+    overflow: hidden;
+}
+
+.message-actions-popover .btn {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: #000;
+    border-bottom: 1px solid #f0f0f0;
+    transition: opacity 0.15s;
+}
+
+.message-actions-popover .btn:last-child {
+    border-bottom: none;
+}
+
+.message-actions-popover .btn:hover {
+    background: transparent;
+    opacity: 0.85;
+}
+
+.message-actions-popover .btn i {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+    color: inherit;
+    font-size: 13px;
+}
+
+/* Chat settings popover (created dynamically in JS) */
+#chat-settings-popover {
+    font-size: 13px;
+}
+
+#chat-settings-popover .btn {
+    padding: 6px 8px;
+    font-size: 13px;
+}
+
+/* Quick reactions row */
+.quick-reactions {
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 1px solid #e9ecef;
+    background: #fafafa;
+}
+
+.quick-reaction-btn {
+    font-size: 20px;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.quick-reaction-btn:hover {
+    background: white;
+    transform: scale(1.2);
+}
+
+/* Mobile message actions - reduced sizes */
+@media (max-width: 480px) {
+    .message-actions-popover {
+        min-width: 160px;
+        border-radius: 10px;
+    }
+
+    .message-actions-popover .btn {
+        padding: 6px 9px;
+        font-size: 12px;
+    }
+
+    .message-actions-popover .btn i {
+        margin-right: 8px;
+        width: 14px;
+        font-size: 12px;
+    }
+
+    .quick-reactions {
+        padding: 6px 8px;
+    }
+
+    .quick-reaction-btn {
+        font-size: 17px;
+        padding: 3px 6px;
+    }
+}
+
+/* Tablet message actions */
+@media (min-width: 481px) and (max-width: 767px) {
+    .message-actions-popover {
+        min-width: 170px;
+    }
+
+    .message-actions-popover .btn {
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+
+    .message-actions-popover .btn i {
+        margin-right: 9px;
+        width: 15px;
+    }
+
+    .quick-reactions {
+        padding: 7px 9px;
+    }
+
+    .quick-reaction-btn {
+        font-size: 18px;
+        padding: 3px 7px;
+    }
+}
+</style>

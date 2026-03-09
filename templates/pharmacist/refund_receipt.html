@@ -1,0 +1,302 @@
+{% set embedded = request.args.get('embedded') == '1' or request.args.get('embed') == '1' %}
+{% set _sr = (request.script_root if request is defined else '') %}
+
+{% if not embedded %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ _sr }}/vendor/jsdelivr/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css';">
+<div class="no-print" style="max-width: 500px; margin: 0 auto 10px auto; text-align: right;">
+    <button id="printReceipt" class="btn btn-primary btn-sm">Print Receipt</button>
+    <button id="saveRefundReceiptPdf" class="btn btn-outline-primary btn-sm">Save Receipt PDF</button>
+    <button id="closeReceipt" class="btn btn-secondary btn-sm">Close</button>
+</div>
+{% endif %}
+
+<div class="no-print" style="max-width: 500px; margin: 0 auto 10px auto; text-align: right;">
+    {% set email_share_endpoint = url_for('api_refund_share_email', refund_id=refund.id) %}
+    {% set email_fallback_pdf = url_for('api_refund_receipt_pdf', refund_id=refund.id) %}
+    {% include 'components/email_share_button.html' %}
+    {% set whatsapp_share_endpoint = url_for('api_refund_share_whatsapp', refund_id=refund.id) %}
+    {% set whatsapp_fallback_pdf = url_for('api_refund_receipt_pdf', refund_id=refund.id) %}
+    {% set whatsapp_default_phone = '' %}
+    {% include 'components/whatsapp_share_button.html' %}
+</div>
+<div class="receipt-container" data-receipt-root="1" data-receipt-source-url="{{ url_for('refund_receipt', refund_id=refund.id) }}">
+    <div class="receipt-header text-center mb-4">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" class="logo mb-2">
+        <p class="mb-1">makokhamedicalcentre2025@gmail.com</p>
+        <p class="mb-1">+254 741256531 / +254 713580997</p>
+        <h5 class="mt-3">REFUND RECEIPT</h5>
+    </div>
+    
+    <div class="receipt-info mb-4">
+        <p><strong>Refund No:</strong> {{ refund.refund_number }}</p>
+        <p><strong>Date:</strong> {{ refund.created_at|eat_time('%Y-%m-%d %H:%M EAT') }}</p>
+        <p><strong>Patient:</strong> {{ refund.sale.patient.decrypted_name if refund.sale.patient else 'Walk-in Customer' }}</p>
+        <p><strong>Pharmacist:</strong> {{ refund.user.username }}</p>
+        {% if refund.sale.bulk_sale_number %}
+        <p><strong>Bulk Sale #:</strong> {{ refund.sale.bulk_sale_number }}</p>
+        {% endif %}
+        <p><strong>Original Sale:</strong> {{ refund.sale.sale_number }}</p>
+    </div>
+    
+    <div class="receipt-items mb-4">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th class="text-center">#</th>
+                    <th class="text-left">Item</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-center">Price</th>
+                    <th class="text-center">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in refund.items %}
+                <tr>
+                    <td class="text-center">{{ loop.index }}</td>
+                    <td class="text-left">{{ item.sale_item.drug.name }}</td>
+                    <td class="text-center">{{ item.quantity }}</td>
+                    <td class="text-end">{{ "Ksh {:,.2f}".format(item.unit_price) }}</td>
+                    <td class="text-end">{{ "Ksh {:,.2f}".format(item.total_price) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="4" class="text-end">Total Refund:</th>
+                    <th class="text-end">{{ "Ksh {:,.2f}".format(refund.total_amount) }}</th>
+                </tr>
+                <tr>
+                    <th colspan="4" class="text-end">Refund Method:</th>
+                    <th class="text-end">Original Payment Method</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    
+    <div class="receipt-footer text-center mt-4">
+        <div class="signature-section mmc-signature-section" style="margin-bottom:20px;">
+            <div class="mmc-signature-back">
+                {% include 'components/signature_pad.html' %}
+            </div>
+            <div class="mmc-stamp-front">
+                {{ generate_rubber_stamp() }}
+            </div>
+        </div>
+        <div class="mb-2">
+            {{ render_receipt_verification_qr('refund', refund.id, refund.refund_number) }}
+        </div>
+        <p class="mb-1">Thank you for your purchase.</p>
+        <p class="mb-1">Goods sold are not returnable without original receipt.</p>
+    </div>
+</div>
+
+{% if not embedded %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var printBtn = document.getElementById('printReceipt');
+        var closeBtn = document.getElementById('closeReceipt');
+        if (printBtn) {
+            printBtn.addEventListener('click', async function() {
+                var exporter = window.MMC_RECEIPT_EXPORT;
+                if (!exporter || typeof exporter.printPdf !== 'function') {
+                    alert('Receipt PDF exporter is not available on this page.');
+                    return;
+                }
+                var ok = await exporter.printPdf();
+                if (!ok) {
+                    alert('Unable to open generated receipt PDF for print.');
+                }
+            });
+        }
+        var saveBtn = document.getElementById('saveRefundReceiptPdf');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                var exporter = window.MMC_RECEIPT_EXPORT;
+                if (!exporter || typeof exporter.downloadPdf !== 'function') {
+                    alert('Receipt PDF exporter is not available on this page.');
+                    return;
+                }
+                var ref = {{ (refund.refund_number or ('refund-' ~ refund.id))|tojson }};
+                var ok = await exporter.downloadPdf(ref);
+                if (!ok) {
+                    alert('Unable to save receipt PDF.');
+                }
+            });
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() { window.close(); });
+        }
+    });
+</script>
+{% endif %}
+
+<style>
+@page {
+    size: auto;
+    margin: 8mm;
+}
+
+.receipt-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 25px;
+    border: 2px solid #2367ef;
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.logo {
+    max-height: 80px;
+    max-width: 100%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.receipt-header {
+    text-align: center;
+}
+
+.receipt-header h3 {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #2367ef;
+}
+
+.receipt-header h5 {
+    border-top: 2px dashed #2367ef;
+    border-bottom: 2px dashed #2367ef;
+    padding: 8px 0;
+    margin: 15px 0;
+    color: #1132d9;
+}
+
+.receipt-info {
+    margin-bottom: 20px;
+}
+
+.receipt-info p {
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+.table-sm th, .table-sm td {
+    padding: 5px 10px;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Keep receipt tables on default styling regardless of dashboard table themes */
+.receipt-container .table,
+.receipt-container .table th,
+.receipt-container .table td {
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+.receipt-container .table thead th {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+.receipt-container .table tbody tr:nth-child(even),
+.receipt-container .table tbody tr:hover {
+    background: transparent !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-left {
+    text-align: left !important;
+}
+
+.text-end {
+    text-align: right !important;
+}
+
+.mmc-signature-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: nowrap;
+}
+
+.mmc-signature-back {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 45%;
+    min-width: 250px;
+}
+
+.mmc-stamp-front {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 45%;
+    min-width: 200px;
+    margin-left: auto;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.mmc-stamp-front svg {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+@media print {
+    body {
+        background: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .receipt-container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Hide signature drawing tools and buttons */
+    .signature-placeholder,
+    .signature-drawing {
+        display: none !important;
+    }
+    
+    .signature-display button,
+    .signature-display .btn {
+        display: none !important;
+    }
+    
+    #signatureCanvas {
+        border: none !important;
+    }
+    
+    .signature-display img {
+        border: none !important;
+        max-width: 100%;
+    }
+    
+    #penModeIndicator {
+        display: none !important;
+    }
+    
+    /* Ensure rubber stamp is visible */
+    svg {
+        display: block !important;
+    }
+}
+</style>

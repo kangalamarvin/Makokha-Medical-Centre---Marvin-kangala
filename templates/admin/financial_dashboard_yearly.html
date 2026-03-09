@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Yearly Financial Report Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 text-gray-800">Annual Financial Report</h1>
+                    <p class="text-gray-600 mb-0">Fiscal Year: <strong>{{ year }}</strong></p>
+                </div>
+                <form method="POST" class="d-flex gap-2">
+                    <select name="year" class="form-control" style="width: 120px;">
+                        {% for y in range(2020, date.today().year + 2) %}
+                            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary">View</button>
+                    <a href="{{ url_for('financial_dashboard_daily') }}" class="btn btn-secondary">Daily</a>
+                    <a href="{{ url_for('financial_dashboard_weekly') }}" class="btn btn-secondary">Weekly</a>
+                    <a href="{{ url_for('financial_dashboard_monthly') }}" class="btn btn-secondary">Monthly</a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-primary font-weight-bold text-uppercase mb-1">Annual Revenue</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('total_revenue', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.revenue_change_pct >= 0 %}
+                            <span class="text-success">↑ {{ "{:.1f}%".format(metrics.revenue_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-danger">↓ {{ "{:.1f}%".format(abs(metrics.revenue_change_pct)) }}</span>
+                        {% endif %}
+                        vs previous year
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-danger font-weight-bold text-uppercase mb-1">Annual Expenses</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('total_expense', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.expense_change_pct >= 0 %}
+                            <span class="text-danger">↑ {{ "{:.1f}%".format(metrics.expense_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-success">↓ {{ "{:.1f}%".format(abs(metrics.expense_change_pct)) }}</span>
+                        {% endif %}
+                        vs previous year
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-success font-weight-bold text-uppercase mb-1">Annual Net Profit</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('net_profit', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.profit_change_pct >= 0 %}
+                            <span class="text-success">↑ {{ "{:.1f}%".format(metrics.profit_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-danger">↓ {{ "{:.1f}%".format(abs(metrics.profit_change_pct)) }}</span>
+                        {% endif %}
+                        vs previous year
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-info font-weight-bold text-uppercase mb-1">Profit Margin</div>
+                    <div class="h3 mb-0">{{ "{:.2f}%".format(metrics.get('profit_margin', 0)) }}</div>
+                    <small class="text-muted">Annual profitability</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Performance Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Performance Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th class="text-right">Revenue</th>
+                                    <th class="text-right">Expense</th>
+                                    <th class="text-right">Profit</th>
+                                    <th class="text-right">Margin %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for month_data in monthly_breakdown %}
+                                <tr>
+                                    <td><strong>{{ month_data.month_name }}</strong></td>
+                                    <td class="text-right">KES {{ "{:,.2f}".format(month_data.revenue) }}</td>
+                                    <td class="text-right">KES {{ "{:,.2f}".format(month_data.expense) }}</td>
+                                    <td class="text-right {% if month_data.profit >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>KES {{ "{:,.2f}".format(month_data.profit) }}</strong></td>
+                                    <td class="text-right">{{ "{:.1f}%".format((month_data.profit / month_data.revenue * 100) if month_data.revenue > 0 else 0) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue & Expense by Category -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Annual Revenue by Category</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td>Pharmacy</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('pharmacy_revenue', 0)) }}</strong></td>
+                                <td class="text-right text-muted" style="width: 80px;">{{ "{:.1f}%".format((metrics.get('pharmacy_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Lab</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('lab_revenue', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('lab_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Imaging</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('imaging_revenue', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('imaging_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Consultation</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('consultation_revenue', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('consultation_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #e3e6f0;">
+                                <td class="fw-bold">Total Revenue</td>
+                                <td class="text-right fw-bold">KES {{ "{:,.2f}".format(metrics.get('total_revenue', 0)) }}</td>
+                                <td class="text-right text-muted">100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Annual Expenses by Category</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td>Payroll</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('payroll_expense', 0)) }}</strong></td>
+                                <td class="text-right text-muted" style="width: 80px;">{{ "{:.1f}%".format((metrics.get('payroll_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Pharmacy</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('pharmacy_expense', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('pharmacy_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Equipment</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('equipment_expense', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('equipment_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Utilities</td>
+                                <td class="text-right"><strong>KES {{ "{:,.2f}".format(metrics.get('utilities_expense', 0)) }}</strong></td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('utilities_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #e3e6f0;">
+                                <td class="fw-bold">Total Expense</td>
+                                <td class="text-right fw-bold">KES {{ "{:,.2f}".format(metrics.get('total_expense', 0)) }}</td>
+                                <td class="text-right text-muted">100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Performance -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Department Performance Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th class="text-right">Revenue</th>
+                                    <th class="text-right">Expense</th>
+                                    <th class="text-right">Profit</th>
+                                    <th class="text-right">ROI %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in dept_performance %}
+                                <tr>
+                                    <td><strong>{{ dept.department }}</strong></td>
+                                    <td class="text-right">KES {{ "{:,.2f}".format(dept.revenue) }}</td>
+                                    <td class="text-right">KES {{ "{:,.2f}".format(dept.expense) }}</td>
+                                    <td class="text-right {% if dept.profit >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>KES {{ "{:,.2f}".format(dept.profit) }}</strong></td>
+                                    <td class="text-right">{{ "{:.1f}%".format((dept.profit / dept.expense * 100) if dept.expense > 0 else 0) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Performance Indicators -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue Metrics</h6>
+                </div>
+                <div class="card-body">
+                    {% set revenues = monthly_breakdown | map(attribute='revenue') | list %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Average Monthly</span>
+                            <span>KES {{ "{:,.2f}".format(metrics.get('total_revenue', 0) / 12) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Highest Month</span>
+                            <span>KES {{ "{:,.2f}".format((revenues|max) if revenues else 0) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Lowest Month</span>
+                            <span>KES {{ "{:,.2f}".format((revenues|min) if revenues else 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Expense Metrics</h6>
+                </div>
+                <div class="card-body">
+                    {% set expenses = monthly_breakdown | map(attribute='expense') | list %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Average Monthly</span>
+                            <span>KES {{ "{:,.2f}".format(metrics.get('total_expense', 0) / 12) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Highest Month</span>
+                            <span>KES {{ "{:,.2f}".format((expenses|max) if expenses else 0) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Lowest Month</span>
+                            <span>KES {{ "{:,.2f}".format((expenses|min) if expenses else 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Profit Metrics</h6>
+                </div>
+                <div class="card-body">
+                    {% set profits = monthly_breakdown | map(attribute='profit') | list %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Average Monthly</span>
+                            <span>KES {{ "{:,.2f}".format(metrics.get('net_profit', 0) / 12) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Best Month</span>
+                            <span>KES {{ "{:,.2f}".format((profits|max) if profits else 0) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Worst Month</span>
+                            <span>KES {{ "{:,.2f}".format((profits|min) if profits else 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Metrics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Annual Patient Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="h5">Total Patients Served</div>
+                            <div class="h3 text-primary">{{ metrics.get('total_patients_served', 0) }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="h5">New Patients</div>
+                            <div class="h3 text-success">{{ metrics.get('new_patients', 0) }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="h5">Returning Patients</div>
+                            <div class="h3 text-info">{{ metrics.get('returning_patients', 0) }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="h5">Outstanding Invoices</div>
+                            <div class="h3 text-warning">KES {{ "{:,.2f}".format(metrics.get('outstanding_invoices', 0)) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <a href="#" class="btn btn-success btn-sm"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                    <a href="#" class="btn btn-info btn-sm"><i class="fas fa-file-excel"></i> Export Excel</a>
+                    <a href="#" class="btn btn-secondary btn-sm"><i class="fas fa-print"></i> Print</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-right { text-align: right; }
+    .card { border: none; border-radius: 8px; }
+</style>
+{% endblock %}

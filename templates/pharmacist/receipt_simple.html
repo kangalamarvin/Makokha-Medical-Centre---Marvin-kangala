@@ -1,0 +1,177 @@
+{# Simple (script-free) receipt template for modal display. #}
+
+<style>
+  .mmc-receipt {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    font-family: Arial, sans-serif;
+  }
+  .mmc-receipt .mmc-muted { color: #6c757d; }
+  .mmc-receipt .mmc-small { font-size: 0.85rem; }
+  .mmc-receipt .mmc-title { font-weight: 700; }
+  /* Keep receipt tables on default styling regardless of dashboard table themes */
+  .mmc-receipt .table,
+  .mmc-receipt .table th,
+  .mmc-receipt .table td {
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+  }
+  .mmc-receipt .table thead th {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+  }
+  .mmc-receipt .table tbody tr:nth-child(even),
+  .mmc-receipt .table tbody tr:hover {
+    background: transparent !important;
+  }
+  .mmc-receipt .mmc-stamp-right {
+    margin-left: auto;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .mmc-receipt .mmc-stamp-right svg {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+</style>
+
+{% set _receipt_simple_source_url = url_for('generate_receipt', sale_id=sale.id) %}
+{% if amount_given is defined and amount_given is not none %}
+  {% set _receipt_simple_source_url = _receipt_simple_source_url ~ '?amount_given=' ~ (amount_given|string) %}
+  {% if change is defined and change is not none %}
+    {% set _receipt_simple_source_url = _receipt_simple_source_url ~ '&change=' ~ (change|string) %}
+  {% endif %}
+{% elif change is defined and change is not none %}
+  {% set _receipt_simple_source_url = _receipt_simple_source_url ~ '?change=' ~ (change|string) %}
+{% endif %}
+<div class="mmc-receipt" data-receipt-root="1" data-receipt-source-url="{{ _receipt_simple_source_url }}">
+  <div class="text-center mb-3">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" style="height: 52px;" class="mb-2">
+    <div>makokhamedicalcentre2025@gmail.com</div>
+    <div class="mmc-small">+254 741256531 / +254 713580997</div>
+    <div class="mmc-muted mmc-small">SALES RECEIPT</div>
+    {% if sale.bulk_sale_number %}
+      <div class="mmc-muted mmc-small">Bulk Sale: {{ sale.bulk_sale_number }}</div>
+    {% endif %}
+  </div>
+
+  <div class="row mb-3 mmc-small">
+    <div class="col-6">
+      <div><strong>Receipt No:</strong> {{ sale.sale_number }}</div>
+      {% if sale.created_at %}<div><strong>Date:</strong> {{ sale.created_at|eat_time('%Y-%m-%d %H:%M EAT') }}</div>{% endif %}
+      <div><strong>Pharmacist:</strong> {{ sale.user.username if sale.user else '' }}</div>
+    </div>
+    <div class="col-6 text-end">
+      <div><strong>Payment:</strong> {{ (sale.payment_method or 'cash')|upper }}</div>
+      {% if sale.patient %}
+        <div><strong>Patient:</strong> {{ sale.patient.op_number or sale.patient.ip_number }}</div>
+        <div class="mmc-muted" style="font-size:0.8rem;">{{ decrypt_data(sale.patient.name) }}</div>
+      {% else %}
+        <div><strong>Customer:</strong> Walk-in</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped mb-2">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 6%;">#</th>
+          <th>Item</th>
+          <th class="text-end" style="width: 12%;">Qty</th>
+          <th class="text-end" style="width: 18%;">Unit</th>
+          <th class="text-end" style="width: 20%;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set all_sales = [sale] + (related_sales or []) %}
+        {% set ns = namespace(i=0) %}
+        {% for s in all_sales %}
+          {% for item in (s.items or []) %}
+            {% set ns.i = ns.i + 1 %}
+            <tr>
+              <td>{{ ns.i }}</td>
+              <td>
+                <div class="fw-semibold small">
+                  {{ item.drug_name or (item.drug.name if item.drug else '') }}
+                  {% set _spec = (item.drug_specification or (item.drug.specification if item.drug else '')) %}
+                  {% if _spec %}<span class="mmc-muted">({{ _spec }})</span>{% endif %}
+                </div>
+              </td>
+              <td class="text-end">{{ item.quantity }}</td>
+              <td class="text-end">{{ "Ksh {:,.2f}".format(item.unit_price or 0) }}</td>
+              <td class="text-end fw-semibold">{{ "Ksh {:,.2f}".format(item.total_price or 0) }}</td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="fw-semibold border-top">
+          <td colspan="4" class="text-end">TOTAL:</td>
+          <td class="text-end">{{ "Ksh {:,.2f}".format(sale.total_amount or 0) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="mt-2">
+    <div class="fw-semibold mb-1">Payment Summary</div>
+    <table class="table table-sm table-bordered mb-0">
+      <tbody>
+        <tr>
+          <th>Total</th>
+          <td class="text-end"><strong>{{ "Ksh {:,.2f}".format(sale.total_amount or 0) }}</strong></td>
+        </tr>
+        <tr>
+          <th>Payment Method</th>
+          <td class="text-end">{{ (sale.payment_method or 'cash')|upper }}</td>
+        </tr>
+        <tr>
+          <th>Amount</th>
+          <td class="text-end"><strong>{{ "Ksh {:,.2f}".format(sale.total_amount or 0) }}</strong></td>
+        </tr>
+        {% if (sale.payment_method or 'cash') == 'cash' %}
+        <tr>
+          <th>Amount Given (Cash)</th>
+          <td class="text-end">
+            {% if amount_given is defined and amount_given is not none %}
+              {{ "Ksh {:,.2f}".format(amount_given) }}
+            {% else %}
+              N/A
+            {% endif %}
+          </td>
+        </tr>
+        {% set _bal = (change if (change is defined and change is not none) else ((amount_given - (sale.total_amount or 0)) if (amount_given is defined and amount_given is not none) else none)) %}
+        <tr>
+          <th>{{ 'Change' if (_bal is not none and _bal >= 0) else 'Balance Due' if (_bal is not none and _bal < 0) else 'Change' }}</th>
+          <td class="text-end">
+            {% if _bal is not none %}
+              {{ "Ksh {:,.2f}".format(_bal) }}
+            {% else %}
+              N/A
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-end mt-2">
+    <div class="mmc-muted mmc-small">
+      <div>Thank you for your purchase.</div>
+      <div>Goods sold are not returnable without original receipt.</div>
+    </div>
+    <div class="mmc-stamp-right">
+      {{ generate_rubber_stamp(size=210) }}
+    </div>
+  </div>
+  <div class="text-center mt-2">
+    {{ render_receipt_verification_qr('sale', sale.id, sale.sale_number) }}
+  </div>
+</div>

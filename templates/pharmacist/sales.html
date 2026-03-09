@@ -1,0 +1,1162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="content">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <h2 class="mb-0"><i class="fas fa-prescription-bottle-alt"></i> Prescription Sales</h2>
+        <a href="{{ url_for('pharmacist_ui_customization') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-palette me-1"></i>Customize Drug Cards
+        </a>
+    </div>
+    
+    <div class="sales-container">
+        <div class="drug-selection">
+            <div class="search-box">
+                <input type="text" id="drugSearch" placeholder="Search drugs...">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="drug-list" id="drugList">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i> Loading available drugs...
+                </div>
+            </div>
+        </div>
+        
+        <div class="cart-container">
+            <div class="cart-header">
+                <h4><i class="fas fa-shopping-cart"></i> Current Order</h4>
+                <div class="cart-actions">
+                    <button class="btn btn-sm btn-outline" id="clearCartBtn">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                </div>
+            </div>
+            <div class="cart-items" id="cartItems">
+                <div class="empty-cart">
+                    <i class="fas fa-cart-arrow-down"></i>
+                    <p>Your cart is empty</p>
+                </div>
+            </div>
+            <div class="cart-footer">
+                <div class="customer-info">
+                    <div class="form-group">
+                        <label for="patientAge">Patient Age</label>
+                        <input type="number" id="patientAge" class="form-control" placeholder="Enter patient age" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="prescriptionNumber">Prescription Number</label>
+                        <input type="text" id="prescriptionNumber" class="form-control" placeholder="Enter prescription number">
+                    </div>
+                </div>
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cartTotal">Ksh 0.00</span>
+                </div>
+                
+                <!-- Payment Method Selection (appears when cart has items) -->
+                <div id="payment-method-section" style="display: none;" class="payment-method-section">
+                    <h6 class="payment-title"><i class="fas fa-credit-card"></i> Select Payment Method</h6>
+                    <div class="payment-buttons">
+                        <button type="button" class="payment-btn" data-method="mpesa" id="mpesaPaymentBtn">
+                            <div class="payment-icon mpesa-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <span>M-Pesa</span>
+                        </button>
+                        <button type="button" class="payment-btn active" data-method="cash" id="cashPaymentBtn">
+                            <div class="payment-icon cash-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <span>Cash</span>
+                        </button>
+                        <button type="button" class="payment-btn" data-method="insurance" id="insurancePaymentBtn">
+                            <div class="payment-icon insurance-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <span>Insurance</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="selectedPaymentMethod" value="cash">
+                </div>
+                
+                <!-- Payment Method Specific Fields -->
+                <div class="payment-details">
+                    <div id="mpesa-options" style="display: none;" class="form-group">
+                        <label>M-Pesa Collection</label>
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="mpesa-stk-option" data-method="stk">
+                                <i class="fas fa-mobile-alt"></i> STK Push
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="mpesa-manual-option" data-method="manual">
+                                <i class="fas fa-check-circle"></i> Manual Till
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Choose how to collect M-Pesa payment</small>
+                    </div>
+                    <div id="cash-section" style="display: block;" class="form-group">
+                        <label>Amount Given by Client</label>
+                        <input type="number" id="cash-amount-given" class="form-control" placeholder="Enter amount client gave" min="0" step="0.01">
+                        <small class="form-text text-muted">Enter the amount the client gave. Change will be calculated automatically.</small>
+                    </div>
+                    <div id="mpesa-stk-section" style="display: none;" class="form-group">
+                        <label>Customer Phone</label>
+                        <input type="text" id="mpesa-stk-phone" class="form-control" placeholder="254712345678">
+                        <small class="form-text text-muted">STK Push will be sent after completing sale</small>
+                    </div>
+                    <div id="mpesa-manual-section" style="display: none;" class="form-group">
+                        <label>M-Pesa Code (from customer)</label>
+                        <input type="text" id="mpesa-manual-code" class="form-control" placeholder="e.g. SH12AB3CD4">
+                        <small class="form-text text-muted">Manual Till payment will be verified after completing sale</small>
+                    </div>
+                    <div id="insurance-section" style="display: none;" class="form-group">
+                        <label>Patient Insurance ID/Policy Number</label>
+                        <input type="text" id="insurance-policy-number" class="form-control" placeholder="Enter patient insurance policy number">
+                        <small class="form-text text-muted">Insurance claim will be created for this sale</small>
+                    </div>
+                </div>
+                
+                <div class="cart-buttons">
+                    <button class="btn btn-primary" id="confirmSaleBtn">
+                        <i class="fas fa-check"></i> Complete Sale
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1" role="dialog" aria-labelledby="receiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="receiptModalLabel">Beer Sale Receipt</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="receiptContent">
+                <!-- Receipt content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-primary" id="shareReceiptEmailBtn">
+                    <i class="fas fa-envelope"></i> Share Email
+                </button>
+                <button type="button" class="btn btn-outline-success" id="shareReceiptWhatsAppBtn">
+                    <i class="fab fa-whatsapp"></i> Share WhatsApp
+                </button>
+                <button type="button" class="btn btn-primary" id="printReceiptBtn">
+                    <i class="fas fa-print"></i> Print Receipt
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="saveReceiptPdfBtn">
+                    <i class="fas fa-file-pdf"></i> Save PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    let currentSaleReceiptId = null;
+
+    // Initialize cart
+    if (!localStorage.getItem('beerCart')) {
+        localStorage.setItem('beerCart', JSON.stringify({ items: [] }));
+    }
+
+    // Load available drugs
+    loadDrugs();
+    renderCartItems();
+    updateCartSummary();
+
+    // Load drugs from server
+    function loadDrugs() {
+        $('#drugList').html('<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading drugs...</div>');
+        
+        $.get('/pharmacist/drugs', function(data) {
+            if (data && data.length > 0) {
+                let html = '';
+                data.forEach(function(drug) {
+                    html += `
+                        <div class="drug-card" data-id="${drug.id}">
+                            <div class="drug-info">
+                                <h5>${drug.name}</h5>
+                                <p>${drug.specification || 'Prescription drug'}</p>
+                                <div class="drug-meta">
+                                    <span class="price">IP Ksh ${Number(drug.ip_drug_price || drug.selling_price || 0).toFixed(2)}</span>
+                                    <span class="stock">OTC Ksh ${Number(drug.selling_price || 0).toFixed(2)}</span>
+                                    <span class="stock">${drug.remaining_quantity} in stock</span>
+                                </div>
+                            </div>
+                            <div class="drug-actions">
+                                <button class="btn btn-sm btn-add-to-cart" 
+                                    data-id="${drug.id}" 
+                                    data-name="${drug.name.replace(/"/g, '&quot;')}"
+                                    data-price="${drug.selling_price}"
+                                    data-stock="${drug.remaining_quantity}">
+                                    <i class="fas fa-cart-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                $('#drugList').html(html);
+            } else {
+                $('#drugList').html('<div class="empty-list"><i class="fas fa-prescription-bottle-alt"></i> No drugs available</div>');
+            }
+        }).fail(function() {
+            $('#drugList').html('<div class="error-loading"><i class="fas fa-exclamation-circle"></i> Failed to load drugs</div>');
+        });
+    }
+
+    // Cart management functions
+    function getCart() {
+        return JSON.parse(localStorage.getItem('beerCart'));
+    }
+
+    function saveCart(cart) {
+        localStorage.setItem('beerCart', JSON.stringify(cart));
+    }
+
+    function updateCartSummary() {
+        const cart = getCart();
+        let total = 0;
+        
+        cart.items.forEach(item => {
+            total += item.price * item.quantity;
+        });
+        
+        $('#cartTotal').text('Ksh ' + total.toFixed(2));
+        
+        // Show/hide payment method section based on cart items
+        if (cart.items.length > 0) {
+            $('#payment-method-section').slideDown();
+        } else {
+            $('#payment-method-section').slideUp();
+        }
+    }
+
+    function renderCartItems() {
+        const cart = getCart();
+        const $cartItems = $('#cartItems');
+        
+        if (cart.items.length === 0) {
+            $cartItems.html('<div class="empty-cart"><i class="fas fa-cart-arrow-down"></i><p>Your cart is empty</p></div>');
+            return;
+        }
+        
+        let html = '';
+        cart.items.forEach(item => {
+            html += `
+                <div class="cart-item" data-id="${item.beerId}">
+                    <div class="item-info">
+                        <h5>${item.beerName}</h5>
+                        <div class="item-price">Ksh ${item.price.toFixed(2)}</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="btn btn-sm btn-decrease" data-id="${item.beerId}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" class="form-control form-control-sm item-quantity" 
+                               value="${item.quantity}" min="1" max="${item.currentStock}"
+                               data-id="${item.beerId}">
+                        <button class="btn btn-sm btn-increase" data-id="${item.beerId}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="item-total">Ksh ${(item.price * item.quantity).toFixed(2)}</div>
+                    <button class="btn btn-sm btn-danger btn-remove" data-id="${item.beerId}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
+        $cartItems.html(html);
+    }
+
+    // Add to cart
+    $(document).on('click', '.btn-add-to-cart', function() {
+        const drugId = $(this).data('id');
+        const drugName = $(this).data('name');
+        const price = parseFloat($(this).data('price'));
+        const currentStock = parseInt($(this).data('stock'));
+        
+        let cart = getCart();
+        const existingItem = cart.items.find(item => item.drugId == drugId);
+        
+        if (existingItem) {
+            if (existingItem.quantity < currentStock) {
+                existingItem.quantity++;
+            } else {
+                alert(`Cannot add more than available stock (${currentStock})`);
+                return;
+            }
+        } else {
+            cart.items.push({
+                drugId: drugId,
+                drugName: drugName,
+                price: price,
+                quantity: 1,
+                currentStock: currentStock
+            });
+        }
+        
+        saveCart(cart);
+        renderCartItems();
+        updateCartSummary();
+    });
+
+    // Cart controls
+    $(document).on('click', '.btn-increase', function() {
+        const beerId = $(this).data('id');
+        const cart = getCart();
+        const item = cart.items.find(item => item.beerId == beerId);
+        
+        if (item.quantity < item.currentStock) {
+            item.quantity++;
+            $(this).siblings('.item-quantity').val(item.quantity);
+            updateCartItem(beerId, item);
+        } else {
+            alert(`Cannot add more than available stock (${item.currentStock})`);
+        }
+    });
+    
+    $(document).on('click', '.btn-decrease', function() {
+        const beerId = $(this).data('id');
+        const cart = getCart();
+        const item = cart.items.find(item => item.beerId == beerId);
+        
+        if (item.quantity > 1) {
+            item.quantity--;
+            $(this).siblings('.item-quantity').val(item.quantity);
+            updateCartItem(beerId, item);
+        }
+    });
+    
+    $(document).on('change', '.item-quantity', function() {
+        const beerId = $(this).data('id');
+        const newQty = parseInt($(this).val()) || 1;
+        const maxQty = parseInt($(this).attr('max')) || 100;
+        
+        const cart = getCart();
+        const item = cart.items.find(item => item.beerId == beerId);
+        
+        if (newQty > maxQty) {
+            $(this).val(maxQty);
+            item.quantity = maxQty;
+            alert(`Cannot add more than available stock (${maxQty})`);
+        } else if (newQty < 1) {
+            $(this).val(1);
+            item.quantity = 1;
+        } else {
+            item.quantity = newQty;
+        }
+        
+        saveCart(cart);
+        updateCartItem(beerId, item);
+    });
+    
+    function updateCartItem(beerId, item) {
+        $(`.cart-item[data-id="${beerId}"] .item-total`).text('Ksh ' + (item.price * item.quantity).toFixed(2));
+        saveCart(getCart());
+        updateCartSummary();
+    }
+    
+    $(document).on('click', '.btn-remove', function() {
+        const beerId = $(this).data('id');
+        const cart = getCart();
+        cart.items = cart.items.filter(item => item.beerId != beerId);
+        
+        saveCart(cart);
+        renderCartItems();
+        updateCartSummary();
+    });
+
+    // Clear cart
+    $('#clearCartBtn').click(function() {
+        saveCart({ items: [] });
+        renderCartItems();
+        updateCartSummary();
+    });
+
+// Payment Method Button Handlers
+$('.payment-btn').click(function() {
+    // Remove active class from all buttons
+    $('.payment-btn').removeClass('active');
+    
+    // Add active class to clicked button
+    $(this).addClass('active');
+    
+    // Get selected method
+    const method = $(this).data('method');
+    $('#selectedPaymentMethod').val(method);
+    
+    // Hide all payment-specific sections
+    $('#mpesa-options, #mpesa-stk-section, #mpesa-manual-section, #insurance-section, #cash-section').hide();
+    
+    // Show relevant section based on method
+    if (method === 'mpesa') {
+        $('#mpesa-options').slideDown();
+    } else if (method === 'insurance') {
+        $('#insurance-section').slideDown();
+    } else if (method === 'cash') {
+        $('#cash-section').slideDown();
+    }
+});
+
+$('#mpesa-stk-option, #mpesa-manual-option').click(function() {
+    $('#mpesa-stk-option, #mpesa-manual-option').removeClass('active');
+    $(this).addClass('active');
+    const method = $(this).data('method');
+    if (method === 'stk') {
+        $('#mpesa-stk-section').show();
+        $('#mpesa-manual-section').hide();
+    } else {
+        $('#mpesa-manual-section').show();
+        $('#mpesa-stk-section').hide();
+    }
+});
+
+// Confirm sale
+$('#confirmSaleBtn').click(function() {
+    const patientAge = parseInt($('#patientAge').val()) || 0;
+    const prescriptionNumber = $('#prescriptionNumber').val().trim();
+
+    if (!prescriptionNumber) {
+        alert('Prescription number is required.');
+        $('#prescriptionNumber').focus();
+        return;
+    }
+
+    const cart = getCart();
+    if (cart.items.length === 0) {
+        alert('Your cart is empty');
+        return;
+    }
+    
+    // Get selected payment method from button selection
+    const paymentMethod = $('#selectedPaymentMethod').val();
+    
+    // Validate M-Pesa fields if M-Pesa is selected
+    if (paymentMethod === 'mpesa') {
+        const mpesaMethod = $('#mpesa-stk-option').hasClass('active') ? 'stk' : ($('#mpesa-manual-option').hasClass('active') ? 'manual' : null);
+        if (!mpesaMethod) {
+            alert('Please select M-Pesa collection method (STK Push or Manual Till)');
+            return;
+        }
+        if (mpesaMethod === 'stk') {
+            const phone = $('#mpesa-stk-phone').val().trim();
+            if (!phone) {
+                alert('Customer phone number is required for STK Push');
+                $('#mpesa-stk-phone').focus();
+                return;
+            }
+        } else if (mpesaMethod === 'manual') {
+            const code = $('#mpesa-manual-code').val().trim();
+            if (!code) {
+                alert('M-Pesa transaction code is required for Manual Till verification');
+                $('#mpesa-manual-code').focus();
+                return;
+            }
+        }
+    } else if (paymentMethod === 'insurance') {
+        const policyNumber = $('#insurance-policy-number').val().trim();
+        if (!policyNumber) {
+            alert('Patient insurance policy number is required for insurance payment');
+            $('#insurance-policy-number').focus();
+            return;
+        }
+    } else if (paymentMethod === 'cash') {
+        const amountGiven = parseFloat($('#cash-amount-given').val());
+        if (!amountGiven || amountGiven <= 0) {
+            alert('Please enter the amount given by the client');
+            $('#cash-amount-given').focus();
+            return;
+        }
+        const cartTotal = parseFloat($('#cartTotal').text().replace('Ksh ', '').trim());
+        if (amountGiven < cartTotal) {
+            alert(`Amount given (Ksh ${amountGiven.toFixed(2)}) is less than total (Ksh ${cartTotal.toFixed(2)})`);
+            $('#cash-amount-given').focus();
+            return;
+        }
+    }
+    
+    // Prepare items with unit prices
+    const items = cart.items.map(item => ({
+        drug_id: item.drugId,
+        quantity: item.quantity,
+        unit_price: item.price
+    }));
+    
+    // Prepare request payload
+    const requestData = {
+        items: items,
+        payment_method: paymentMethod,
+        patient_age: patientAge,
+        prescription_number: prescriptionNumber
+    };
+    
+    // Add insurance policy number if insurance selected
+    if (paymentMethod === 'insurance') {
+        requestData.insurance_policy_number = $('#insurance-policy-number').val().trim();
+    }
+    
+    // Add amount given if cash selected
+    if (paymentMethod === 'cash') {
+        requestData.amount_given = parseFloat($('#cash-amount-given').val());
+    }
+    
+    const $btn = $(this);
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+    
+    $.ajax({
+        url: '/pharmacist/sale',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(requestData),
+        success: function(response) {
+            if (response.success) {
+                const saleId = response.sale_id;
+                const saleTotal = $('#cartTotal').text().replace('Ksh ', '').trim();
+                
+                // Clear cart and form
+                saveCart({ items: [] });
+                renderCartItems();
+                updateCartSummary();
+                $('#patientAge').val('');
+                $('#prescriptionNumber').val('');
+                $('#cash-amount-given').val('');
+                
+                // Handle M-Pesa collection if selected
+                if (paymentMethod === 'mpesa') {
+                    const mpesaMethod = $('#mpesa-stk-option').hasClass('active') ? 'stk' : 'manual';
+                    if (mpesaMethod === 'stk') {
+                        const phone = $('#mpesa-stk-phone').val().trim();
+                        initiateSTKPush(saleId, phone, saleTotal);
+                    } else {
+                        const code = $('#mpesa-manual-code').val().trim();
+                        verifyManualTill(saleId, code, saleTotal);
+                    }
+                    // Reset M-Pesa fields
+                    $('#mpesa-stk-phone, #mpesa-manual-code').val('');
+                    $('#mpesa-stk-option, #mpesa-manual-option').removeClass('active');
+                    $('#mpesa-options, #mpesa-stk-section, #mpesa-manual-section').hide();
+                    // Reset to cash payment
+                    $('.payment-btn').removeClass('active');
+                    $('#cashPaymentBtn').addClass('active');
+                    $('#selectedPaymentMethod').val('cash');
+                } else if (paymentMethod === 'insurance') {
+                    // Insurance claim created on backend, just show receipt
+                    $('#insurance-policy-number').val('');
+                    $('#insurance-section').hide();
+                    // Reset to cash payment
+                    $('.payment-btn').removeClass('active');
+                    $('#cashPaymentBtn').addClass('active');
+                    $('#selectedPaymentMethod').val('cash');
+                    showReceipt(saleId);
+                } else {
+                    // Cash or card - show receipt immediately
+                    showReceipt(saleId);
+                }
+            } else {
+                alert('Error: ' + (response.error || 'Failed to process sale'));
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'Failed to process sale';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+                if (xhr.responseJSON.details) {
+                    errorMsg += '\n' + xhr.responseJSON.details;
+                }
+            }
+            alert(errorMsg);
+        },
+        complete: function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Complete Sale');
+        }
+    });
+});
+    function getCsrfToken() {
+        return $('meta[name="csrf-token"]').attr('content') || $('input[name="csrf_token"]').val() || '';
+    }
+
+    function getReceiptRoot() {
+        const host = document.getElementById('receiptContent');
+        if (!host) return null;
+        return host.querySelector('[data-receipt-root]') ||
+               host.querySelector('.receipt-container') ||
+               host;
+    }
+
+    function loadScriptOnce(src) {
+        return new Promise((resolve, reject) => {
+            const existing = document.querySelector(`script[src="${src}"]`);
+            if (existing) {
+                if (existing.dataset.loaded === '1') {
+                    resolve();
+                } else {
+                    existing.addEventListener('load', () => resolve(), { once: true });
+                    existing.addEventListener('error', () => reject(new Error('Failed to load script')), { once: true });
+                }
+                return;
+            }
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.dataset.loaded = '0';
+            s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+            s.onerror = () => reject(new Error('Failed to load script'));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function ensureHtml2CanvasReady() {
+        if (window.html2canvas) return true;
+        try { await loadScriptOnce('/vendor/jsdelivr/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) {}
+        if (window.html2canvas) return true;
+        try { await loadScriptOnce('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) {}
+        return !!window.html2canvas;
+    }
+
+    async function captureReceiptPng() {
+        const root = getReceiptRoot();
+        if (!root) return '';
+        const ready = await ensureHtml2CanvasReady();
+        if (!ready) return '';
+
+        const hidden = [];
+        root.querySelectorAll('.no-print').forEach((el) => {
+            hidden.push({ el, display: el.style.display, visibility: el.style.visibility });
+            el.style.visibility = 'hidden';
+            el.style.display = 'none';
+        });
+
+        try {
+            const canvas = await window.html2canvas(root, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                logging: false,
+            });
+            return canvas.toDataURL('image/png');
+        } catch (e) {
+            return '';
+        } finally {
+            hidden.forEach((h) => {
+                h.el.style.display = h.display;
+                h.el.style.visibility = h.visibility;
+            });
+        }
+    }
+
+    async function buildReceiptPdfBlob(saleId) {
+        const id = Number(saleId || currentSaleReceiptId || 0);
+        if (!id) {
+            throw new Error('No receipt selected.');
+        }
+        const receiptPng = await captureReceiptPng();
+        if (!receiptPng) {
+            throw new Error('Unable to capture rendered receipt for PDF.');
+        }
+
+        const headers = { 'Content-Type': 'application/json' };
+        const csrf = getCsrfToken();
+        if (csrf) {
+            headers['X-CSRFToken'] = csrf;
+        }
+
+        const resp = await fetch(`/api/sales/${id}/receipt.pdf`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers,
+            body: JSON.stringify({ receipt_png: receiptPng })
+        });
+        if (!resp.ok) {
+            let msg = `HTTP ${resp.status}`;
+            try {
+                const data = await resp.json();
+                if (data && data.error) msg = data.error;
+            } catch (e) {}
+            throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        if (!blob || !blob.size) {
+            throw new Error('Failed to build receipt PDF.');
+        }
+        return blob;
+    }
+
+    function openPdfForPrint(blob, filenameBase) {
+        if (!blob || !blob.size) return false;
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (!win) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${String(filenameBase || 'receipt').replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => {
+                try { URL.revokeObjectURL(url); } catch (e) {}
+            }, 1500);
+            return false;
+        }
+        setTimeout(() => {
+            try { win.focus(); win.print(); } catch (e) {}
+        }, 900);
+        setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (e) {}
+        }, 120000);
+        return true;
+    }
+
+    function downloadPdf(blob, filenameBase) {
+        if (!blob || !blob.size) return false;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${String(filenameBase || 'receipt').replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (e) {}
+        }, 1500);
+        return true;
+    }
+
+    async function shareReceipt(kind) {
+        const id = Number(currentSaleReceiptId || 0);
+        if (!id) {
+            alert('No receipt selected.');
+            return;
+        }
+
+        const isEmail = kind === 'email';
+        const promptText = isEmail
+            ? 'Enter recipient email (e.g. patient@example.com)'
+            : 'Enter WhatsApp number (e.g. 0712xxxxxx or +2547xxxxxxx)';
+        const raw = window.prompt(promptText);
+        if (raw === null) return;
+
+        const to = String(raw || '').trim();
+        if (!to) {
+            alert(isEmail ? 'Email is required.' : 'Phone number is required.');
+            return;
+        }
+        if (isEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+            alert('Enter a valid email address.');
+            return;
+        }
+
+        const endpoint = isEmail ? `/api/sales/${id}/share-email` : `/api/sales/${id}/share-whatsapp`;
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        const csrf = getCsrfToken();
+        if (csrf) {
+            headers['X-CSRFToken'] = csrf;
+        }
+
+        const receiptPng = await captureReceiptPng();
+        if (!receiptPng) {
+            alert('Unable to capture rendered receipt for sharing.');
+            return;
+        }
+        const payload = { to, receipt_png: receiptPng };
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+        })
+        .then(async (resp) => {
+            let data = null;
+            try { data = await resp.json(); } catch (e) {}
+            if (!resp.ok) {
+                throw new Error((data && data.error) ? data.error : `HTTP ${resp.status}`);
+            }
+            return data || {};
+        })
+        .then(() => {
+            alert(isEmail ? 'Receipt sent by email.' : 'Receipt sent by WhatsApp.');
+        })
+        .catch((err) => {
+            const msg = (err && err.message) ? err.message : 'Failed to share receipt.';
+            alert(msg);
+        });
+    }
+
+    // Show receipt
+    function showReceipt(saleId) {
+        currentSaleReceiptId = Number(saleId || 0) || null;
+        $('#receiptContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading receipt...</div>');
+        $('#receiptModal').modal({
+            backdrop: 'static',
+            keyboard: false
+        }).modal('show');
+        
+        $.get(`/pharmacist/sale/${saleId}/receipt?refresh=1`, function(data) {
+            // Use .text() to prevent DOM XSS, or a sanitizer if HTML is required
+            $('#receiptContent').html(data); // Switched back for HTML content, ensure server-side sanitization
+        }).fail(function() {
+            $('#receiptContent').text('Failed to load receipt');
+        });
+    }
+
+    // Print receipt
+    $('#printReceiptBtn').click(async function() {
+        const id = Number(currentSaleReceiptId || 0);
+        if (!id) {
+            alert('No receipt selected.');
+            return;
+        }
+        try {
+            const blob = await buildReceiptPdfBlob(id);
+            openPdfForPrint(blob, `sale-${id}`);
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : 'Failed to generate receipt PDF.';
+            alert(msg);
+        }
+    });
+
+    $('#saveReceiptPdfBtn').click(async function() {
+        const id = Number(currentSaleReceiptId || 0);
+        if (!id) {
+            alert('No receipt selected.');
+            return;
+        }
+        try {
+            const blob = await buildReceiptPdfBlob(id);
+            if (!downloadPdf(blob, `sale-${id}`)) {
+                alert('Unable to save receipt PDF.');
+            }
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : 'Failed to generate receipt PDF.';
+            alert(msg);
+        }
+    });
+
+    $('#shareReceiptEmailBtn').click(function() {
+        shareReceipt('email');
+    });
+
+    $('#shareReceiptWhatsAppBtn').click(function() {
+        shareReceipt('whatsapp');
+    });
+
+    // Close modal handler
+    $('#receiptModal').on('hidden.bs.modal', function () {
+        currentSaleReceiptId = null;
+    });
+    
+    // M-Pesa STK Push for pharmacy sales
+    function initiateSTKPush(saleId, phone, amount) {
+        $.ajax({
+            url: '/api/mpesa/stkpush',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                phone_number: phone,
+                amount: parseFloat(amount),
+                reference: 'SALE-' + saleId,
+                account_reference: 'Pharmacy Sale #' + saleId
+            }),
+            success: function(response) {
+                if (response.ok) {
+                    alert('STK Push sent to customer! Payment will be automatically recorded once completed.');
+                    showReceipt(saleId);
+                } else {
+                    alert('STK Push failed: ' + (response.error || 'Unknown error') + '. Sale recorded but payment not initiated.');
+                    showReceipt(saleId);
+                }
+            },
+            error: function(xhr) {
+                alert('STK Push request failed. Sale recorded but payment not initiated.');
+                showReceipt(saleId);
+            }
+        });
+    }
+    
+    // M-Pesa Manual Till verification for pharmacy sales
+    function verifyManualTill(saleId, mpesaCode, amount) {
+        $.ajax({
+            url: '/api/mpesa/transaction-status/query',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                mpesa_code: mpesaCode,
+                amount: parseFloat(amount),
+                reference: 'SALE-' + saleId
+            }),
+            success: function(response) {
+                if (response.ok) {
+                    alert('Till payment verification submitted! Payment will be recorded once verification completes.');
+                    showReceipt(saleId);
+                } else {
+                    alert('Verification failed: ' + (response.error || 'Unknown error') + '. Sale recorded but payment not verified.');
+                    showReceipt(saleId);
+                }
+            },
+            error: function(xhr) {
+                alert('Verification request failed. Sale recorded but payment not verified.');
+                showReceipt(saleId);
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.beer-sales-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.beer-selection {
+    flex: 1;
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.beer-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 15px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.beer-card {
+    background: var(--mmc-pharm-card-bg);
+    color: var(--mmc-pharm-card-text);
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: var(--mmc-pharm-card-shadow), var(--mmc-pharm-card-glow);
+    display: flex;
+    flex-direction: column;
+    border-left: 4px solid var(--mmc-pharm-btn-add-bg);
+    border: 1px solid var(--mmc-pharm-card-border);
+}
+
+.beer-info h5 {
+    margin: 0 0 5px 0;
+    color: var(--mmc-pharm-card-title);
+}
+
+.beer-info p {
+    margin: 0 0 10px 0;
+    color: var(--mmc-pharm-card-text);
+    font-size: 14px;
+}
+
+.beer-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto;
+}
+
+.price {
+    font-weight: bold;
+    color: var(--mmc-pharm-price-color);
+}
+
+.stock {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.beer-actions {
+    margin-top: 10px;
+}
+
+.btn-add-to-cart {
+    width: 100%;
+    background-color: var(--mmc-pharm-btn-add-bg);
+    border-color: var(--mmc-pharm-btn-add-bg);
+    color: var(--mmc-pharm-btn-add-text);
+}
+
+.btn-add-to-cart:hover {
+    background-color: var(--mmc-pharm-btn-add-hover);
+    border-color: var(--mmc-pharm-btn-add-hover);
+}
+
+.customer-info {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.payment-method-section {
+    margin: 15px 0;
+    padding: 15px;
+    background: #ffffff;
+    border: 2px solid #e3e6ea;
+    border-radius: 8px;
+}
+
+.payment-title {
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #333;
+    font-size: 15px;
+}
+
+.payment-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+
+.payment-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 15px 10px;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.payment-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+.payment-btn.active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-color: #0056b3;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.payment-btn.active .payment-icon {
+    color: white;
+}
+
+.payment-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 24px;
+    transition: all 0.3s ease;
+}
+
+.mpesa-icon {
+    background: #00a651;
+    color: white;
+}
+
+.payment-btn.active[data-method="mpesa"] {
+    background: linear-gradient(135deg, #00a651 0%, #007a3d 100%);
+    border-color: #007a3d;
+}
+
+.cash-icon {
+    background: #28a745;
+    color: white;
+}
+
+.payment-btn.active[data-method="cash"] {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border-color: #1e7e34;
+}
+
+.insurance-icon {
+    background: #17a2b8;
+    color: white;
+}
+
+.payment-btn.active[data-method="insurance"] {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+    border-color: #117a8b;
+}
+
+.payment-btn span {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.payment-details {
+    margin-top: 10px;
+}
+
+.payment-methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.payment-methods .form-check {
+    margin-right: 15px;
+    margin-bottom: 5px;
+}
+
+.form-check-input {
+    margin-top: 0.2rem;
+    margin-left: 0;
+    margin-right: 0.3rem;
+}
+
+.modal {
+    z-index: 1050;
+}
+
+.modal-backdrop {
+    z-index: 1040;
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .beer-sales-container {
+        flex-direction: column;
+    }
+    
+    .beer-list {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+    
+    .payment-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .payment-btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .payment-methods {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+</style>
+{% endblock %}

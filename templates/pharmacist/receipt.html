@@ -1,0 +1,433 @@
+{% set embedded = request.args.get('embedded') == '1' or request.args.get('embed') == '1' %}
+{% set _sr = (request.script_root if request is defined else '') %}
+
+{% if not embedded %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Receipt</title>
+    <link rel="stylesheet" href="{{ _sr }}/vendor/jsdelivr/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css';">
+{% endif %}
+
+    <style>
+    body {
+        background: #f8f9fa;
+    }
+
+    .receipt-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        font-family: Arial, sans-serif;
+        background-color: #fff;
+    }
+
+    .logo {
+        max-height: 80px;
+        max-width: 100%;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .receipt-header h3 {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #0d6efd;
+    }
+
+    .receipt-header h5 {
+        border-top: 2px solid #0d6efd;
+        border-bottom: 2px solid #0d6efd;
+        padding: 5px 0;
+        margin: 10px 0;
+        color: #333;
+    }
+
+    .receipt-title-section {
+        margin: 15px 0;
+    }
+
+    .receipt-info p {
+        margin-bottom: 3px;
+        font-size: 14px;
+    }
+
+    .table-sm {
+        font-size: 14px;
+    }
+
+    .table-sm th, .table-sm td {
+        padding: 5px 8px;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    /* Keep receipt tables on default styling regardless of dashboard table themes */
+    .receipt-container .table,
+    .receipt-container .table th,
+    .receipt-container .table td {
+        color: #212529 !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .receipt-container .table thead th {
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
+    }
+
+    .receipt-container .table tbody tr:nth-child(even),
+    .receipt-container .table tbody tr:hover {
+        background: transparent !important;
+    }
+
+    tfoot th {
+        border-top: 2px solid #dee2e6 !important;
+    }
+
+    .no-print {
+        display: block;
+    }
+
+    .mmc-signature-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: nowrap;
+    }
+
+    .mmc-signature-back {
+        position: relative;
+        z-index: 1;
+        flex: 0 0 45%;
+        min-width: 250px;
+        margin-bottom: 15px;
+    }
+
+    .mmc-stamp-front {
+        position: relative;
+        z-index: 2;
+        flex: 0 0 45%;
+        min-width: 200px;
+        margin-bottom: 15px;
+        margin-left: auto;
+        text-align: right;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .mmc-stamp-front svg {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+    }
+
+    /* Keep extra receipt item metadata in DOM but hidden */
+    .item-meta {
+        display: none;
+    }
+
+    @page {
+        size: auto;
+        margin: 8mm;
+    }
+
+    @media print {
+        body {
+            background: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .receipt-container {
+            border: none;
+            padding: 0;
+            max-width: 100%;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        /* Hide signature drawing tools and buttons */
+        .signature-drawing {
+            display: none !important;
+        }
+
+        /* Hide edit/delete buttons on signature */
+        .signature-display button,
+        .signature-display .btn {
+            display: none !important;
+        }
+
+        /* Remove blue border from signature canvas */
+        #signatureCanvas {
+            border: none !important;
+        }
+
+        /* Clean signature display for print */
+        .signature-display img {
+            border: none !important;
+            max-width: 100%;
+        }
+
+        /* Hide pen mode indicator */
+        #penModeIndicator {
+            display: none !important;
+        }
+
+        /* Ensure rubber stamp is visible */
+        svg {
+            display: block !important;
+        }
+    }
+    </style>
+{% if not embedded %}
+</head>
+
+<body>
+    <div class="no-print text-center my-2">
+        <button id="printReceipt" class="btn btn-primary btn-sm">Print Receipt</button>
+        <button id="saveReceiptPdf" class="btn btn-outline-primary btn-sm">Save Receipt PDF</button>
+        <button id="closeReceipt" class="btn btn-secondary btn-sm">Close</button>
+    </div>
+{% endif %}
+
+<div class="no-print text-center my-2">
+    {% set email_share_endpoint = url_for('api_sale_share_email', sale_id=sale.id) %}
+    {% set email_fallback_pdf = url_for('api_sale_receipt_pdf', sale_id=sale.id) %}
+    {% include 'components/email_share_button.html' %}
+    {% set whatsapp_share_endpoint = url_for('api_sale_share_whatsapp', sale_id=sale.id) %}
+    {% set whatsapp_fallback_pdf = url_for('api_sale_receipt_pdf', sale_id=sale.id) %}
+    {% set whatsapp_default_phone = '' %}
+    {% include 'components/whatsapp_share_button.html' %}
+</div>
+
+    {% set _receipt_source_url = url_for('generate_receipt', sale_id=sale.id) %}
+    {% if amount_given is defined and amount_given is not none %}
+        {% set _receipt_source_url = _receipt_source_url ~ '?amount_given=' ~ (amount_given|string) %}
+        {% if change is defined and change is not none %}
+            {% set _receipt_source_url = _receipt_source_url ~ '&change=' ~ (change|string) %}
+        {% endif %}
+    {% elif change is defined and change is not none %}
+        {% set _receipt_source_url = _receipt_source_url ~ '?change=' ~ (change|string) %}
+    {% endif %}
+    <div class="receipt-container" data-receipt-root="1" data-receipt-source-url="{{ _receipt_source_url }}">
+        <div class="receipt-header text-center mb-4">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" class="logo mb-2">
+            <p class="mb-1">makokhamedicalcentre2025@gmail.com</p>
+            <p class="mb-1">+254 741256531 / +254 713580997</p>
+            <div class="receipt-title-section">
+                <h5 class="mt-3">SALES RECEIPT</h5>
+                {% if sale.bulk_sale_number %}
+                    <h6>Bulk Sale: {{ sale.bulk_sale_number }}</h6>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="receipt-info mb-4">
+            <div class="row">
+                <div class="col-6">
+                    <p><strong>Receipt No:</strong> {{ sale.sale_number }}</p>
+                    {% if sale.bulk_sale_number %}
+                    <p><strong>Bulk Sale No:</strong> {{ sale.bulk_sale_number }}</p>
+                    {% endif %}
+                    <p><strong>Date:</strong> {{ sale.created_at|eat_time('%Y-%m-%d %H:%M EAT') }}</p>
+                </div>
+                <div class="col-6 text-end">
+                    <p><strong>Pharmacist:</strong> {{ sale.user.username }}</p>
+                    <p><strong>Payment Method:</strong>
+                        {% if sale.payment_method == 'mpesa' %}
+                            M-Pesa
+                        {% elif sale.payment_method == 'credit_card' %}
+                            Credit Card
+                        {% elif sale.payment_method == 'insurance' %}
+                            Insurance
+                        {% else %}
+                            Cash
+                        {% endif %}
+                    </p>
+                    {% if sale.patient %}
+                    <p><strong>Patient:</strong> {{ sale.patient.op_number or sale.patient.ip_number }} - {{ decrypt_data(sale.patient.name) }}</p>
+                    {% else %}
+                    <p><strong>Customer:</strong> Walk-in</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="receipt-items mb-4">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item Details</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set all_sales = [sale] + (related_sales or []) %}
+                    {% set ns = namespace(i=0) %}
+                    {% for s in all_sales %}
+                        {% for item in (s.items or []) %}
+                        {% set ns.i = ns.i + 1 %}
+                        <tr>
+                            <td>{{ ns.i }}</td>
+                            <td>
+                                {{ item.drug_name or (item.drug.name if item.drug else '') }}{% set _spec = (item.drug_specification or (item.drug.specification if item.drug else '')) %}{% if _spec %} ({{ _spec }}){% endif %}
+                                <br><small class="text-muted item-meta">Item ID: {{ item.individual_sale_number }}</small>
+                            </td>
+                            <td class="text-end">{{ item.quantity }}</td>
+                            <td class="text-end">{{ "Ksh {:,.2f}".format(item.unit_price) }}</td>
+                            <td class="text-end">{{ "Ksh {:,.2f}".format(item.total_price) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if ns.i == 0 %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">No items found for this sale.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Subtotal:</th>
+                        <th class="text-end">{{ "Ksh {:,.2f}".format(sale.total_amount) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <h6 class="mb-2">Payment Summary</h6>
+            {% set _insurance_cover = (sale.insurance_cover if (sale.insurance_cover is defined and sale.insurance_cover) else 0) %}
+            {% set _amount_due = (sale.total_amount - _insurance_cover) if sale.payment_method == 'insurance' else sale.total_amount %}
+            <div class="small border rounded p-2">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Total</span>
+                    <strong>{{ "Ksh {:,.2f}".format(sale.total_amount) }}</strong>
+                </div>
+                {% if sale.payment_method == 'insurance' and (sale.insurance_cover is defined) and sale.insurance_cover %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Insurance Cover</span>
+                    <span>{{ "Ksh {:,.2f}".format(sale.insurance_cover) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Amount Paid</span>
+                    <strong>{{ "Ksh {:,.2f}".format(_amount_due) }}</strong>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Payment Method</span>
+                    <span>
+                        {% if sale.payment_method == 'mpesa' %}
+                            M-Pesa
+                        {% elif sale.payment_method == 'credit_card' %}
+                            Credit Card
+                        {% elif sale.payment_method == 'insurance' %}
+                            Insurance
+                        {% else %}
+                            Cash
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Amount</span>
+                    <strong>{{ "Ksh {:,.2f}".format(_amount_due) }}</strong>
+                </div>
+                {% if sale.payment_method == 'cash' %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Amount Given (Cash)</span>
+                    <span>
+                        {% if amount_given is defined and amount_given is not none %}
+                            {{ "Ksh {:,.2f}".format(amount_given) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                {% set _bal = (change if (change is defined and change is not none) else ((amount_given - _amount_due) if (amount_given is defined and amount_given is not none) else none)) %}
+                <div class="d-flex justify-content-between">
+                    <span>{{ 'Change' if (_bal is not none and _bal >= 0) else 'Balance Due' if (_bal is not none and _bal < 0) else 'Change' }}</span>
+                    <span>
+                        {% if _bal is not none %}
+                            {{ "Ksh {:,.2f}".format(_bal) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="receipt-footer text-center mt-4">
+            <div class="signature-section mmc-signature-section">
+                <div class="mmc-signature-back">
+                    {% include 'components/signature_pad.html' %}
+                </div>
+                <div class="mmc-stamp-front">
+                    {{ generate_rubber_stamp() }}
+                </div>
+            </div>
+            <div class="mt-2">
+                {{ render_receipt_verification_qr('sale', sale.id, sale.sale_number) }}
+            </div>
+            <p class="mb-1">Thank you for your purchase.</p>
+            <p class="mb-1">Goods sold are not returnable without original receipt.</p>
+        </div>
+    </div>
+
+{% if not embedded %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var closeBtn = document.getElementById('closeReceipt');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                try { window.close(); } catch (e) { /* ignore */ }
+            });
+        }
+
+        var printBtn = document.getElementById('printReceipt');
+        if (printBtn) {
+            printBtn.addEventListener('click', async function() {
+                var exporter = window.MMC_RECEIPT_EXPORT;
+                if (!exporter || typeof exporter.printPdf !== 'function') {
+                    alert('Receipt PDF exporter is not available on this page.');
+                    return;
+                }
+                var ok = await exporter.printPdf();
+                if (!ok) {
+                    alert('Unable to open generated receipt PDF for print.');
+                }
+            });
+        }
+
+        var saveBtn = document.getElementById('saveReceiptPdf');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                var exporter = window.MMC_RECEIPT_EXPORT;
+                if (!exporter || typeof exporter.downloadPdf !== 'function') {
+                    alert('Receipt PDF exporter is not available on this page.');
+                    return;
+                }
+                var ref = {{ (sale.sale_number or ('sale-' ~ sale.id))|tojson }};
+                var ok = await exporter.downloadPdf(ref);
+                if (!ok) {
+                    alert('Unable to save receipt PDF.');
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>
+{% endif %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}View Invoice{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3>Invoice #{{ invoice.invoice_number }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h4>Billed To:</h4>
+                    <p>
+                        <strong>{{ invoice.patient.firstname }} {{ invoice.patient.lastname }}</strong><br>
+                        Patient ID: {{ invoice.patient.id }}<br>
+                        {{ invoice.patient.address or 'No address on file' }}<br>
+                        Email: {{ invoice.patient.email or 'N/A' }}<br>
+                        Phone: {{ invoice.patient.phone or 'N/A' }}
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h4>Invoice Details:</h4>
+                    <p>
+                        <strong>Date Issued:</strong> {{ invoice.date_issued.strftime('%B %d, %Y') }}<br>
+                        <strong>Due Date:</strong> {{ invoice.due_date.strftime('%B %d, %Y') if invoice.due_date else 'N/A' }}<br>
+                        <strong>Status:</strong> <span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' if invoice.status == 'unpaid' else 'danger' }}">{{ invoice.status|capitalize }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-center">Quantity</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in invoice.items %}
+                    <tr>
+                        <td>{{ item.description }}</td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-end">{{ "%.2f"|format(item.unit_price) }}</td>
+                        <td class="text-end">{{ "%.2f"|format(item.total_price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                        <td class="text-end">{{ "%.2f"|format(invoice.total_amount) }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>Paid Amount:</strong></td>
+                        <td class="text-end">{{ "%.2f"|format(invoice.paid_amount) }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>Amount Due:</strong></td>
+                        <td class="text-end"><strong>{{ "%.2f"|format(invoice.total_amount - invoice.paid_amount) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            {% if invoice.notes %}
+            <div class="mt-4">
+                <h4>Notes:</h4>
+                <p>{{ invoice.notes }}</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-4 text-end">
+                <a href="{{ url_for('invoices') }}" class="btn btn-secondary">Back to Invoices</a>
+                <button class="btn btn-primary" onclick="window.print();"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

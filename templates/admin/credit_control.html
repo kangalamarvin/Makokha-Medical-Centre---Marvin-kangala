@@ -1,0 +1,809 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap" style="gap:10px;">
+        <div>
+            <h2 class="mb-0">Credit Control</h2>
+            <small class="text-muted">Approve requests, track arrears, and record partial payments.</small>
+        </div>
+        <div class="d-flex" style="gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline-secondary" id="refreshCreditBtn">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+            <button type="button" class="btn btn-outline-primary" id="runCreditReminderBtn">
+                <i class="fas fa-envelope"></i> Run Due Reminders
+            </button>
+        </div>
+    </div>
+
+    <div id="creditStatus" class="alert alert-info" style="display:none;"></div>
+
+    <div class="row mb-3">
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-left-warning shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Pending Approvals</div>
+                    <div class="h4 mb-0" id="metricPending">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-left-info shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Open Credit Accounts</div>
+                    <div class="h4 mb-0" id="metricOpen">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-left-danger shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Outstanding Balance</div>
+                    <div class="h4 mb-0" id="metricOutstanding">Ksh 0.00</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+            <div class="card border-left-primary shadow-sm h-100">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Due Today</div>
+                    <div class="h4 mb-0" id="metricDueToday">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h6 class="mb-0"><i class="fas fa-hourglass-half"></i> Pending Credit Requests</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request</th>
+                        <th>Patient / Contact</th>
+                        <th>Source</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Pledged Date</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingCreditBody">
+                    <tr><td colspan="8" class="text-muted">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h6 class="mb-0"><i class="fas fa-file-invoice-dollar"></i> Approved Credit Accounts (Open)</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request</th>
+                        <th>Patient</th>
+                        <th>Due Date</th>
+                        <th>Total</th>
+                        <th>Paid</th>
+                        <th>Arrears</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="openCreditBody">
+                    <tr><td colspan="7" class="text-muted">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h6 class="mb-0"><i class="fas fa-history"></i> Recent Credit Requests</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request</th>
+                        <th>Patient</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                        <th>Paid</th>
+                        <th>Arrears</th>
+                        <th>Pledged Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="recentCreditBody">
+                    <tr><td colspan="8" class="text-muted">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="approveCreditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Approve Credit Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="approveCreditForm">
+                <div class="modal-body">
+                    <input type="hidden" id="approveCreditRequestId">
+                    <div class="mb-2 text-muted small" id="approveCreditSummary"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Pledged Payment Date *</label>
+                        <input type="date" class="form-control" id="approvePledgedDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Patient Email (optional)</label>
+                        <input type="email" class="form-control" id="approvePatientEmail" placeholder="patient@example.com">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Admin Notes (optional)</label>
+                        <textarea class="form-control" id="approveNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Approve
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectCreditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Credit Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="rejectCreditForm">
+                <div class="modal-body">
+                    <input type="hidden" id="rejectCreditRequestId">
+                    <div class="mb-2 text-muted small" id="rejectCreditSummary"></div>
+                    <div class="mb-0">
+                        <label class="form-label">Reason *</label>
+                        <textarea class="form-control" id="rejectReason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle"></i> Reject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentCreditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Credit Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="paymentCreditForm">
+                <div class="modal-body">
+                    <input type="hidden" id="paymentCreditRequestId">
+                    <div class="mb-2 text-muted small" id="paymentCreditSummary"></div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Amount *</label>
+                            <input type="number" step="0.01" min="0.01" class="form-control" id="paymentAmount" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Date *</label>
+                            <input type="date" class="form-control" id="paymentDate" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Method *</label>
+                            <select class="form-control" id="paymentMethod" required>
+                                <option value="cash">Cash</option>
+                                <option value="mpesa">M-Pesa</option>
+                                <option value="card">Card</option>
+                                <option value="bank">Bank</option>
+                                <option value="insurance">Insurance</option>
+                                <option value="paypal">PayPal</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Reference</label>
+                            <input type="text" class="form-control" id="paymentReference" placeholder="Transaction ref">
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="paymentNotes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="viewCreditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Credit Request Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="viewCreditRequestId">
+                <div class="mb-2 text-muted small" id="viewCreditSummary"></div>
+                <div class="small mb-3" id="viewCreditMeta"></div>
+
+                <h6 class="mb-1">Items</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Unit</th>
+                                <th>Total</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewCreditItemsBody">
+                            <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mb-1">Payments</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Method</th>
+                                <th>Amount</th>
+                                <th>Reference</th>
+                                <th>Recorded By</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewCreditPaymentsBody">
+                            <tr><td colspan="5" class="text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const canAdminActions = {{ (can_credit_admin_actions if can_credit_admin_actions is defined else False)|tojson }};
+    const canPaymentActions = {{ (can_credit_payment_actions if can_credit_payment_actions is defined else False)|tojson }};
+
+    const statusEl = document.getElementById('creditStatus');
+    const pendingBody = document.getElementById('pendingCreditBody');
+    const openBody = document.getElementById('openCreditBody');
+    const recentBody = document.getElementById('recentCreditBody');
+
+    const metricPending = document.getElementById('metricPending');
+    const metricOpen = document.getElementById('metricOpen');
+    const metricOutstanding = document.getElementById('metricOutstanding');
+    const metricDueToday = document.getElementById('metricDueToday');
+
+    const refreshBtn = document.getElementById('refreshCreditBtn');
+    const runReminderBtn = document.getElementById('runCreditReminderBtn');
+
+    if (!canAdminActions && runReminderBtn) {
+        runReminderBtn.style.display = 'none';
+    }
+
+    function modalAdapter(modalId) {
+        const el = document.getElementById(modalId);
+        return {
+            show() {
+                if (!el) return;
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(el).show();
+                    return;
+                }
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+                    window.jQuery(el).modal('show');
+                    return;
+                }
+                el.style.display = 'block';
+                el.classList.add('show');
+            },
+            hide() {
+                if (!el) return;
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(el).hide();
+                    return;
+                }
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+                    window.jQuery(el).modal('hide');
+                    return;
+                }
+                el.classList.remove('show');
+                el.style.display = 'none';
+            },
+        };
+    }
+
+    const approveModal = modalAdapter('approveCreditModal');
+    const rejectModal = modalAdapter('rejectCreditModal');
+    const paymentModal = modalAdapter('paymentCreditModal');
+    const viewModal = modalAdapter('viewCreditModal');
+
+    const approveForm = document.getElementById('approveCreditForm');
+    const rejectForm = document.getElementById('rejectCreditForm');
+    const paymentForm = document.getElementById('paymentCreditForm');
+
+    const rowsState = {
+        pending: [],
+        open: [],
+        recent: [],
+    };
+
+    function esc(v) {
+        return String(v === null || v === undefined ? '' : v)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function money(v) {
+        const n = Number(v || 0);
+        return 'Ksh ' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function arrears(row) {
+        const total = Number((row && row.total_amount) || 0);
+        const paid = Number((row && row.amount_paid) || 0);
+        return Math.max(0, total - paid);
+    }
+
+    function itemCount(row) {
+        const items = row && Array.isArray(row.items) ? row.items : [];
+        return items.length;
+    }
+
+    function findRowById(id) {
+        const all = [].concat(rowsState.pending || [], rowsState.open || [], rowsState.recent || []);
+        return all.find(r => Number(r.id) === Number(id)) || null;
+    }
+
+    function setStatus(kind, msg) {
+        statusEl.style.display = 'block';
+        statusEl.className = 'alert ' + (kind === 'error' ? 'alert-danger' : (kind === 'success' ? 'alert-success' : 'alert-info'));
+        statusEl.textContent = msg;
+    }
+
+    async function fetchJson(url, options) {
+        const opts = Object.assign({}, options || {});
+        opts.headers = Object.assign({}, opts.headers || {});
+        if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(opts.method || 'GET').toUpperCase())) {
+            opts.headers['X-CSRFToken'] = csrfToken;
+        }
+        const res = await fetch(url, opts);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error((body && (body.error || body.message)) || `Request failed (${res.status})`);
+        }
+        return body;
+    }
+
+    function updateMetrics() {
+        const pending = rowsState.pending || [];
+        const open = rowsState.open || [];
+        const dueToday = open.filter(r => (r.pledged_payment_date || '') === todayIso && arrears(r) > 0).length;
+        const outstanding = open.reduce((sum, r) => sum + arrears(r), 0);
+
+        metricPending.textContent = String(pending.length);
+        metricOpen.textContent = String(open.length);
+        metricOutstanding.textContent = money(outstanding);
+        metricDueToday.textContent = String(dueToday);
+    }
+
+    function renderPending() {
+        const rows = rowsState.pending || [];
+        if (!rows.length) {
+            pendingBody.innerHTML = '<tr><td colspan="8" class="text-muted">No pending credit requests.</td></tr>';
+            return;
+        }
+
+        pendingBody.innerHTML = rows.map(row => `
+            <tr>
+                <td>
+                    <strong>${esc(row.request_number || '')}</strong><br>
+                    <small class="text-muted">#${esc(row.id)}</small>
+                </td>
+                <td>
+                    <div>${esc(row.patient_name || 'N/A')}</div>
+                    <small class="text-muted">${esc(row.patient_contact || row.patient_number || '')}</small>
+                </td>
+                <td>${esc((row.source_module || row.requested_by_role || '').toUpperCase())}</td>
+                <td>${esc(itemCount(row))}</td>
+                <td>${esc(money(row.total_amount || 0))}</td>
+                <td>${esc(row.pledged_payment_date || '-')}</td>
+                <td>${esc((row.created_at || '').replace('T', ' ').slice(0, 16))}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-info me-1" data-action="view" data-id="${esc(row.id)}">Details</button>
+                    ${canAdminActions ? `<button type="button" class="btn btn-sm btn-success me-1" data-action="approve" data-id="${esc(row.id)}">Approve</button>` : ''}
+                    ${canAdminActions ? `<button type="button" class="btn btn-sm btn-outline-danger" data-action="reject" data-id="${esc(row.id)}">Reject</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderOpen() {
+        const rows = rowsState.open || [];
+        if (!rows.length) {
+            openBody.innerHTML = '<tr><td colspan="7" class="text-muted">No open approved credit accounts.</td></tr>';
+            return;
+        }
+
+        openBody.innerHTML = rows.map(row => `
+            <tr>
+                <td><strong>${esc(row.request_number || '')}</strong><br><small class="text-muted">#${esc(row.id)}</small></td>
+                <td>${esc(row.patient_name || 'N/A')}</td>
+                <td>${esc(row.pledged_payment_date || '-')}</td>
+                <td>${esc(money(row.total_amount || 0))}</td>
+                <td>${esc(money(row.amount_paid || 0))}</td>
+                <td><strong>${esc(money(arrears(row)))}</strong></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-info me-1" data-action="view" data-id="${esc(row.id)}">Details</button>
+                    ${canPaymentActions ? `<button type="button" class="btn btn-sm btn-primary" data-action="payment" data-id="${esc(row.id)}">Record Payment</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderRecent() {
+        const rows = rowsState.recent || [];
+        if (!rows.length) {
+            recentBody.innerHTML = '<tr><td colspan="8" class="text-muted">No credit requests found.</td></tr>';
+            return;
+        }
+
+        recentBody.innerHTML = rows.map(row => {
+            const status = String(row.status || '').toLowerCase();
+            const badge = status === 'approved' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : 'badge-secondary');
+            const canPay = canPaymentActions && status === 'approved' && arrears(row) > 0.005;
+            return `
+                <tr>
+                    <td><strong>${esc(row.request_number || '')}</strong><br><small class="text-muted">${esc((row.source_module || '').toUpperCase())}</small></td>
+                    <td>${esc(row.patient_name || 'N/A')}</td>
+                    <td><span class="badge ${badge}">${esc(status || 'unknown')}</span></td>
+                    <td>${esc(money(row.total_amount || 0))}</td>
+                    <td>${esc(money(row.amount_paid || 0))}</td>
+                    <td>${esc(money(arrears(row)))}</td>
+                    <td>${esc(row.pledged_payment_date || '-')}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-info me-1" data-action="view" data-id="${esc(row.id)}">Details</button>
+                        ${canPay ? `<button type="button" class="btn btn-sm btn-outline-primary" data-action="payment" data-id="${esc(row.id)}">Record Payment</button>` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function loadRows() {
+        setStatus('info', 'Loading credit data...');
+        const [pendingResp, openResp, recentResp] = await Promise.all([
+            fetchJson('/api/credit-requests?status=pending&include_items=1&limit=250'),
+            fetchJson('/api/credit-requests?status=open&include_items=1&include_payments=1&limit=400'),
+            fetchJson('/api/credit-requests?status=all&include_items=0&include_payments=0&limit=250'),
+        ]);
+
+        rowsState.pending = pendingResp.rows || [];
+        rowsState.open = openResp.rows || [];
+        rowsState.recent = recentResp.rows || [];
+
+        updateMetrics();
+        renderPending();
+        renderOpen();
+        renderRecent();
+        setStatus('success', 'Credit dashboard updated.');
+    }
+
+    function openApproveDialog(id) {
+        const row = findRowById(id);
+        if (!row) return;
+        document.getElementById('approveCreditRequestId').value = String(row.id);
+        document.getElementById('approveCreditSummary').textContent = `${row.request_number} • ${row.patient_name || 'N/A'} • ${money(row.total_amount || 0)}`;
+        document.getElementById('approvePledgedDate').value = row.pledged_payment_date || todayIso;
+        document.getElementById('approvePatientEmail').value = row.patient_email || '';
+        document.getElementById('approveNotes').value = '';
+        approveModal.show();
+    }
+
+    function openRejectDialog(id) {
+        const row = findRowById(id);
+        if (!row) return;
+        document.getElementById('rejectCreditRequestId').value = String(row.id);
+        document.getElementById('rejectCreditSummary').textContent = `${row.request_number} • ${row.patient_name || 'N/A'} • ${money(row.total_amount || 0)}`;
+        document.getElementById('rejectReason').value = '';
+        rejectModal.show();
+    }
+
+    function openPaymentDialog(id) {
+        const row = findRowById(id);
+        if (!row) return;
+        document.getElementById('paymentCreditRequestId').value = String(row.id);
+        document.getElementById('paymentCreditSummary').textContent = `${row.request_number} • ${row.patient_name || 'N/A'} • Arrears: ${money(arrears(row))}`;
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentDate').value = todayIso;
+        document.getElementById('paymentMethod').value = 'cash';
+        document.getElementById('paymentReference').value = '';
+        document.getElementById('paymentNotes').value = '';
+        paymentModal.show();
+    }
+
+    function renderViewDialog(row) {
+        const summaryEl = document.getElementById('viewCreditSummary');
+        const metaEl = document.getElementById('viewCreditMeta');
+        const itemsBody = document.getElementById('viewCreditItemsBody');
+        const paymentsBody = document.getElementById('viewCreditPaymentsBody');
+
+        document.getElementById('viewCreditRequestId').value = String(row.id || '');
+        summaryEl.textContent = `${row.request_number || ''} • ${row.patient_name || 'N/A'} • ${money(row.total_amount || 0)}`;
+
+        const status = String(row.status || '').toLowerCase();
+        const requestedBy = row.requested_by_name || row.requested_by_role || '-';
+        const approvedBy = row.approved_by_name || '-';
+        const rejectedBy = row.rejected_by_name || '-';
+        metaEl.innerHTML = [
+            `<div><strong>Status:</strong> ${esc(status || '-')}</div>`,
+            `<div><strong>Source:</strong> ${esc((row.source_module || '').toUpperCase() || '-')}</div>`,
+            `<div><strong>Patient Contact:</strong> ${esc(row.patient_contact || row.patient_number || '-')}</div>`,
+            `<div><strong>Patient Email:</strong> ${esc(row.patient_email || '-')}</div>`,
+            `<div><strong>Requested By:</strong> ${esc(requestedBy)}</div>`,
+            `<div><strong>Approved By:</strong> ${esc(approvedBy)}</div>`,
+            `<div><strong>Rejected By:</strong> ${esc(rejectedBy)}</div>`,
+            `<div><strong>Pledged Date:</strong> ${esc(row.pledged_payment_date || '-')}</div>`,
+            `<div><strong>Total:</strong> ${esc(money(row.total_amount || 0))} | <strong>Paid:</strong> ${esc(money(row.amount_paid || 0))} | <strong>Arrears:</strong> ${esc(money(arrears(row)))}</div>`,
+            (row.rejection_reason ? `<div><strong>Rejection Reason:</strong> ${esc(row.rejection_reason)}</div>` : ''),
+            (row.notes ? `<div><strong>Notes:</strong> ${esc(row.notes)}</div>` : ''),
+        ].join('');
+
+        const items = Array.isArray(row.items) ? row.items : [];
+        if (!items.length) {
+            itemsBody.innerHTML = '<tr><td colspan="6" class="text-muted">No item rows available.</td></tr>';
+        } else {
+            itemsBody.innerHTML = items.map((item) => `
+                <tr>
+                    <td>${esc(item.item_type || '-')}</td>
+                    <td>${esc(item.item_name || '-')}</td>
+                    <td>${esc(Number(item.quantity || 0))}</td>
+                    <td>${esc(money(item.unit_price || 0))}</td>
+                    <td>${esc(money(item.total_price || 0))}</td>
+                    <td>${esc(item.notes || '-')}</td>
+                </tr>
+            `).join('');
+        }
+
+        const payments = Array.isArray(row.payments) ? row.payments : [];
+        if (!payments.length) {
+            paymentsBody.innerHTML = '<tr><td colspan="5" class="text-muted">No payments recorded.</td></tr>';
+        } else {
+            paymentsBody.innerHTML = payments.map((payment) => `
+                <tr>
+                    <td>${esc(payment.payment_date || '-')}</td>
+                    <td>${esc(String(payment.payment_method || '').toUpperCase() || '-')}</td>
+                    <td>${esc(money(payment.amount || 0))}</td>
+                    <td>${esc(payment.reference || '-')}</td>
+                    <td>${esc(payment.recorded_by_name || payment.recorded_by_role || '-')}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    async function openViewDialog(id) {
+        const row = findRowById(id);
+        if (!row) return;
+
+        renderViewDialog(row);
+        viewModal.show();
+
+        try {
+            const resp = await fetchJson(`/api/credit-requests/${Number(id)}`);
+            if (resp && resp.row) {
+                renderViewDialog(resp.row);
+            }
+        } catch (err) {
+            setStatus('error', err.message || 'Failed to load full credit request details.');
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const id = Number(btn.getAttribute('data-id'));
+        if (!id) return;
+
+        if (action === 'approve') {
+            if (!canAdminActions) {
+                setStatus('error', 'Only admin users can approve credit requests.');
+                return;
+            }
+            openApproveDialog(id);
+            return;
+        }
+        if (action === 'view') {
+            openViewDialog(id);
+            return;
+        }
+        if (action === 'reject') {
+            if (!canAdminActions) {
+                setStatus('error', 'Only admin users can reject credit requests.');
+                return;
+            }
+            openRejectDialog(id);
+            return;
+        }
+        if (action === 'payment') {
+            if (!canPaymentActions) {
+                setStatus('error', 'You are not allowed to record credit payments.');
+                return;
+            }
+            openPaymentDialog(id);
+        }
+    });
+
+    approveForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!canAdminActions) {
+            setStatus('error', 'Only admin users can approve credit requests.');
+            return;
+        }
+        const id = Number(document.getElementById('approveCreditRequestId').value);
+        const pledgedDate = (document.getElementById('approvePledgedDate').value || '').trim();
+        const patientEmail = (document.getElementById('approvePatientEmail').value || '').trim();
+        const notes = (document.getElementById('approveNotes').value || '').trim();
+        if (!id || !pledgedDate) {
+            setStatus('error', 'Pledged payment date is required.');
+            return;
+        }
+
+        try {
+            await fetchJson(`/api/credit-requests/${id}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pledged_payment_date: pledgedDate,
+                    patient_email: patientEmail,
+                    notes: notes,
+                }),
+            });
+            approveModal.hide();
+            setStatus('success', 'Credit request approved.');
+            await loadRows();
+        } catch (err) {
+            setStatus('error', err.message || 'Failed to approve credit request.');
+        }
+    });
+
+    rejectForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!canAdminActions) {
+            setStatus('error', 'Only admin users can reject credit requests.');
+            return;
+        }
+        const id = Number(document.getElementById('rejectCreditRequestId').value);
+        const reason = (document.getElementById('rejectReason').value || '').trim();
+        if (!id || !reason) {
+            setStatus('error', 'Rejection reason is required.');
+            return;
+        }
+        try {
+            await fetchJson(`/api/credit-requests/${id}/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason }),
+            });
+            rejectModal.hide();
+            setStatus('success', 'Credit request rejected.');
+            await loadRows();
+        } catch (err) {
+            setStatus('error', err.message || 'Failed to reject request.');
+        }
+    });
+
+    paymentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!canPaymentActions) {
+            setStatus('error', 'You are not allowed to record credit payments.');
+            return;
+        }
+        const id = Number(document.getElementById('paymentCreditRequestId').value);
+        const amount = Number(document.getElementById('paymentAmount').value || 0);
+        const paymentDate = (document.getElementById('paymentDate').value || '').trim();
+        const method = (document.getElementById('paymentMethod').value || 'cash').trim();
+        const reference = (document.getElementById('paymentReference').value || '').trim();
+        const notes = (document.getElementById('paymentNotes').value || '').trim();
+
+        if (!id || !(amount > 0) || !paymentDate) {
+            setStatus('error', 'Enter a valid amount and payment date.');
+            return;
+        }
+
+        try {
+            await fetchJson(`/api/credit-requests/${id}/payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amount,
+                    payment_date: paymentDate,
+                    payment_method: method,
+                    reference: reference,
+                    notes: notes,
+                }),
+            });
+            paymentModal.hide();
+            setStatus('success', 'Payment recorded successfully.');
+            await loadRows();
+        } catch (err) {
+            setStatus('error', err.message || 'Failed to record payment.');
+        }
+    });
+
+    refreshBtn.addEventListener('click', function() {
+        loadRows().catch(err => setStatus('error', err.message || 'Failed to refresh.'));
+    });
+
+    if (runReminderBtn) {
+        runReminderBtn.addEventListener('click', async function() {
+            if (!canAdminActions) {
+                setStatus('error', 'Only admin users can run due reminders.');
+                return;
+            }
+            try {
+                setStatus('info', 'Running due reminders...');
+                const result = await fetchJson('/api/credit-requests/reminders/run', {
+                    method: 'POST',
+                });
+                const stats = result.stats || {};
+                setStatus('success', `Reminder run complete. Sent: ${stats.sent || 0}, Due: ${stats.due || 0}, No email: ${stats.skipped_no_email || 0}.`);
+                await loadRows();
+            } catch (err) {
+                setStatus('error', err.message || 'Failed to run reminders.');
+            }
+        });
+    }
+
+    loadRows().catch(err => setStatus('error', err.message || 'Failed to load credit dashboard.'));
+})();
+</script>
+{% endblock %}

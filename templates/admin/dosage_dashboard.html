@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .content {
+        padding: 2rem 0;
+    }
+    
+    .dosage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .dosage-header h2 {
+        margin: 0;
+        flex: 1;
+        min-width: 300px;
+    }
+    
+    .header-title-group {
+        flex: 1;
+        min-width: 300px;
+    }
+    
+    .header-title-group h2 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0 0 0.25rem 0;
+        color: #2c3e50;
+    }
+    
+    .header-title-group p {
+        font-size: 0.95rem;
+        color: #7f8c8d;
+        margin: 0;
+    }
+    
+    .ai-control-section {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .ai-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    /* Toggle Switch Styles */
+    .toggle-switch {
+        position: relative;
+        display: inline-flex;
+        width: 50px;
+        height: 26px;
+        cursor: pointer;
+    }
+    
+    .toggle-switch input {
+        display: none;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        border-radius: 26px;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: #4A90E2;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+    }
+    
+    .toggle-switch.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .toggle-switch.disabled input {
+        cursor: not-allowed;
+    }
+    
+    .ai-toggle label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+        user-select: none;
+    }
+    
+    .cards-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+    
+    .dosage-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .dosage-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dosage-card.drug-card {
+        border-top: 4px solid #667eea;
+    }
+    
+    .dosage-card.controlled-card {
+        border-top: 4px solid #f093fb;
+    }
+    
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .card-header i {
+        font-size: 1.5rem;
+    }
+    
+    .dosage-card.drug-card .card-header i {
+        color: #667eea;
+    }
+    
+    .dosage-card.controlled-card .card-header i {
+        color: #f093fb;
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.85rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .stat-item {
+        padding: 0.85rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        transition: all 0.2s ease;
+        color: white;
+    }
+    
+    .stat-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dosage-card.drug-card .stat-item {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .dosage-card.controlled-card .stat-item {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: 1px solid rgba(245, 87, 108, 0.3);
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        opacity: 0.9;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+    }
+    
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: bold;
+    }
+    
+    .btn-open {
+        width: 100%;
+        padding: 0.55rem 0.85rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-radius: 0.375rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        color: white;
+    }
+    
+    .btn-open-drug {
+        background: #4A90E2;
+        color: white;
+    }
+    
+    .btn-open-drug:hover {
+        background: #357ABD;
+        transform: scale(1.02);
+        box-shadow: 0 6px 12px rgba(74, 144, 226, 0.3);
+        text-decoration: none;
+    }
+    
+    .btn-open-controlled {
+        background: #27AE60;
+        color: white;
+    }
+    
+    .btn-open-controlled:hover {
+        background: #1E8449;
+        transform: scale(1.02);
+        box-shadow: 0 6px 12px rgba(39, 174, 96, 0.3);
+        text-decoration: none;
+    }
+    
+    .auto-close-alert {
+        animation: slideOut 0.3s ease-out 3s forwards;
+    }
+    
+    @keyframes slideOut {
+        0% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
+    
+    @media (min-width: 320px) and (max-width: 480px) {
+        .dosage-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .header-title-group {
+            min-width: auto;
+        }
+        
+        .dosage-header h2 {
+            min-width: auto;
+        }
+        
+        .cards-container {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .dosage-card {
+            padding: 12px;
+        }
+
+        .card-header i {
+            display: none;
+        }
+
+        .card-header h3 {
+            font-size: 1.05rem;
+        }
+
+        .btn-open {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+
+<div class="content">
+    <!-- Header Row: Heading, Subtitle, and AI Toggle -->
+    <div class="dosage-header">
+        <div class="header-title-group">
+            <h2><i class="fas fa-pills"></i> Dosage Management</h2>
+            <p>Manage drug and controlled drug dosage information</p>
+        </div>
+        <div class="ai-control-section">
+            <div class="ai-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="aiToggleMaster" {{ 'checked' if ai_dosage_agent_enabled else '' }} onchange="handleAIToggleMaster(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label for="aiToggleMaster">Enable AI</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages (embed only; base.html already renders flashes) -->
+    {% if is_embed %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% endif %}
+
+    <!-- Cards Container -->
+    <div class="cards-container">
+        <!-- Drug Dosages Card -->
+        <div class="dosage-card drug-card">
+            <div class="card-header">
+                <i class="fas fa-pills"></i>
+                <h3>Drug Dosages</h3>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Drugs</div>
+                    <div class="stat-value">{{ drug_stats.total_drugs }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">With Dosage</div>
+                    <div class="stat-value">{{ drug_stats.with_dosage }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Missing</div>
+                    <div class="stat-value">{{ drug_stats.without_dosage }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">AI-Generated</div>
+                    <div class="stat-value">{{ drug_stats.ai_generated }}</div>
+                </div>
+            </div>
+
+            <a class="btn btn-open btn-open-drug" href="{{ url_for('manage_dosage') }}">
+                <i class="fas fa-arrow-right"></i> Open Drug Dosage Management
+            </a>
+        </div>
+
+        <!-- Controlled Drug Dosages Card -->
+        <div class="dosage-card controlled-card">
+            <div class="card-header">
+                <i class="fas fa-capsules"></i>
+                <h3>Controlled Dosages</h3>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Controlled</div>
+                    <div class="stat-value">{{ controlled_stats.total_drugs }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">With Dosage</div>
+                    <div class="stat-value">{{ controlled_stats.with_dosage }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Missing</div>
+                    <div class="stat-value">{{ controlled_stats.without_dosage }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">AI-Generated</div>
+                    <div class="stat-value">{{ controlled_stats.ai_generated }}</div>
+                </div>
+            </div>
+
+            <a class="btn btn-open btn-open-controlled" href="{{ url_for('manage_controlled_dosage') }}">
+                <i class="fas fa-arrow-right"></i> Open Controlled Dosage Management
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleAIToggleMaster(checkbox) {
+    // Store the master state in localStorage
+    localStorage.setItem('ai_dosage_master_enabled', checkbox.checked ? 'true' : 'false');
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("admin_toggle_ai_dosage_agent") }}';
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    
+    const enabledInput = document.createElement('input');
+    enabledInput.type = 'hidden';
+    enabledInput.name = 'enabled';
+    enabledInput.value = checkbox.checked ? '1' : '0';
+    
+    form.appendChild(csrfInput);
+    form.appendChild(enabledInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function autoCloseAlerts() {
+    const alerts = document.querySelectorAll('.auto-close-alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.remove();
+        }, 2000);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize localStorage with current state
+    const masterToggle = document.getElementById('aiToggleMaster');
+    localStorage.setItem('ai_dosage_master_enabled', masterToggle.checked ? 'true' : 'false');
+    autoCloseAlerts();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Financial Report Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 text-gray-800">Daily Financial Report</h1>
+                    <p class="text-gray-600 mb-0">Date: <strong>{{ target_date.strftime('%A, %B %d, %Y') }}</strong></p>
+                </div>
+                <form method="POST" class="d-flex gap-2">
+                    <input type="date" name="date" class="form-control" value="{{ target_date.strftime('%Y-%m-%d') }}" style="width: 150px;">
+                    <button type="submit" class="btn btn-primary">View</button>
+                    <a href="{{ url_for('financial_dashboard_weekly') }}" class="btn btn-secondary">Weekly</a>
+                    <a href="{{ url_for('financial_dashboard_monthly') }}" class="btn btn-secondary">Monthly</a>
+                    <a href="{{ url_for('financial_dashboard_yearly') }}" class="btn btn-secondary">Yearly</a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="row mb-4">
+        <!-- Total Revenue -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-primary font-weight-bold text-uppercase mb-1">Total Revenue</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('total_revenue', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.revenue_change_pct >= 0 %}
+                            <span class="text-success">↑ {{ "{:.1f}%".format(metrics.revenue_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-danger">↓ {{ "{:.1f}%".format(abs(metrics.revenue_change_pct)) }}</span>
+                        {% endif %}
+                        vs yesterday
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Expenses -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-danger font-weight-bold text-uppercase mb-1">Total Expenses</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('total_expense', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.expense_change_pct >= 0 %}
+                            <span class="text-danger">↑ {{ "{:.1f}%".format(metrics.expense_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-success">↓ {{ "{:.1f}%".format(abs(metrics.expense_change_pct)) }}</span>
+                        {% endif %}
+                        vs yesterday
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Net Profit -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-success font-weight-bold text-uppercase mb-1">Net Profit</div>
+                    <div class="h3 mb-0">KES {{ "{:,.2f}".format(metrics.get('net_profit', 0)) }}</div>
+                    <small class="text-muted">
+                        {% if metrics.profit_change_pct >= 0 %}
+                            <span class="text-success">↑ {{ "{:.1f}%".format(metrics.profit_change_pct) }}</span>
+                        {% else %}
+                            <span class="text-danger">↓ {{ "{:.1f}%".format(abs(metrics.profit_change_pct)) }}</span>
+                        {% endif %}
+                        vs yesterday
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Margin -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <div class="text-info font-weight-bold text-uppercase mb-1">Profit Margin</div>
+                    <div class="h3 mb-0">{{ "{:.2f}%".format(metrics.get('profit_margin', 0)) }}</div>
+                    <small class="text-muted">Net profit / Total revenue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Breakdown -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue by Category</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">Pharmacy Revenue</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('pharmacy_revenue', 0)) }}</td>
+                                <td class="text-right text-muted" style="width: 100px;">{{ "{:.1f}%".format((metrics.get('pharmacy_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Lab Revenue</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('lab_revenue', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('lab_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Imaging Revenue</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('imaging_revenue', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('imaging_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Consultation Revenue</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('consultation_revenue', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('consultation_revenue', 0) / metrics.get('total_revenue', 1)) * 100) }}</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #e3e6f0;">
+                                <td class="fw-bold">Total Revenue</td>
+                                <td class="text-right fw-bold">KES {{ "{:,.2f}".format(metrics.get('total_revenue', 0)) }}</td>
+                                <td class="text-right text-muted">100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Breakdown -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Expenses by Category</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">Payroll Expense</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('payroll_expense', 0)) }}</td>
+                                <td class="text-right text-muted" style="width: 100px;">{{ "{:.1f}%".format((metrics.get('payroll_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Pharmacy Expense</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('pharmacy_expense', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('pharmacy_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Equipment Expense</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('equipment_expense', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('equipment_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Utilities Expense</td>
+                                <td class="text-right">KES {{ "{:,.2f}".format(metrics.get('utilities_expense', 0)) }}</td>
+                                <td class="text-right text-muted">{{ "{:.1f}%".format((metrics.get('utilities_expense', 0) / metrics.get('total_expense', 1)) * 100) }}</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #e3e6f0;">
+                                <td class="fw-bold">Total Expense</td>
+                                <td class="text-right fw-bold">KES {{ "{:,.2f}".format(metrics.get('total_expense', 0)) }}</td>
+                                <td class="text-right text-muted">100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cash Flow Analysis -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Cash Flow by Payment Method</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success mb-3">Cash In</h6>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Cash Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('cash_in', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>MPESA Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('mpesa_in', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Card Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('card_in', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Bank Transfers</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('bank_in', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between border-top border-2 pt-2 mt-2">
+                                    <strong>Total Cash In</strong>
+                                    <strong class="text-success">KES {{ "{:,.2f}".format(metrics.get('total_cash_in', 0)) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-danger mb-3">Cash Out</h6>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Cash Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('cash_out', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>MPESA Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('mpesa_out', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Card Payments</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('card_out', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between">
+                                    <span>Bank Transfers</span>
+                                    <strong>KES {{ "{:,.2f}".format(metrics.get('bank_out', 0)) }}</strong>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between border-top border-2 pt-2 mt-2">
+                                    <strong>Total Cash Out</strong>
+                                    <strong class="text-danger">KES {{ "{:,.2f}".format(metrics.get('total_cash_out', 0)) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding & Patient Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Outstanding Amounts</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Outstanding Invoices</span>
+                            <span>KES {{ "{:,.2f}".format(metrics.get('outstanding_invoices', 0)) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Overdue Amount</span>
+                            <span class="text-danger">KES {{ "{:,.2f}".format(metrics.get('overdue_amount', 0)) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Overdue Debtors</span>
+                            <span class="text-danger">KES {{ "{:,.2f}".format(metrics.get('overdue_debtors', 0)) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Patient Metrics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Total Patients Served</span>
+                            <span class="badge bg-primary">{{ metrics.get('total_patients_served', 0) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">New Patients</span>
+                            <span class="badge bg-success">{{ metrics.get('new_patients', 0) }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Returning Patients</span>
+                            <span class="badge bg-info">{{ metrics.get('returning_patients', 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <a href="#" class="btn btn-success btn-sm"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                    <a href="#" class="btn btn-info btn-sm"><i class="fas fa-file-excel"></i> Export Excel</a>
+                    <a href="#" class="btn btn-secondary btn-sm"><i class="fas fa-print"></i> Print</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 8px;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    .list-group-item {
+        padding: 0.75rem 0;
+    }
+</style>
+{% endblock %}

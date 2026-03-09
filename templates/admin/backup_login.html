@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Access Login - {{ config['APP_NAME'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">
+                        <i class="fas fa-lock"></i> Backup Access Login
+                    </h3>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert">
+                                        <span>&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="email" 
+                                name="email"
+                                placeholder="Enter your registered email" 
+                                required
+                                autofocus
+                            >
+                            <small class="form-text text-muted">Your backup access email address</small>
+                            <div class="invalid-feedback">
+                                Please provide a valid email address.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="password" 
+                                name="password"
+                                placeholder="Enter your backup password" 
+                                required
+                            >
+                            <div class="invalid-feedback">
+                                Password is required.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-sign-in-alt"></i> Login to Backup
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    {% if current_user and current_user.is_authenticated and current_user.id == 1 %}
+                        <div class="alert alert-info" role="alert">
+                            <small>
+                                <strong>Main admin:</strong> If backup access is not yet set up, register the hospital backup email here.
+                            </small>
+                            <div class="mt-2">
+                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('backup_login_register_email') }}">
+                                    <i class="fas fa-key"></i> Register Backup Access
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info" role="alert">
+                            <small>
+                                <strong>First time?</strong> Contact the main admin to register your backup email.
+                            </small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card card-light mt-3">
+                <div class="card-body text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt"></i> Secured backup access requires email verification and a strong password
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}

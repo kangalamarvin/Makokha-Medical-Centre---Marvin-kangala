@@ -1,0 +1,61 @@
+.md
+backups/
+instance/
+.env
+.env.*
+!.env.example
+logs/
+*.log
+*.log.*
+*.out
+*.err
+nohup.out
+log/
+tmp/
+*.db
+*.sqlite3
+*.sqlite
+migrations/
+
+
+# User uploads (often PHI / sensitive)
+uploads/
+static/uploads/
+
+
+# Node
+node_modules/
+
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+
+
+# Secrets / keys (avoid committing credentials)
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.kdbx
+*secret*
+*secrets*

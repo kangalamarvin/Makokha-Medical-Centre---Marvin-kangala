@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <h2><i class="fas fa-user-nurse"></i> Nurse Dashboard</h2>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Inpatients</h5>
+                            <h2 class="mb-0">{{ inpatients_count }}</h2>
+                        </div>
+                        <i class="fas fa-bed fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Pending Admissions</h5>
+                            <h2 class="mb-0">{{ pending_notifications }}</h2>
+                        </div>
+                        <i class="fas fa-bell fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Medications Due</h5>
+                            <h2 class="mb-0">{{ medications_due }}</h2>
+                        </div>
+                        <i class="fas fa-pills fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Available Beds</h5>
+                            <h2 class="mb-0">{{ available_beds }}</h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-tasks"></i> Quick Actions</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('nurse_patients') }}" class="btn btn-primary btn-block">
+                        <i class="fas fa-users"></i> View All Patients
+                    </a>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('nurse_notifications') }}" class="btn btn-warning btn-block">
+                        <i class="fas fa-bell"></i> View Notifications ({{ pending_notifications }})
+                    </a>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('nurse_medication_schedule') }}" class="btn btn-success btn-block">
+                        <i class="fas fa-calendar-check"></i> Medication Schedule
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Nursing Reports -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-notes-medical"></i> Recent Nursing Reports</strong>
+        </div>
+        <div class="card-body">
+            {% if recent_reports %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Type</th>
+                            <th>Vitals</th>
+                            <th>Urgent</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in recent_reports %}
+                        <tr>
+                            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ report.patient.name }}</td>
+                            <td><span class="badge badge-info">{{ report.report_type }}</span></td>
+                            <td>
+                                {% if report.temperature %}T: {{ report.temperature }}°C{% endif %}
+                                {% if report.blood_pressure_systolic %}BP: {{ report.blood_pressure_systolic }}/{{ report.blood_pressure_diastolic }}{% endif %}
+                            </td>
+                            <td>
+                                {% if report.urgent %}
+                                <span class="badge badge-danger">URGENT</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('nurse_patient_details', patient_id=report.patient_id) }}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No recent reports</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pending Notifications -->
+    {% if notifications %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            <strong><i class="fas fa-exclamation-triangle"></i> Pending Patient Admissions</strong>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Time Notified</th>
+                            <th>Patient</th>
+                            <th>Ward</th>
+                            <th>Bed</th>
+                            <th>Doctor</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notif in notifications %}
+                        <tr>
+                            <td>{{ notif.notified_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ notif.patient.name }}</td>
+                            <td>{{ notif.ward.name }}</td>
+                            <td>{{ notif.bed.bed_number }}</td>
+                            <td>{{ notif.doctor.username }}</td>
+                            <td>
+                                <a href="{{ url_for('nurse_patient_details', patient_id=notif.patient_id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-user-check"></i> Receive Patient
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.btn-block {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+.page-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+</style>
+{% endblock %}

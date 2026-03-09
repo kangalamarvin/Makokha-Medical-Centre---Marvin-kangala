@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Restoring…{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center">
+        <div class="spinner-border" role="status" aria-hidden="true"></div>
+        <h5 class="mt-3">Restoring your last doctor page…</h5>
+        <p class="text-muted mb-0">If nothing happens, you will be taken to the dashboard.</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    const fallback = {{ fallback_url|tojson }};
+    const key = 'mmc.doctor.last_url';
+
+    function safeGetItem(k) {
+        try { return window.localStorage.getItem(k); } catch { return null; }
+    }
+
+    const last = (safeGetItem(key) || '').trim();
+    if (last && last.startsWith('/doctor')) {
+        window.location.replace(last);
+        return;
+    }
+
+    window.location.replace(fallback);
+})();
+</script>
+{% endblock %}

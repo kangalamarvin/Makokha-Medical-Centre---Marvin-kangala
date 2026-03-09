@@ -1,0 +1,1568 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+<div class="drug-management-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1><i class="fas fa-pills"></i> Drug Management</h1>
+                <p>Manage your pharmacy inventory and drug information</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn btn-outline btn-with-icon" href="{{ url_for('manage_controlled_drugs') }}">
+                    <i class="fas fa-shield-alt"></i> Manage Controlled Drugs
+                </a>
+                <button class="btn btn-primary btn-with-icon btn-add-drug" data-toggle="modal" data-target="#addDrugModal">
+                    <i class="fas fa-plus"></i> Add New Drug
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <div class="summary-cards-grid">
+        <div class="summary-card total-value">
+            <div class="card-icon">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="card-content">
+                <h3>Total Inventory Value</h3>
+                <div class="amount" id="totalInventoryValue">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="summary-card low-stock">
+            <div class="card-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="card-content">
+                <h3>Low Stock</h3>
+                <div class="amount" id="lowStockCount">0</div>
+            </div>
+        </div>
+        
+        <div class="summary-card expiring">
+            <div class="card-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="card-content">
+                <h3>Expiring Soon</h3>
+                <div class="amount" id="expiringSoonCount">0</div>
+            </div>
+        </div>
+        
+        <div class="summary-card out-of-stock">
+            <div class="card-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="card-content">
+                <h3>Out of Stock</h3>
+                <div class="amount" id="outOfStockCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-actions">
+        <button class="btn btn-outline filter-btn" id="viewLowStock">
+            <i class="fas fa-exclamation-triangle"></i> View Low Stock
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewExpiringSoon">
+            <i class="fas fa-clock"></i> View Expiring Soon
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewOutOfStock">
+            <i class="fas fa-times-circle"></i> View Out of Stock
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewExpired">
+            <i class="fas fa-skull-crossbones"></i> View Expired Drugs
+        </button>
+        <button class="btn btn-outline filter-btn" id="clearFilters">
+            <i class="fas fa-times"></i> Clear Filters
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table id="drugsTable" class="simple-table">
+            <thead>
+                <tr>
+                    <th>Drug No.</th>
+                    <th>Drug Name</th>
+                    <th>Specification</th>
+                    <th>Buy Price</th>
+                    <th>Sell Price</th>
+                    <th>IP Price</th>
+                    <th>Stocked</th>
+                    <th>Sold</th>
+                    <th>Remaining</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be loaded via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Drug Modal -->
+<div class="modal fade" id="addDrugModal" tabindex="-1" role="dialog" aria-labelledby="addDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="addDrugModalLabel">Add New Drug</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="drug_number" id="drug_number">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="drug_number_display">Drug Number (Auto-Generated)</label>
+                            <input type="text" class="form-control" id="drug_number_display" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="name">Drug Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="specification">Specification</label>
+                        <input type="text" class="form-control" id="specification" name="specification">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="buying_price">Buying Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="buying_price" name="buying_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="selling_price">Selling Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="selling_price" name="selling_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="ip_drug_price">IP Drug Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="ip_drug_price" name="ip_drug_price" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="stocked_quantity">Stocked Quantity *</label>
+                            <input type="number" class="form-control" id="stocked_quantity" name="stocked_quantity" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="expiry_date">Expiry Date *</label>
+                            <input type="date" class="form-control" id="expiry_date" name="expiry_date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Drug Modal -->
+<div class="modal fade" id="editDrugModal" tabindex="-1" role="dialog" aria-labelledby="editDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="editDrugModalLabel">Edit Drug</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" id="edit_drug_id" name="drug_id">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_drug_number">Drug Number *</label>
+                            <input type="text" class="form-control" id="edit_drug_number" name="drug_number" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_name">Drug Name *</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_specification">Specification</label>
+                        <input type="text" class="form-control" id="edit_specification" name="specification">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_buying_price">Buying Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_buying_price" name="buying_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_selling_price">Selling Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_selling_price" name="selling_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_ip_drug_price">IP Drug Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_ip_drug_price" name="ip_drug_price" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_stocked_quantity">Stocked Quantity *</label>
+                            <input type="number" class="form-control" id="edit_stocked_quantity" name="stocked_quantity" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_expiry_date">Expiry Date *</label>
+                            <input type="date" class="form-control" id="edit_expiry_date" name="expiry_date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteDrugModal" tabindex="-1" role="dialog" aria-labelledby="deleteDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="deleteDrugModalLabel">Confirm Deletion</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="deleteDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" id="delete_drug_id" name="drug_id">
+                    <p>Are you sure you want to delete this drug? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Dosage Information Modal -->
+<div class="modal fade" id="dosageInfoModal" tabindex="-1" role="dialog" aria-labelledby="dosageInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="dosageInfoModalLabel">Dosage Information</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="dosage-info-container">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-primary" id="editDosageBtn">
+                    <i class="fas fa-edit"></i> Edit Dosage
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+    // Load controlled drugs manager inside the in-app modal (no new tab/window)
+    (function() {
+        var controlledDrugsUrl = "{{ url_for('manage_controlled_drugs', embed='1') }}";
+
+        $('#controlledDrugsModal').on('show.bs.modal', function () {
+            var $frame = $('#controlledDrugsFrame');
+            var currentSrc = ($frame.attr('src') || '').trim();
+
+            // Remember last state (filters/pagination) by keeping the existing iframe URL.
+            // Only set the initial URL when the iframe hasn't been loaded yet.
+            if (!currentSrc || currentSrc === 'about:blank') {
+                $frame.attr('src', controlledDrugsUrl);
+            }
+        });
+    })();
+</script>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Page-scoped: make Admin Drugs content span full screen width */
+main.container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+
+
+.drug-management-container {
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7f9;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--box-shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title h1 {
+    margin: 0;
+    color: var(--gray-800);
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.header-title p {
+    margin: 5px 0 0;
+    color: var(--gray-600);
+    font-size: 16px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: #3651d3;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: var(--white);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-600);
+}
+
+.btn-outline:hover {
+    background: var(--gray-100);
+}
+
+.btn-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.btn-add-drug {
+    background: #28a745;
+}
+
+.btn-add-drug:hover {
+    background: #218838;
+}
+
+.status-badge.expired {
+    background: #fce8e6;
+    color: #c5221f;
+    border: 1px solid #f5c6cb;
+}
+
+.summary-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.summary-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 12px 14px;
+    box-shadow: var(--box-shadow);
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-size: 18px;
+    color: white;
+}
+
+.total-value .card-icon {
+    background: linear-gradient(135deg, #43cea2, #185a9d);
+}
+
+.low-stock .card-icon {
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+}
+
+.expiring .card-icon {
+    background: linear-gradient(135deg, #ff9966, #ff5e62);
+}
+
+.out-of-stock .card-icon {
+    background: linear-gradient(135deg, #f5515f, #9f041b);
+}
+
+.card-content h3 {
+    margin: 0;
+    font-size: 11px;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+.amount {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 5px 0;
+}
+
+.summary-card.total-value {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border-left: 4px solid #4caf50;
+}
+
+.summary-card.low-stock {
+    background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+    border-left: 4px solid #ff9800;
+}
+
+.summary-card.expiring {
+    background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+    border-left: 4px solid #e91e63;
+}
+
+.summary-card.out-of-stock {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+    border-left: 4px solid #f44336;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+    margin: 20px;
+}
+
+.simple-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    margin: 0;
+    font-size: 14px;
+}
+
+.simple-table thead {
+    background: #0d6efd;
+    color: white;
+}
+
+/* Keep the full header row visible while scrolling (Admin Drugs table only) */
+#drugsTable.simple-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d6efd;
+}
+
+.simple-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    border: 2px solid #0d6efd;
+    white-space: nowrap;
+}
+
+.simple-table td {
+    padding: 12px 16px;
+    border: 1px solid #dee2e6;
+}
+
+/* Compact row height ONLY for Admin Drugs table */
+#drugsTable.simple-table th,
+#drugsTable.simple-table td {
+    padding: 6px 10px;
+    line-height: 1.15;
+}
+
+#drugsTable .action-btn {
+    height: 24px;
+    min-width: 26px;
+    padding: 3px 8px;
+}
+
+.simple-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.simple-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.simple-table tbody tr:last-child td {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+.action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.action-btn.btn-success {
+    background: #28a745;
+}
+
+.action-btn.btn-success:hover {
+    background: #218838;
+}
+
+.action-btn.btn-danger {
+    background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.action-btn.btn-info {
+    background: #17a2b8;
+}
+
+.action-btn.btn-info:hover {
+    background: #138496;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.status-badge.in-stock {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.status-badge.low-stock {
+    background: #fef7e0;
+    color: #b06000;
+}
+
+.status-badge.out-of-stock {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.status-badge.expiring-soon {
+    background: #fef7e0;
+    color: #b06000;
+}
+
+.status-badge.expired {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.btn-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--gray-800);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--gray-500);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.dosage-info-container {
+    padding: 15px;
+}
+
+.dosage-section {
+    margin-bottom: 20px;
+}
+
+.dosage-section h6 {
+    color: var(--primary);
+    border-bottom: 1px solid var(--gray-200);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.dosage-section h6 i {
+    margin-right: 8px;
+    font-size: 0.9em;
+}
+
+.dosage-section p {
+    margin-bottom: 0;
+    white-space: pre-line;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Responsive Design */
+@media (min-width: 481px) and (max-width: 767px) {
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .modern-table {
+        font-size: 12px;
+    }
+    
+    .modern-table th,
+    .modern-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .drug-management-container {
+        padding: 16px;
+        margin: 0;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    /* Header buttons: keep on single row and compact */
+    .header-actions {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+
+    .header-actions .btn {
+        padding: 6px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+    
+    /* Summary cards: single row, 4 columns (Admin Drugs) */
+    .summary-cards-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+
+    .summary-card {
+        padding: 8px 6px;
+        border-left-width: 3px;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .summary-card .card-icon {
+        display: none;
+    }
+
+    .summary-card .card-content h3 {
+        font-size: 9px;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .summary-card .amount {
+        font-size: 12px;
+        margin: 2px 0 0;
+    }
+    
+    /* Keep filters in one row, 5 columns (Admin Drugs only) */
+    .filter-actions {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+        align-items: stretch;
+    }
+    
+    .filter-btn {
+        padding: 6px 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .simple-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+    }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTable with AJAX loading
+    var drugsTable = initializeDataTable();
+    
+    // Load summary statistics
+    loadSummaryStats();
+    
+    // Store current filter state
+    var currentFilter = 'all';
+
+    function cleanupModalArtifacts() {
+        // Only force-clean when no modal should remain open.
+        if ($('.modal.show').length > 0) {
+            return;
+        }
+        $('.modal-backdrop').remove();
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+
+    function showModal(modalSelector) {
+        var modalEl = document.querySelector(modalSelector);
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            return;
+        }
+        var $modal = $(modalSelector);
+        if ($modal.length && typeof $modal.modal === 'function') {
+            $modal.modal('show');
+        }
+    }
+
+    function hideModal(modalSelector) {
+        var modalEl = document.querySelector(modalSelector);
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } else {
+            var $modal = $(modalSelector);
+            if ($modal.length && typeof $modal.modal === 'function') {
+                $modal.modal('hide');
+            }
+        }
+        setTimeout(cleanupModalArtifacts, 0);
+    }
+
+    // Ensure stale overlays never survive navigation or modal transitions.
+    cleanupModalArtifacts();
+    $('#addDrugModal, #editDrugModal, #deleteDrugModal, #dosageInfoModal').on('hidden.bs.modal', function() {
+        cleanupModalArtifacts();
+    });
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    
+    // Edit button handler
+    $('#drugsTable').on('click', '.btn-edit', function() {
+        var drugId = $(this).data('id');
+        loadDrugData(drugId);
+    });
+
+    // Export to Controlled Drugs button handler
+    $('#drugsTable').on('click', '.btn-export-controlled', function() {
+        var drugId = $(this).data('id');
+        var btn = $(this);
+        
+        // Get drug details first
+        $.get('/admin/drugs/' + drugId, function(drugData) {
+            // Show confirmation
+            if (confirm(`Export "${drugData.name}" to Controlled Drugs?\n\nThis will:\n- Copy all drug details to Controlled Drugs table\n- Remove the drug from regular Drugs table`)) {
+                // Call export endpoint
+                $.ajax({
+                    url: '/admin/drugs/' + drugId + '/export-to-controlled',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            toastr.success('Drug exported to Controlled Drugs successfully!', 'Success');
+                            // Reload the drugs table
+                            drugsTable.ajax.reload();
+                            // Optionally reload controlled drugs if it's visible
+                            if (window.controlledDrugsTable) {
+                                window.controlledDrugsTable.ajax.reload();
+                            }
+                        } else {
+                            toastr.error(response.message || 'Failed to export drug', 'Error');
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMsg = 'Failed to export drug';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        toastr.error(errorMsg, 'Error');
+                    }
+                });
+            }
+        }).fail(function() {
+            toastr.error('Failed to load drug details', 'Error');
+        });
+    });
+
+    // Delete button handler
+    $('#drugsTable').on('click', '.btn-delete', function() {
+        $('#delete_drug_id').val($(this).data('id'));
+    });
+
+    // Info button handler - Show dosage information
+    $('#drugsTable').on('click', '.btn-info', function(e) {
+        e.preventDefault();
+        var drugId = $(this).data('id');
+        
+        $.get('/admin/drugs/' + drugId + '/dosage', function(data) {
+            var modalContent = `
+                ${data.dosage ? `
+                <div class="dosage-section">
+                    <h6><i class="fas fa-info-circle"></i> Indications</h6>
+                    <p>${esc(data.dosage.indication) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-ban"></i> Contraindications</h6>
+                    <p>${esc(data.dosage.contraindication) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-exchange-alt"></i> Drug Interactions</h6>
+                    <p>${esc(data.dosage.interaction) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Side Effects</h6>
+                    <p>${esc(data.dosage.side_effects) || 'Not specified'}</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-child"></i> Pediatric Dosage</h6>
+                            <p>${esc(data.dosage.dosage_peds) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-user"></i> Adult Dosage</h6>
+                            <p>${esc(data.dosage.dosage_adults) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-wheelchair"></i> Geriatric Dosage</h6>
+                            <p>${esc(data.dosage.dosage_geriatrics) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-sticky-note"></i> Important Notes</h6>
+                    <p>${esc(data.dosage.important_notes) || 'Not specified'}</p>
+                </div>
+                ` : '<p>No dosage information available for this drug.</p>'}
+            `;
+            
+            $('.dosage-info-container').html(modalContent);
+            showModal('#dosageInfoModal');
+            $('#editDosageBtn').attr('href', '/admin/dosage?drug_id=' + data.drug.id);
+        }).fail(function() {
+            showAlert('danger', 'Failed to load dosage information');
+        });
+    });
+
+    // Filter buttons - UPDATED WITH EXPIRED DRUGS FILTER
+    $('#viewLowStock').click(function(e) {
+        e.preventDefault();
+        currentFilter = 'low_stock';
+        updateFilterButtons('low_stock');
+        // Reload DataTable with filter
+        drugsTable.ajax.url('/api/drugs?filter=low_stock').load();
+        showAlert('info', 'Showing low stock drugs');
+    });
+
+    $('#viewExpiringSoon').click(function(e) {
+        e.preventDefault();
+        currentFilter = 'expiring_soon';
+        updateFilterButtons('expiring_soon');
+        // Reload DataTable with filter
+        drugsTable.ajax.url('/api/drugs?filter=expiring_soon').load();
+        showAlert('info', 'Showing drugs expiring soon');
+    });
+
+    $('#viewOutOfStock').click(function(e) {
+        e.preventDefault();
+        currentFilter = 'out_of_stock';
+        updateFilterButtons('out_of_stock');
+        // Reload DataTable with filter
+        drugsTable.ajax.url('/api/drugs?filter=out_of_stock').load();
+        showAlert('info', 'Showing out of stock drugs');
+    });
+
+    $('#viewExpired').click(function(e) {
+        e.preventDefault();
+        currentFilter = 'expired';
+        updateFilterButtons('expired');
+        // Reload DataTable with filter
+        drugsTable.ajax.url('/api/drugs?filter=expired').load();
+        showAlert('warning', 'Showing expired drugs');
+    });
+
+    // Clear filters
+    $('#clearFilters').click(function(e) {
+        e.preventDefault();
+        currentFilter = 'all';
+        updateFilterButtons('all');
+        // Reload DataTable without filter
+        drugsTable.ajax.url('/api/drugs').load();
+        showAlert('info', 'Showing all drugs');
+    });
+
+    // Update filter button states
+    function updateFilterButtons(activeFilter) {
+        // Remove active class from all buttons
+        $('.filter-btn').removeClass('active').removeClass('btn-primary').addClass('btn-outline');
+        
+        // Add active class to clicked button
+        switch(activeFilter) {
+            case 'low_stock':
+                $('#viewLowStock').removeClass('btn-outline').addClass('btn-primary active');
+                break;
+            case 'expiring_soon':
+                $('#viewExpiringSoon').removeClass('btn-outline').addClass('btn-primary active');
+                break;
+            case 'out_of_stock':
+                $('#viewOutOfStock').removeClass('btn-outline').addClass('btn-primary active');
+                break;
+            case 'expired':
+                $('#viewExpired').removeClass('btn-outline').addClass('btn-primary active');
+                break;
+            case 'all':
+                $('#clearFilters').removeClass('btn-outline').addClass('btn-primary active');
+                break;
+        }
+    }
+
+    // Form submission handlers
+    $('#addDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitDrugForm('add');
+    });
+
+    $('#editDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitDrugForm('edit');
+    });
+
+    $('#deleteDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitDrugForm('delete');
+    });
+
+    // Generate next drug number when add modal opens
+    $('#addDrugModal').on('show.bs.modal', function() {
+        generateNextDrugNumber();
+    });
+
+    // Initialize DataTable function
+    function initializeDataTable() {
+        // Destroy existing DataTable if it exists
+        if ($.fn.DataTable.isDataTable('#drugsTable')) {
+            $('#drugsTable').DataTable().destroy();
+        }
+
+        // Initialize new DataTable with AJAX
+        return $('#drugsTable').DataTable({
+            ajax: {
+                url: '/api/drugs',
+                dataSrc: '',
+                data: function(d) {
+                    // Add filter parameter to AJAX request
+                    if (currentFilter && currentFilter !== 'all') {
+                        d.filter = currentFilter;
+                    }
+                }
+            },
+            columns: [
+                { data: 'drug_number', render: $.fn.dataTable.render.text() },
+                { data: 'name', render: $.fn.dataTable.render.text() },
+                { data: 'specification', defaultContent: '', render: $.fn.dataTable.render.text() },
+                { 
+                    data: 'buying_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data).toFixed(2);
+                    }
+                },
+                { 
+                    data: 'selling_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data).toFixed(2);
+                    }
+                },
+                {
+                    data: 'ip_drug_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data || 0).toFixed(2);
+                    }
+                },
+                { data: 'stocked_quantity' },
+                { data: 'sold_quantity' },
+                { 
+                    data: null,
+                    render: function(data) {
+                        const remaining = data.stocked_quantity - data.sold_quantity;
+                        const statusClass = getStockStatusClass(data);
+                        return `<span class="${statusClass}">${remaining}</span>`;
+                    }
+                },
+                { 
+                    data: 'expiry_date',
+                    render: function(data) {
+                        const date = new Date(data);
+                        const today = new Date();
+                        const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+                        
+                        let dateClass = '';
+                        if (diffDays < 0) {
+                            dateClass = 'text-danger';
+                        } else if (diffDays < 30) {
+                            dateClass = 'text-warning';
+                        }
+                        
+                        return `<span class="${dateClass}">${date.toISOString().split('T')[0]}</span>`;
+                    }
+                },
+                { 
+                    data: null,
+                    render: function(data) {
+                        const status = getStockStatus(data);
+                        const statusClass = getStockStatusClass(data);
+                        return `<span class="status-badge ${statusClass}">${status}</span>`;
+                    }
+                },
+                {
+                    data: 'id',
+                    render: function(data, type, row) {
+                        return `
+                            <div class="action-btns">
+                                <button class="action-btn btn-primary btn-edit" data-id="${data}" data-toggle="modal" data-target="#editDrugModal" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn btn-success btn-export-controlled" data-id="${data}" title="Export to Controlled Drugs">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <button class="action-btn btn-danger btn-delete" data-id="${data}" data-toggle="modal" data-target="#deleteDrugModal" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button class="action-btn btn-info btn-info" data-id="${data}" title="Info">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </div>
+                        `;
+                    },
+                    orderable: false
+                }
+            ],
+            dom: 'rt',
+            paging: false,
+            language: {
+                emptyTable: "No drugs found matching the current filter",
+                zeroRecords: "No matching drugs found"
+            },
+            initComplete: function() {
+                // Add loading state
+                this.api().on('preXhr', function(e, settings, data) {
+                    $('#drugsTable tbody').html(`
+                        <tr>
+                            <td colspan="11" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading drugs...</p>
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+        });
+    }
+
+    // Helper function to get stock status
+    function getStockStatus(data) {
+        const remaining = data.stocked_quantity - data.sold_quantity;
+        const expiryDate = new Date(data.expiry_date);
+        const today = new Date();
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        if (remaining <= 0) {
+            return 'Out of Stock';
+        } else if (remaining < 5) {
+            return 'Low Stock';
+        } else if (diffDays < 30 && diffDays >= 0) {
+            return 'Expiring Soon';
+        } else if (diffDays < 0) {
+            return 'Expired';
+        } else {
+            return 'In Stock';
+        }
+    }
+
+    // Helper function to get stock status class
+    function getStockStatusClass(data) {
+        const remaining = data.stocked_quantity - data.sold_quantity;
+        const expiryDate = new Date(data.expiry_date);
+        const today = new Date();
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        if (remaining <= 0) {
+            return 'text-danger font-weight-bold';
+        } else if (remaining < 10) {
+            return 'text-warning font-weight-bold';
+        } else if (diffDays < 30 && diffDays >= 0) {
+            return 'text-warning';
+        } else if (diffDays < 0) {
+            return 'text-danger';
+        } else {
+            return 'text-success';
+        }
+    }
+
+    // Load drug data for editing
+    function loadDrugData(drugId) {
+        $.get('/api/drugs/' + drugId, function(drug) {
+            $('#edit_drug_id').val(drug.id);
+            $('#edit_drug_number').val(drug.drug_number);
+            $('#edit_name').val(drug.name);
+            $('#edit_specification').val(drug.specification);
+            $('#edit_buying_price').val(drug.buying_price);
+            $('#edit_selling_price').val(drug.selling_price);
+            $('#edit_ip_drug_price').val(drug.ip_drug_price || drug.selling_price || 0);
+            $('#edit_stocked_quantity').val(drug.stocked_quantity);
+            $('#edit_expiry_date').val(new Date(drug.expiry_date).toISOString().split('T')[0]);
+        }).fail(function() {
+            showAlert('danger', 'Failed to load drug data');
+        });
+    }
+
+    // Generate next drug number
+    function generateNextDrugNumber() {
+        $.ajax({
+            url: '/api/drugs/next-number',
+            method: 'GET',
+            success: function(response) {
+                $('#drug_number').val(response.drug_number);
+                $('#drug_number_display').val(response.drug_number);
+            },
+            error: function(xhr) {
+                // If error, generate a default number
+                $('#drug_number').val('DRG-' + String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0'));
+                $('#drug_number_display').val($('#drug_number').val());
+                console.error('Error generating drug number:', xhr);
+            }
+        });
+    }
+
+    // Submit drug form (add/edit/delete)
+    function submitDrugForm(action) {
+        var formData = $('#' + action + 'DrugForm').serialize();
+        var modalId = '#' + action + 'DrugModal';
+        
+        $.ajax({
+            url: '/admin/drugs',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                hideModal(modalId);
+                showAlert('success', 'Drug ' + (action === 'delete' ? 'deleted' : 'saved') + ' successfully');
+                
+                // Refresh DataTable
+                drugsTable.ajax.reload(null, false); // false to keep current page
+                
+                // Reload summary stats
+                loadSummaryStats();
+                
+                // Reset forms
+                if (action !== 'delete') {
+                    $('#' + action + 'DrugForm')[0].reset();
+                }
+            },
+            error: function(xhr) {
+                showAlert('danger', 'Error: ' + (xhr.responseJSON?.error || 'Operation failed'));
+            }
+        });
+    }
+
+    // Load summary statistics
+    function loadSummaryStats() {
+        $.get('/api/drugs/stats', function(stats) {
+            $('#totalInventoryValue').text('Ksh ' + parseFloat(stats.total_value).toFixed(2));
+            $('#lowStockCount').text(stats.low_stock);
+            $('#expiringSoonCount').text(stats.expiring_soon);
+            $('#outOfStockCount').text(stats.out_of_stock);
+        }).fail(function() {
+            showAlert('danger', 'Failed to load summary statistics');
+        });
+    }
+
+    // Show alert message (delegates to global popup system)
+    function showAlert(type, message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), type || 'info');
+            return;
+        }
+        window.alert(String(message ?? ''));
+    }
+    
+    // Get appropriate icon for alert type
+    function getAlertIcon(type) {
+        switch(type) {
+            case 'success': return 'check-circle';
+            case 'danger': return 'exclamation-circle';
+            case 'warning': return 'exclamation-triangle';
+            case 'info': return 'info-circle';
+            default: return 'info-circle';
+        }
+    }
+    
+    // Local close buttons removed; global popup auto-closes
+
+    // Add some CSS for the active filter state
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            .filter-btn.active {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+            .text-danger.font-weight-bold {
+                font-weight: bold !important;
+                color: #dc3545 !important;
+            }
+            .text-warning.font-weight-bold {
+                font-weight: bold !important;
+                color: #ffc107 !important;
+            }
+        `)
+        .appendTo('head');
+});
+</script>
+{% endblock %}

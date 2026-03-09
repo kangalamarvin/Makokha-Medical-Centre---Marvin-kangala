@@ -1,0 +1,274 @@
+<!-- templates/pharmacist/refunds.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="content">
+    <h2><i class="fas fa-undo"></i> Drug Refunds</h2>
+    
+    <div class="card mt-4" style="background-color: #e6f2ff; border-color: #b3d1ff;">
+        <div class="card-header" style="background-color: #0047b3; color: white;">
+            <h4>Search Sale</h4>
+        </div>
+        <div class="card-body" style="background-color: white;">
+            <div class="form-group">
+                <label for="saleNumber">Enter Sale Number (Individual or Bulk)</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="saleNumber" placeholder="SALE-20230101-1234 or BULK-20230101-1234" style="background-color: white;">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" id="searchSaleBtn" style="background-color: #0047b3; border-color: #003d99;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4" id="saleDetailsCard" style="display: none; background-color: #e6f2ff; border-color: #b3d1ff;">
+        <div class="card-header" style="background-color: #0047b3; color: white;">
+            <h4>Sale Details</h4>
+        </div>
+        <div class="card-body" style="background-color: white;">
+            <div id="saleDetailsContent"></div>
+        </div>
+    </div>
+    
+    <div class="card mt-4" id="refundFormCard" style="display: none; background-color: #e6f2ff; border-color: #b3d1ff;">
+        <div class="card-header" style="background-color: #0047b3; color: white;">
+            <h4>Refund Items</h4>
+        </div>
+        <div class="card-body" style="background-color: white;">
+            <form id="refundForm">
+                <div class="form-group">
+                    <label for="refundReason">Reason for Refund</label>
+                    <select class="form-control" id="refundReason" required style="background-color: white;">
+                        <option value="">Select a reason</option>
+                        <option value="Wrong drug dispensed">Wrong drug dispensed</option>
+                        <option value="Patient allergic reaction">Patient allergic reaction</option>
+                        <option value="Patient no longer needs">Patient no longer needs</option>
+                        <option value="Expired drug">Expired drug</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="otherReasonGroup" style="display: none;">
+                    <label for="otherReason">Please specify</label>
+                    <input type="text" class="form-control" id="otherReason" style="background-color: white;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Items to Refund</label>
+                    <div id="refundItemsList"></div>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary" id="processRefundBtn" style="background-color: #0047b3; border-color: #003d99;">
+                        <i class="fas fa-check"></i> Process Refund
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Show other reason field if "Other" is selected
+    $('#refundReason').change(function() {
+        if ($(this).val() === 'Other') {
+            $('#otherReasonGroup').show();
+            $('#otherReason').prop('required', true);
+        } else {
+            $('#otherReasonGroup').hide();
+            $('#otherReason').prop('required', false);
+        }
+    });
+    
+    // Search for sale
+    $('#searchSaleBtn').click(function() {
+        const saleNumber = $('#saleNumber').val().trim();
+        if (!saleNumber) {
+            alert('Please enter a sale number');
+            return;
+        }
+        
+        $('#searchSaleBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Searching...');
+        
+        $.get('/pharmacist/refund/search?sale_number=' + encodeURIComponent(saleNumber), function(data) {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            // Show sale details
+            let html = `
+                <div class="sale-info">
+                    <p><strong>Sale #:</strong> ${data.sale_number}</p>
+                    ${data.bulk_sale_number ? `<p><strong>Bulk Sale #:</strong> ${data.bulk_sale_number}</p>` : ''}
+                    <p><strong>Date:</strong> ${data.created_at}</p>
+                    <p><strong>Patient:</strong> ${data.patient_name}</p>
+                    <p><strong>Original Total:</strong> Ksh ${data.total_amount.toFixed(2)}</p>
+                </div>
+                <hr>
+                <h5>Available Items for Refund</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Drug</th>
+                                <th>Unit Price</th>
+                                <th>Sold</th>
+                                <th>Refunded</th>
+                                <th>Available</th>
+                                <th>Qty to Refund</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.items.forEach(item => {
+                html += `
+                    <tr>
+                        <td><input type="checkbox" class="item-check" data-id="${item.sale_item_id}" data-drug="${item.drug_name}" data-price="${item.unit_price}" data-max="${item.quantity_remaining}"></td>
+                        <td>${item.drug_name}</td>
+                        <td>Ksh ${item.unit_price.toFixed(2)}</td>
+                        <td>${item.quantity_sold}</td>
+                        <td>${item.quantity_refunded}</td>
+                        <td>${item.quantity_remaining}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm refund-qty" min="1" max="${item.quantity_remaining}" value="1" disabled style="background-color: white;">
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <input type="hidden" id="saleId" value="${data.sale_id}">
+            `;
+            
+            $('#saleDetailsContent').html(html);
+            $('#saleDetailsCard').show();
+            $('#refundFormCard').show();
+            
+            // Enable quantity fields when items are checked
+            $('.item-check').change(function() {
+                const qtyField = $(this).closest('tr').find('.refund-qty');
+                qtyField.prop('disabled', !this.checked);
+                if (!this.checked) {
+                    qtyField.val(1);
+                }
+            });
+            
+        }).fail(function(xhr) {
+            alert(xhr.responseJSON?.error || 'Failed to search for sale');
+        }).always(function() {
+            $('#searchSaleBtn').prop('disabled', false).html('<i class="fas fa-search"></i> Search');
+        });
+    });
+    
+    // Process refund
+    $('#refundForm').submit(function(e) {
+        e.preventDefault();
+        
+        const saleId = $('#saleId').val();
+        const reason = $('#refundReason').val() === 'Other' ? $('#otherReason').val() : $('#refundReason').val();
+        
+        if (!reason) {
+            alert('Please select a reason for the refund');
+            return;
+        }
+        
+        // Collect selected items
+        const items = [];
+        $('.item-check:checked').each(function() {
+            const saleItemId = $(this).data('id');
+            const quantity = $(this).closest('tr').find('.refund-qty').val();
+            
+            items.push({
+                sale_item_id: saleItemId,
+                quantity: quantity,
+                drug_name: $(this).data('drug'),
+                unit_price: $(this).data('price')
+            });
+        });
+        
+        if (items.length === 0) {
+            alert('Please select at least one item to refund');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to process this refund for ${items.length} item(s)?`)) {
+            return;
+        }
+        
+        $('#processRefundBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+        
+        $.ajax({
+            url: '/pharmacist/refund',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                sale_id: saleId,
+                items: items,
+                reason: reason
+            }),
+            success: function(response) {
+                if (response.success) {
+                    // Show receipt in new window
+                    window.open(`/pharmacist/refund/${response.refund_id}/receipt`, '_blank');
+                    
+                    // Reset form
+                    $('#saleNumber').val('');
+                    $('#saleDetailsCard').hide();
+                    $('#refundFormCard').hide();
+                    $('#refundForm')[0].reset();
+                } else {
+                    alert('Error: ' + (response.error || 'Failed to process refund'));
+                }
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON?.error || 'Failed to process refund');
+            },
+            complete: function() {
+                $('#processRefundBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Process Refund');
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.sale-info p {
+    margin-bottom: 5px;
+}
+.table th, .table td {
+    vertical-align: middle;
+    background-color: white;
+}
+.refund-qty {
+    width: 80px;
+}
+.card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.btn-primary {
+    background-color: #0047b3;
+    border-color: #003d99;
+}
+.btn-primary:hover {
+    background-color: #003d99;
+    border-color: #003380;
+}
+</style>
+{% endblock %}

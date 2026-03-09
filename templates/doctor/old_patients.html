@@ -1,0 +1,309 @@
+{% extends "doctor/layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Old/Completed Patients</h2>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="form-inline">
+                <div class="input-group w-100">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or patient number..." value="{{ search_query }}">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if patients.items %}
+            <div class="table-container">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Patient No.</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Last Visit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients.items %}
+                        <tr>
+                            <td>{{ patient.op_number or patient.ip_number }}</td>
+                            <td>{{ patient.name }}</td>
+                            <td>{{ patient.age or 'N/A' }}</td>
+                            <td>{{ patient.gender or 'N/A' }}</td>
+                            <td>{{ patient.updated_at|eat_time('%Y-%m-%d') }}</td>
+                            <td>
+                                <div class="action-btns">
+                                    <a href="{{ url_for('patient_medical_record', patient_id=patient.id) }}" class="action-btn btn-info" title="View Record">
+                                        <i class="fas fa-file-medical"></i>
+                                    </a>
+                                    <form method="post" action="{{ url_for('old_patients') }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                                        <input type="hidden" name="action" value="readmit">
+                                        <button type="submit" class="action-btn btn-success" title="Readmit">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if patients.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('old_patients', page=patients.prev_num, search=search_query) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in patients.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                        {% if page_num %}
+                            <li class="page-item {% if patients.page == page_num %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('old_patients', page=page_num, search=search_query) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if patients.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('old_patients', page=patients.next_num, search=search_query) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% else %}
+            <div class="alert alert-info">No completed patients found.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --white: #ffffff;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-600: #6c757d;
+    --gray-800: #343a40;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Table Container - Modern Card Style */
+.table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+}
+
+/* Simple Table Styles */
+.simple-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    margin: 0;
+    font-size: 14px;
+}
+
+.simple-table thead {
+    background: #0d6efd;
+    color: white;
+}
+
+/* Sticky header */
+.simple-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d6efd;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    border: 2px solid #0d6efd;
+    white-space: nowrap;
+}
+
+.simple-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--gray-300);
+}
+
+.simple-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.simple-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.simple-table tbody tr:last-child td {
+    border-bottom: 2px solid var(--gray-300);
+}
+
+/* Action Buttons Container */
+.action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+/* Action Button Styles */
+.action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+    text-decoration: none;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+    text-decoration: none;
+    color: white;
+}
+
+.action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.action-btn.btn-success {
+    background: #28a745;
+}
+
+.action-btn.btn-success:hover {
+    background: #218838;
+}
+
+.action-btn.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.action-btn.btn-warning:hover {
+    background: #e0a800;
+    color: #212529;
+}
+
+.action-btn.btn-danger {
+    background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.action-btn.btn-info {
+    background: #17a2b8;
+}
+
+.action-btn.btn-info:hover {
+    background: #138496;
+}
+
+/* Responsive Design */
+@media (min-width: 481px) and (max-width: 767px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .simple-table {
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        width: 26px;
+        height: 26px;
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-height: 60vh;
+    }
+    
+    .simple-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+</style>
+{% endblock %}

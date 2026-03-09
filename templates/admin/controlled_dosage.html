@@ -1,0 +1,1111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .dosage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .dosage-header h2 {
+        margin: 0;
+        flex: 1;
+        min-width: 300px;
+    }
+    
+    .header-actions-left, .header-actions-right {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .assistant-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    /* Toggle Switch Styles */
+    .toggle-switch {
+        position: relative;
+        display: inline-flex;
+        width: 50px;
+        height: 26px;
+        cursor: pointer;
+    }
+    
+    .toggle-switch input {
+        display: none;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        border-radius: 26px;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: #4A90E2;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+    }
+    
+    .toggle-switch.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .toggle-switch.disabled input {
+        cursor: not-allowed;
+    }
+    
+    .assistant-toggle label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+        user-select: none;
+    }
+    
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.with-dosage { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.missing { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .stat-card.Pharmacist Assistant Generated { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+    
+    .table-scrollable {
+        max-height: none;
+        transition: max-height 0.3s ease;
+    }
+
+    .table-scrollable {
+        overflow-x: auto;
+        border: 2px solid #1f2937;
+        border-radius: 0.5rem;
+    }
+    
+    .table-scrollable.has-scroll {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 2px solid #1f2937;
+        border-radius: 0.5rem;
+    }
+    
+    .data-table {
+        width: max-content;
+        min-width: 100%;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+    
+    .data-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .data-table th {
+        background-color: #116cc2;
+        color: white;
+        padding: 0.75rem;
+    }
+
+    .data-table td {
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    .btn-view, .btn-edit, .btn-delete {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+        border-radius: 0.375rem;
+        border: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-view {
+        background-color: #17a2b8;
+        color: white;
+    }
+    
+    .btn-view:hover {
+        background-color: #138496;
+        transform: scale(1.05);
+    }
+    
+    .btn-edit {
+        background-color: #ffc107;
+        color: white;
+    }
+    
+    .btn-edit:hover {
+        background-color: #e0a800;
+        transform: scale(1.05);
+    }
+    
+    .btn-delete {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-delete:hover {
+        background-color: #c82333;
+        transform: scale(1.05);
+    }
+    
+    .btn-add-controlled-dosage {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    .assistant-buttons-disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+    
+    .auto-close-alert {
+        animation: slideOut 0.3s ease-out 3s forwards;
+    }
+    
+    @keyframes slideOut {
+        0% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
+
+    @media (min-width: 320px) and (max-width: 480px) {
+        .dosage-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .dosage-header h2 {
+            min-width: auto;
+            font-size: 1.1rem;
+        }
+
+        .header-actions-left,
+        .header-actions-right {
+            width: 100%;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+        }
+
+        .header-actions-left .btn,
+        .header-actions-right .btn {
+            flex: 0 0 auto;
+        }
+
+        .header-actions-left .btn i,
+        .header-actions-right .assistant-control-btn i {
+            display: none;
+        }
+
+        .stats-container {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .stat-card {
+            padding: 10px 8px;
+            border-radius: 10px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.05rem;
+            margin-bottom: 2px;
+            line-height: 1.1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 10px;
+        }
+
+        #aiProgressCard {
+            grid-column: 1 / -1;
+        }
+
+        .table-scrollable {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .action-buttons {
+            flex-wrap: nowrap;
+        }
+
+        .btn-view, .btn-edit, .btn-delete {
+            padding: 0.3rem 0.45rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-add-controlled-dosage {
+            padding: 0.3rem 0.55rem;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+
+<div class="content">
+    <!-- Header -->
+    <div class="dosage-header">
+        <h2><i class="fas fa-pills"></i> Controlled Drug Dosage Information</h2>
+        <div class="header-actions-left">
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('admin_dosage_dashboard') }}" title="Go to Dashboard">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addDosageModal" title="Add new controlled drug dosage">
+                <i class="fas fa-plus"></i> Add Dosage
+            </button>
+        </div>
+        <div class="header-actions-right">
+            <div class="assistant-toggle">
+                <label class="toggle-switch" id="assistantToggleControlled">
+                    <input type="checkbox" id="assistantToggleControlledInput" {{ 'checked' if ai_dosage_agent_enabled else '' }} onchange="handleAssistantToggleControlled(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label for="assistantToggleControlledInput">Enable Pharmacist Assistant</label>
+            </div>
+            <button type="button" class="btn btn-outline-info btn-sm ai-control-btn" id="runAssistantNowBtn" {{ 'disabled' if not ai_dosage_agent_enabled else '' }} onclick="runAssistantAgent()" title="Run AI agent once">
+                <i class="fas fa-play"></i> Run Now
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm ai-control-btn" id="fillAssistantFieldsBtn" {{ 'disabled' if not ai_dosage_agent_enabled else '' }} onclick="fillMissingAssistantFields()" title="Fill missing fields with Pharmacist Assistant">
+                <i class="fas fa-magic"></i> Fill Missing
+            </button>
+        </div>
+    </div>
+
+    <!-- Flash Messages (embed only; base.html already renders flashes) -->
+    {% if is_embed %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% endif %}
+
+    <!-- Stats Cards -->
+    <div class="stats-container">
+        <div class="stat-card total">
+            <div class="stat-value">{{ stats.total_drugs }}</div>
+            <div class="stat-label">Total Controlled Drugs</div>
+        </div>
+        <div class="stat-card with-dosage">
+            <div class="stat-value">{{ stats.with_dosage }}</div>
+            <div class="stat-label">With Dosage Info</div>
+        </div>
+        <div class="stat-card missing">
+            <div class="stat-value">{{ stats.without_dosage }}</div>
+            <div class="stat-label">Missing Dosage</div>
+        </div>
+        <div class="stat-card Pharmacist Assistant Generated">
+            <div class="stat-value">{{ stats.ai_generated }}</div>
+            <div class="stat-label">Pharmacist Assistant Generated (50/run)</div>
+        </div>
+
+        <!-- Hidden Assistant Progress (appears only while running) -->
+        <div class="stat-card Pharmacist Assistant Generated" id="assistantProgressCard" style="display:none;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" id="assistantProgressCounts">0/0</div>
+                    <div class="stat-label" id="assistantProgressText">Starting...</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-light" onclick="hideAssistantProgressCard()" title="Hide">
+                    Hide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-scrollable" id="tableContainer">
+        <table class="data-table" id="dosageTable">
+            <thead>
+                <tr>
+                    <th>Drug No.</th>
+                    <th>Drug Name</th>
+                    <th>Indication</th>
+                    <th>Dosage (Adults)</th>
+                    <th>Dosage (Peds)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for drug in drugs %}
+                {% set dosage = (drug.dosages[0] if drug.dosages else None) %}
+                <tr id="controlled-row-{{ drug.id }}" data-controlled-drug-id="{{ drug.id }}" data-has-dosage="{{ 1 if dosage else 0 }}">
+                    <td>{{ drug.controlled_drug_number }}</td>
+                    <td>{{ drug.name }}</td>
+                    <td class="col-indication">{{ dosage.indication|truncate(50) if dosage and dosage.indication else '-' }}</td>
+                    <td class="col-adults">{{ dosage.dosage_adults|truncate(50) if dosage and dosage.dosage_adults else '-' }}</td>
+                    <td class="col-peds">{{ dosage.dosage_peds|truncate(50) if dosage and dosage.dosage_peds else '-' }}</td>
+                    <td class="col-actions">
+                        <div class="action-buttons">
+                            {% if dosage %}
+                                <button class="btn btn-view" data-id="{{ dosage.id }}" data-toggle="modal" data-target="#viewDosageModal" title="View dosage">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-edit" data-id="{{ dosage.id }}" data-toggle="modal" data-target="#editDosageModal" title="Edit dosage">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-delete" data-id="{{ dosage.id }}" data-toggle="modal" data-target="#deleteDosageModal" title="Delete dosage">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            {% else %}
+                                <button class="btn btn-sm btn-primary btn-add-controlled-dosage" type="button" data-controlled-drug-id="{{ drug.id }}" data-toggle="modal" data-target="#addDosageModal" title="Add dosage for this drug">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function handleAssistantToggleControlled(checkbox) {
+    // Check if master toggle is disabled
+    const isMasterDisabled = !localStorage.getItem('assistant_dosage_master_enabled') || localStorage.getItem('assistant_dosage_master_enabled') === 'false';
+    
+    if (isMasterDisabled && checkbox.checked) {
+        checkbox.checked = false;
+        alert('Pharmacist Assistant must be enabled in the Dosage Management dashboard first.');
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("admin_toggle_ai_dosage_agent") }}';
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    
+    const enabledInput = document.createElement('input');
+    enabledInput.type = 'hidden';
+    enabledInput.name = 'enabled';
+    enabledInput.value = checkbox.checked ? '1' : '0';
+    
+    form.appendChild(csrfInput);
+    form.appendChild(enabledInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function updateControlledToggleState() {
+    const isMasterDisabled = !localStorage.getItem('assistant_dosage_master_enabled') || localStorage.getItem('assistant_dosage_master_enabled') === 'false';
+    const toggle = document.getElementById('assistantToggleControlled');
+    const input = document.getElementById('assistantToggleControlledInput');
+    
+    if (isMasterDisabled) {
+        toggle.classList.add('disabled');
+        input.disabled = true;
+    } else {
+        toggle.classList.remove('disabled');
+        input.disabled = false;
+    }
+}
+
+function runAssistantAgent() {
+    startAIControlledDosageJob({ kind: 'controlled', mode: 'full', limit: 50 });
+}
+
+function fillMissingAssistantFields() {
+    startAIControlledDosageJob({ kind: 'controlled', mode: 'fill', limit: 50 });
+}
+
+let _aiControlledPollTimer = null;
+let _assistantControlledLastSeq = 0;
+let _assistantProgressCardDismissed = false;
+
+function showAssistantProgressCard() {
+    if (_assistantProgressCardDismissed) return;
+    const el = document.getElementById('assistantProgressCard');
+    if (el) el.style.display = '';
+}
+
+function hideAssistantProgressCard() {
+    _assistantProgressCardDismissed = true;
+    const el = document.getElementById('assistantProgressCard');
+    if (el) el.style.display = 'none';
+}
+
+function resetAIProgressCard() {
+    _assistantProgressCardDismissed = false;
+    const el = document.getElementById('assistantProgressCard');
+    if (el) el.style.display = '';
+}
+
+function _setControlledAssistantProgressText(text) {
+    const el = document.getElementById('assistantProgressText');
+    if (el) el.textContent = text;
+}
+
+const _aiControlledRowTimers = {};
+
+function _clearControlledRowTimers(drugId) {
+    const key = String(drugId || '');
+    const timers = _aiControlledRowTimers[key] || [];
+    timers.forEach(function(t) {
+        try { clearTimeout(t); } catch (e) {}
+    });
+    _aiControlledRowTimers[key] = [];
+}
+
+function _setCellLoading(cell) {
+    if (!cell) return;
+    cell.innerHTML = '<span class="ai-cell-loading"><i class="fas fa-spinner fa-spin"></i> loading...</span>';
+}
+
+function _setCellText(cell, value) {
+    if (!cell) return;
+    cell.textContent = (value && String(value).trim()) ? String(value) : '-';
+}
+
+function _applyControlledRowUpdate(u) {
+    if (!u || !u.drug_id) return;
+    const row = document.getElementById(`controlled-row-${u.drug_id}`);
+    if (!row) return;
+
+    const c1 = row.querySelector('.col-indication');
+    const c2 = row.querySelector('.col-adults');
+    const c3 = row.querySelector('.col-peds');
+
+    if ((u.event || '') === 'row_start') {
+        _clearControlledRowTimers(u.drug_id);
+        _setCellLoading(c1);
+        return;
+    }
+
+    const indication = (u.indication || '');
+    const adults = (u.dosage_adults || '');
+    const peds = (u.dosage_peds || '');
+
+    _clearControlledRowTimers(u.drug_id);
+    _setCellText(c1, indication);
+    _setCellLoading(c2);
+    const t1 = setTimeout(function() {
+        _setCellText(c2, adults);
+        _setCellLoading(c3);
+        const t2 = setTimeout(function() {
+            _setCellText(c3, peds);
+        }, 450);
+        _aiControlledRowTimers[String(u.drug_id)].push(t2);
+    }, 450);
+    _aiControlledRowTimers[String(u.drug_id)].push(t1);
+
+    if (u.dosage_id) {
+        row.setAttribute('data-has-dosage', '1');
+        const actions = row.querySelector('.col-actions');
+        if (actions) {
+            actions.innerHTML = `
+                <div class="action-buttons">
+                    <button class="btn btn-view" data-id="${u.dosage_id}" data-toggle="modal" data-target="#viewDosageModal" title="View dosage">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-edit" data-id="${u.dosage_id}" data-toggle="modal" data-target="#editDosageModal" title="Edit dosage">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-delete" data-id="${u.dosage_id}" data-toggle="modal" data-target="#deleteDosageModal" title="Delete dosage">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
+
+function startAIControlledDosageJob(opts) {
+    const kind = (opts && opts.kind) ? opts.kind : 'controlled';
+    const mode = (opts && opts.mode) ? opts.mode : 'full';
+    const limit = (opts && opts.limit) ? opts.limit : 50;
+    if (_aiControlledPollTimer) {
+        clearTimeout(_aiControlledPollTimer);
+        _aiControlledPollTimer = null;
+    }
+    _assistantControlledLastSeq = 0;
+
+    resetAIProgressCard();
+    showAssistantProgressCard();
+    _setControlledAssistantProgressText('Starting generation...');
+    $('#aiProgressCounts').text('0/0');
+
+    $.post('{{ url_for("admin_start_ai_dosage_agent_job") }}', {
+        csrf_token: '{{ csrf_token() }}',
+        kind: kind,
+        mode: mode,
+        limit: String(limit || 10),
+    }).done(function(resp) {
+        const jobId = resp && resp.job_id ? resp.job_id : null;
+        if (!jobId) {
+            _setControlledAssistantProgressText('Failed to start Pharmacist Assistant job.');
+            return;
+        }
+        pollAIControlledDosageJob(jobId);
+    }).fail(function(xhr) {
+        const msg = (xhr && xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Failed to start Pharmacist Assistant job';
+        _setControlledAssistantProgressText(msg);
+        $('#aiProgressCounts').text('');
+    });
+}
+
+function pollAIControlledDosageJob(jobId) {
+    $.getJSON(`/admin/dosage/assistant-agent/job/${jobId}/status?since=${_assistantControlledLastSeq}`, function(s) {
+        const total = parseInt(s.total || 0, 10);
+        const processed = parseInt(s.processed || 0, 10);
+        const remaining = parseInt(s.remaining || 0, 10);
+        const completed = parseInt(s.completed || 0, 10);
+        const failed = parseInt(s.failed || 0, 10);
+
+        const counts = `${processed}/${total} (remaining: ${remaining})`;
+        $('#aiProgressCounts').text(counts);
+        _setControlledAssistantProgressText(`Generating... Completed: ${completed}/${total}. Failed: ${failed}.`);
+
+        const updates = s.updates || [];
+        updates.forEach(function(u) {
+            const seq = parseInt(u.seq || 0, 10);
+            if (seq > _assistantControlledLastSeq) _assistantControlledLastSeq = seq;
+            if (u.kind === 'controlled') _applyControlledRowUpdate(u);
+        });
+
+        if (s.status === 'running' || s.status === 'starting') {
+            _aiControlledPollTimer = setTimeout(function() { pollAIControlledDosageJob(jobId); }, 1200);
+            return;
+        }
+
+        if (s.status === 'complete') {
+            _setControlledAssistantProgressText('Generation complete.');
+        } else {
+            _setControlledAssistantProgressText('Generation stopped with errors.');
+        }
+
+        setTimeout(function() {
+            const el = document.getElementById('assistantProgressCard');
+            if (el) el.style.display = 'none';
+            if (s.complete_url) {
+                window.location.href = s.complete_url;
+            }
+        }, 700);
+    }).fail(function() {
+        _setControlledAssistantProgressText('Lost connection while polling.');
+        _aiControlledPollTimer = setTimeout(function() { pollAIControlledDosageJob(jobId); }, 2000);
+    });
+}
+
+function checkTableHeight() {
+    const tableContainer = document.getElementById('tableContainer');
+    const tbody = document.querySelector('#dosageTable tbody');
+    const rowCount = tbody.querySelectorAll('tr').length;
+    
+    if (rowCount > 5) {
+        tableContainer.classList.add('has-scroll');
+    } else {
+        tableContainer.classList.remove('has-scroll');
+    }
+}
+
+function autoCloseAlerts() {
+    const alerts = document.querySelectorAll('.auto-close-alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.remove();
+        }, 2000);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateControlledToggleState();
+    checkTableHeight();
+    autoCloseAlerts();
+});
+
+// Listen for storage changes from dashboard
+window.addEventListener('storage', function(e) {
+    if (e.key === 'assistant_dosage_master_enabled') {
+        updateControlledToggleState();
+    }
+});
+
+</script>
+
+<!-- Add Dosage Modal -->
+<div class="modal fade" id="addDosageModal" tabindex="-1" role="dialog" aria-labelledby="addDosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDosageModalLabel">Add New Controlled Drug Dosage</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('manage_controlled_dosage') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="add">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="controlled_drug_id">Select Controlled Drug</label>
+                        <select class="form-control" id="controlled_drug_id" name="controlled_drug_id" required>
+                            <option value="">-- Select Controlled Drug --</option>
+                            {% for drug in drugs %}
+                                {% if not drug.dosages %}
+                                    <option value="{{ drug.id }}">{{ drug.controlled_drug_number }} - {{ drug.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Only controlled drugs without existing dosage information are listed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="indication">Indication</label>
+                        <textarea class="form-control" id="indication" name="indication" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contraindication">Contraindication</label>
+                        <textarea class="form-control" id="contraindication" name="contraindication" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="interaction">Drug Interaction</label>
+                        <textarea class="form-control" id="interaction" name="interaction" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="side_effects">Side Effects</label>
+                        <textarea class="form-control" id="side_effects" name="side_effects" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="dosage_peds">Dosage (Pediatrics)</label>
+                                <textarea class="form-control" id="dosage_peds" name="dosage_peds" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="dosage_adults">Dosage (Adults)</label>
+                                <textarea class="form-control" id="dosage_adults" name="dosage_adults" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="dosage_geriatrics">Dosage (Geriatrics)</label>
+                                <textarea class="form-control" id="dosage_geriatrics" name="dosage_geriatrics" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="important_notes">Important Notes</label>
+                        <textarea class="form-control" id="important_notes" name="important_notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Dosage Information</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Dosage Modal -->
+<div class="modal fade" id="editDosageModal" tabindex="-1" role="dialog" aria-labelledby="editDosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editDosageModalLabel">Edit Controlled Drug Dosage</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('manage_controlled_dosage') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" id="edit_dosage_id" name="dosage_id">
+                <input type="hidden" id="edit_controlled_drug_id" value="">
+                <div class="modal-body">
+                    <div class="alert alert-info" style="font-size: 0.95rem;">
+                        <strong>Pharmacist Assistant Suggest:</strong> fills only empty fields using Pharmacist Assistant generation. Please review before saving.
+                    </div>
+                    <div class="form-group">
+                        <label>Drug</label>
+                        <p class="form-control-static" id="edit_drug_info"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_indication">Indication</label>
+                        <textarea class="form-control" id="edit_indication" name="indication" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_contraindication">Contraindication</label>
+                        <textarea class="form-control" id="edit_contraindication" name="contraindication" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_interaction">Drug Interaction</label>
+                        <textarea class="form-control" id="edit_interaction" name="interaction" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_side_effects">Side Effects</label>
+                        <textarea class="form-control" id="edit_side_effects" name="side_effects" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="edit_dosage_peds">Dosage (Pediatrics)</label>
+                                <textarea class="form-control" id="edit_dosage_peds" name="dosage_peds" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="edit_dosage_adults">Dosage (Adults)</label>
+                                <textarea class="form-control" id="edit_dosage_adults" name="dosage_adults" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="edit_dosage_geriatrics">Dosage (Geriatrics)</label>
+                                <textarea class="form-control" id="edit_dosage_geriatrics" name="dosage_geriatrics" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_important_notes">Important Notes</label>
+                        <textarea class="form-control" id="edit_important_notes" name="important_notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-success" id="btn_ai_suggest_controlled">
+                        <i class="fas fa-magic"></i> AI Suggest
+                    </button>
+                    <button type="submit" class="btn btn-primary">Update Dosage Information</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Dosage Modal -->
+<div class="modal fade" id="viewDosageModal" tabindex="-1" role="dialog" aria-labelledby="viewDosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewDosageModalLabel">Controlled Drug Dosage Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Basic Information</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Drug Number</th>
+                                <td id="view_drug_number"></td>
+                            </tr>
+                            <tr>
+                                <th>Drug Name</th>
+                                <td id="view_drug_name"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Medical Information</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Indication</th>
+                                <td id="view_indication"></td>
+                            </tr>
+                            <tr>
+                                <th>Contraindication</th>
+                                <td id="view_contraindication"></td>
+                            </tr>
+                            <tr>
+                                <th>Interaction</th>
+                                <td id="view_interaction"></td>
+                            </tr>
+                            <tr>
+                                <th>Side Effects</th>
+                                <td id="view_side_effects"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <h5>Dosage by Age Group</h5>
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Pediatrics</th>
+                        <td id="view_dosage_peds"></td>
+                    </tr>
+                    <tr>
+                        <th>Adults</th>
+                        <td id="view_dosage_adults"></td>
+                    </tr>
+                    <tr>
+                        <th>Geriatrics</th>
+                        <td id="view_dosage_geriatrics"></td>
+                    </tr>
+                </table>
+
+                <h5>Important Notes</h5>
+                <div class="card">
+                    <div class="card-body" id="view_important_notes"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Dosage Modal -->
+<div class="modal fade" id="deleteDosageModal" tabindex="-1" role="dialog" aria-labelledby="deleteDosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteDosageModalLabel">Delete Dosage Information</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('manage_controlled_dosage') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" id="delete_dosage_id" name="dosage_id">
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this controlled drug dosage information?</p>
+                    <p><strong id="delete_drug_name"></strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    function safeText(v) { return (v === null || v === undefined || v === '') ? '-' : v; }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function splitToBulletItems(text) {
+        const raw = (text === null || text === undefined) ? '' : String(text);
+        let t = raw.replace(/\r/g, '').trim();
+        if (!t) return [];
+        t = t.replace(/\s*•\s*/g, '\n• ');
+        const lines = t.split('\n').map(s => s.trim()).filter(Boolean);
+        const items = [];
+        for (const line of lines) {
+            const cleaned = line
+                .replace(/^([•\u2022\-*]+\s*)/, '')
+                .replace(/^\d+[\).]\s*/, '')
+                .trim();
+            if (cleaned) items.push(cleaned);
+        }
+        return items.length ? items : [t];
+    }
+
+    function renderBullets(text, emptyLabel) {
+        const items = splitToBulletItems(text);
+        if (!items.length) {
+            return `<span class="text-muted">${escapeHtml(emptyLabel || '-')}</span>`;
+        }
+        const lis = items.map(i => `<li>${escapeHtml(i)}</li>`).join('');
+        return `<ul class="mb-0 pl-3">${lis}</ul>`;
+    }
+
+    $(document).on('click', '.btn-add-controlled-dosage', function() {
+        const drugId = $(this).data('controlled-drug-id');
+        if (!drugId) return;
+        $('#controlled_drug_id').val(String(drugId));
+    });
+
+    $('.btn-view').click(function() {
+        const id = $(this).data('id');
+        $.get(`/admin/controlled-dosage/${id}`, function(data) {
+            $('#view_drug_number').text(data.drug.drug_number);
+            $('#view_drug_name').text(data.drug.name);
+            $('#view_indication').html(renderBullets(data.indication, '-'));
+            $('#view_contraindication').html(renderBullets(data.contraindication, '-'));
+            $('#view_interaction').html(renderBullets(data.interaction, '-'));
+            $('#view_side_effects').html(renderBullets(data.side_effects, '-'));
+            $('#view_dosage_peds').html(renderBullets(data.dosage_peds, '-'));
+            $('#view_dosage_adults').html(renderBullets(data.dosage_adults, '-'));
+            $('#view_dosage_geriatrics').html(renderBullets(data.dosage_geriatrics, '-'));
+            $('#view_important_notes').html(renderBullets(data.important_notes, '-'));
+        });
+    });
+
+    $('.btn-edit').click(function() {
+        const id = $(this).data('id');
+        $.get(`/admin/controlled-dosage/${id}`, function(data) {
+            $('#edit_dosage_id').val(data.id);
+            $('#edit_controlled_drug_id').val(data.drug.id);
+            $('#edit_drug_info').text(`${data.drug.drug_number} - ${data.drug.name}`);
+            $('#edit_indication').val(data.indication || '');
+            $('#edit_contraindication').val(data.contraindication || '');
+            $('#edit_interaction').val(data.interaction || '');
+            $('#edit_side_effects').val(data.side_effects || '');
+            $('#edit_dosage_peds').val(data.dosage_peds || '');
+            $('#edit_dosage_adults').val(data.dosage_adults || '');
+            $('#edit_dosage_geriatrics').val(data.dosage_geriatrics || '');
+            $('#edit_important_notes').val(data.important_notes || '');
+        });
+    });
+
+    $('.btn-delete').click(function() {
+        const id = $(this).data('id');
+        $.get(`/admin/controlled-dosage/${id}`, function(data) {
+            $('#delete_dosage_id').val(data.id);
+            $('#delete_drug_name').text(`${data.drug.drug_number} - ${data.drug.name}`);
+        });
+    });
+
+    function fillIfEmpty($el, value) {
+        if (!$el.length) return;
+        const current = ($el.val() || '').trim();
+        if (current) return;
+        if (value === null || value === undefined) return;
+        const v = String(value).trim();
+        if (!v) return;
+        $el.val(v);
+    }
+
+    $('#btn_ai_suggest_controlled').on('click', function() {
+        const drugId = parseInt($('#edit_controlled_drug_id').val() || '0', 10);
+        if (!drugId) {
+            alert('Missing drug id for AI suggestion');
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.prop('disabled', true).text('Suggesting...');
+        $.get(`/admin/dosage/assistant-suggest?kind=controlled&drug_id=${drugId}`, function(resp) {
+            const s = resp && resp.suggested ? resp.suggested : null;
+            if (!s) {
+                alert('No suggestion available for this drug.');
+                return;
+            }
+            fillIfEmpty($('#edit_indication'), s.indication);
+            fillIfEmpty($('#edit_contraindication'), s.contraindication);
+            fillIfEmpty($('#edit_interaction'), s.interaction);
+            fillIfEmpty($('#edit_side_effects'), s.side_effects);
+            fillIfEmpty($('#edit_dosage_peds'), s.dosage_peds);
+            fillIfEmpty($('#edit_dosage_adults'), s.dosage_adults);
+            fillIfEmpty($('#edit_dosage_geriatrics'), s.dosage_geriatrics);
+            fillIfEmpty($('#edit_important_notes'), s.important_notes);
+        }).fail(function(xhr) {
+            const msg = (xhr && xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'AI suggestion failed';
+            alert(msg);
+        }).always(function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-magic"></i> AI Suggest');
+        });
+    });
+});
+</script>
+
+{% endblock %}
+
+
+
+

@@ -1,0 +1,1242 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+<div class="drug-management-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1><i class="fas fa-shield-lock"></i> Controlled Drugs Management</h1>
+                <p>Manage controlled drug inventory with enhanced security and tracking</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn btn-outline btn-with-icon" href="{{ url_for('manage_drugs') }}">
+                    <i class="fas fa-arrow-left"></i> Back to Regular Drugs
+                </a>
+                <button class="btn btn-primary btn-with-icon" data-toggle="modal" data-target="#addControlledDrugModal">
+                    <i class="fas fa-plus"></i> Add Controlled Drug
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <div class="summary-cards-grid">
+        <div class="summary-card total-value">
+            <div class="card-icon">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="card-content">
+                <h3>Total Inventory Value</h3>
+                <div class="amount" id="totalInventoryValue">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="summary-card low-stock">
+            <div class="card-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="card-content">
+                <h3>Low Stock</h3>
+                <div class="amount" id="lowStockCount">0</div>
+            </div>
+        </div>
+        
+        <div class="summary-card expiring">
+            <div class="card-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="card-content">
+                <h3>Expiring Soon</h3>
+                <div class="amount" id="expiringSoonCount">0</div>
+            </div>
+        </div>
+        
+        <div class="summary-card out-of-stock">
+            <div class="card-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="card-content">
+                <h3>Out of Stock</h3>
+                <div class="amount" id="outOfStockCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-actions">
+        <button class="btn btn-outline filter-btn" id="viewLowStock">
+            <i class="fas fa-exclamation-triangle"></i> View Low Stock
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewExpiringSoon">
+            <i class="fas fa-clock"></i> View Expiring Soon
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewOutOfStock">
+            <i class="fas fa-times-circle"></i> View Out of Stock
+        </button>
+        <button class="btn btn-outline filter-btn" id="viewExpired">
+            <i class="fas fa-skull-crossbones"></i> View Expired Drugs
+        </button>
+        <button class="btn btn-outline filter-btn" id="clearFilters">
+            <i class="fas fa-times"></i> Clear Filters
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table id="controlledDrugsTable" class="simple-table">
+            <thead>
+                <tr>
+                    <th>Drug No.</th>
+                    <th>Drug Name</th>
+                    <th>Specification</th>
+                    <th>Buy Price</th>
+                    <th>Sell Price</th>
+                    <th>IP Price</th>
+                    <th>Stocked</th>
+                    <th>Sold</th>
+                    <th>Remaining</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be loaded via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Controlled Drug Modal -->
+<div class="modal fade" id="addControlledDrugModal" tabindex="-1" role="dialog" aria-labelledby="addControlledDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="addControlledDrugModalLabel">Add New Controlled Drug</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addControlledDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="controlled_drug_number" id="controlled_drug_number">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="controlled_drug_number_display">Drug Number (Auto-Generated)</label>
+                            <input type="text" class="form-control" id="controlled_drug_number_display" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="add_name">Drug Name *</label>
+                            <input type="text" class="form-control" id="add_name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="add_specification">Specification</label>
+                        <input type="text" class="form-control" id="add_specification" name="specification">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="add_buying_price">Buying Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="add_buying_price" name="buying_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="add_selling_price">Selling Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="add_selling_price" name="selling_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="add_ip_drug_price">IP Drug Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="add_ip_drug_price" name="ip_drug_price" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="add_stocked_quantity">Stocked Quantity *</label>
+                            <input type="number" class="form-control" id="add_stocked_quantity" name="stocked_quantity" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="add_expiry_date">Expiry Date *</label>
+                            <input type="date" class="form-control" id="add_expiry_date" name="expiry_date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Controlled Drug Modal -->
+<div class="modal fade" id="editControlledDrugModal" tabindex="-1" role="dialog" aria-labelledby="editControlledDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="editControlledDrugModalLabel">Edit Controlled Drug</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editControlledDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" id="edit_controlled_drug_id" name="controlled_drug_id">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_controlled_drug_number">Controlled Drug No. *</label>
+                            <input type="text" class="form-control" id="edit_controlled_drug_number" name="controlled_drug_number" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_name">Drug Name *</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_specification">Specification</label>
+                        <input type="text" class="form-control" id="edit_specification" name="specification">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_buying_price">Buying Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_buying_price" name="buying_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_selling_price">Selling Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_selling_price" name="selling_price" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_ip_drug_price">IP Drug Price (Ksh) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_ip_drug_price" name="ip_drug_price" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_stocked_quantity">Stocked Quantity *</label>
+                            <input type="number" class="form-control" id="edit_stocked_quantity" name="stocked_quantity" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_expiry_date">Expiry Date *</label>
+                            <input type="date" class="form-control" id="edit_expiry_date" name="expiry_date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteControlledDrugModal" tabindex="-1" role="dialog" aria-labelledby="deleteControlledDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="deleteControlledDrugModalLabel">Confirm Deletion</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="deleteControlledDrugForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" id="delete_controlled_drug_id" name="controlled_drug_id">
+                    <p>Are you sure you want to delete this controlled drug? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Info Modal for Dosage -->
+<div class="modal fade" id="dosageInfoModal" tabindex="-1" role="dialog" aria-labelledby="dosageInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="dosageInfoModalLabel">Dosage Information</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="dosageInfoContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTable with AJAX loading
+    var controlledDrugsTable = initializeDataTable();
+    
+    // Load summary statistics
+    loadSummaryStats();
+    
+    // Store current filter state
+    var currentFilter = 'all';
+
+    function cleanupModalArtifacts() {
+        // Only force-clean when no modal should remain open.
+        if ($('.modal.show').length > 0) {
+            return;
+        }
+        $('.modal-backdrop').remove();
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+
+    function showModal(modalSelector) {
+        var modalEl = document.querySelector(modalSelector);
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            return;
+        }
+        var $modal = $(modalSelector);
+        if ($modal.length && typeof $modal.modal === 'function') {
+            $modal.modal('show');
+        }
+    }
+
+    function hideModal(modalSelector) {
+        var modalEl = document.querySelector(modalSelector);
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } else {
+            var $modal = $(modalSelector);
+            if ($modal.length && typeof $modal.modal === 'function') {
+                $modal.modal('hide');
+            }
+        }
+        setTimeout(cleanupModalArtifacts, 0);
+    }
+
+    // Ensure stale overlays never survive navigation or modal transitions.
+    cleanupModalArtifacts();
+    $('#addControlledDrugModal, #editControlledDrugModal, #deleteControlledDrugModal, #dosageInfoModal').on('hidden.bs.modal', function() {
+        cleanupModalArtifacts();
+    });
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    
+    // Edit button handler
+    $('#controlledDrugsTable').on('click', '.btn-edit', function() {
+        var drugId = $(this).data('id');
+        loadControlledDrugData(drugId);
+    });
+
+    // Delete button handler
+    $('#controlledDrugsTable').on('click', '.btn-delete', function() {
+        $('#delete_controlled_drug_id').val($(this).data('id'));
+    });
+
+    // Info button handler - Show dosage information
+    $('#controlledDrugsTable').on('click', '.btn-info', function(e) {
+        e.preventDefault();
+        var drugId = $(this).data('id');
+        
+        $.get('/admin/controlled-drugs/' + drugId + '/dosage', function(data) {
+            var modalContent = `
+                ${data.dosage ? `
+                <div class="dosage-section">
+                    <h6><i class="fas fa-info-circle"></i> Indications</h6>
+                    <p>${esc(data.dosage.indication) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-ban"></i> Contraindications</h6>
+                    <p>${esc(data.dosage.contraindication) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-exchange-alt"></i> Drug Interactions</h6>
+                    <p>${esc(data.dosage.interaction) || 'Not specified'}</p>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Side Effects</h6>
+                    <p>${esc(data.dosage.side_effects) || 'Not specified'}</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-child"></i> Pediatric Dosage</h6>
+                            <p>${esc(data.dosage.dosage_peds) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-user-md"></i> Adult Dosage</h6>
+                            <p>${esc(data.dosage.dosage_adults) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="dosage-section">
+                            <h6><i class="fas fa-user-clock"></i> Geriatric Dosage</h6>
+                            <p>${esc(data.dosage.dosage_geriatrics) || 'Not specified'}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dosage-section">
+                    <h6><i class="fas fa-sticky-note"></i> Important Notes</h6>
+                    <p>${esc(data.dosage.important_notes) || 'Not specified'}</p>
+                </div>
+                ` : `<p class="text-muted">No dosage information available for this drug.</p>`}
+            `;
+            $('#dosageInfoContent').html(modalContent);
+            showModal('#dosageInfoModal');
+        }).fail(function() {
+            showAlert('danger', 'Failed to load dosage information');
+        });
+    });
+
+    // Form submission handlers
+    $('#addControlledDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitControlledDrugForm('add');
+    });
+
+    $('#editControlledDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitControlledDrugForm('edit');
+    });
+
+    $('#deleteControlledDrugForm').submit(function(e) {
+        e.preventDefault();
+        submitControlledDrugForm('delete');
+    });
+
+    // Generate next controlled drug number when add modal opens
+    $('#addControlledDrugModal').on('show.bs.modal', function() {
+        generateNextControlledDrugNumber();
+    });
+
+    // Initialize DataTable function
+    function initializeDataTable() {
+        // Destroy existing DataTable if it exists
+        if ($.fn.DataTable.isDataTable('#controlledDrugsTable')) {
+            $('#controlledDrugsTable').DataTable().destroy();
+        }
+
+        // Initialize new DataTable with AJAX
+        return $('#controlledDrugsTable').DataTable({
+            ajax: {
+                url: '/api/controlled-drugs',
+                dataSrc: '',
+                data: function(d) {
+                    // Add filter parameter to AJAX request
+                    if (currentFilter && currentFilter !== 'all') {
+                        d.filter = currentFilter;
+                    }
+                }
+            },
+            columns: [
+                { data: 'controlled_drug_number', render: $.fn.dataTable.render.text() },
+                { data: 'name', render: $.fn.dataTable.render.text() },
+                { data: 'specification', defaultContent: '', render: $.fn.dataTable.render.text() },
+                { 
+                    data: 'buying_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data).toFixed(2);
+                    }
+                },
+                { 
+                    data: 'selling_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data).toFixed(2);
+                    }
+                },
+                {
+                    data: 'ip_drug_price',
+                    render: function(data) {
+                        return 'Ksh ' + parseFloat(data || 0).toFixed(2);
+                    }
+                },
+                { data: 'stocked_quantity' },
+                { data: 'sold_quantity' },
+                { 
+                    data: null,
+                    render: function(data) {
+                        const remaining = data.stocked_quantity - data.sold_quantity;
+                        const statusClass = getStockStatusClass(data);
+                        return `<span class="${statusClass}">${remaining}</span>`;
+                    }
+                },
+                { 
+                    data: 'expiry_date',
+                    render: function(data) {
+                        const date = new Date(data);
+                        const today = new Date();
+                        const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+                        
+                        let dateClass = '';
+                        if (diffDays < 0) {
+                            dateClass = 'text-danger';
+                        } else if (diffDays < 30) {
+                            dateClass = 'text-warning';
+                        }
+                        
+                        return `<span class="${dateClass}">${date.toISOString().split('T')[0]}</span>`;
+                    }
+                },
+                { 
+                    data: null,
+                    render: function(data) {
+                        const status = getStockStatus(data);
+                        const statusClass = getStockStatusClass(data);
+                        return `<span class="status-badge ${statusClass}">${status}</span>`;
+                    }
+                },
+                {
+                    data: 'id',
+                    render: function(data, type, row) {
+                        return `
+                            <div class="action-btns">
+                                <button class="action-btn btn-primary btn-edit" data-id="${data}" data-toggle="modal" data-target="#editControlledDrugModal" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn btn-danger btn-delete" data-id="${data}" data-toggle="modal" data-target="#deleteControlledDrugModal" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button class="action-btn btn-info btn-info" data-id="${data}" title="Info">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </div>
+                        `;
+                    },
+                    orderable: false
+                }
+            ],
+            dom: 'rt',
+            paging: false,
+            language: {
+                emptyTable: "No controlled drugs found matching the current filter",
+                zeroRecords: "No matching controlled drugs found"
+            },
+            initComplete: function() {
+                // Add loading state
+                this.api().on('preXhr', function(e, settings, data) {
+                    $('#controlledDrugsTable tbody').html(`
+                        <tr>
+                            <td colspan="11" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading controlled drugs...</p>
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+        });
+    }
+
+    // Helper function to get stock status
+    function getStockStatus(data) {
+        const remaining = data.stocked_quantity - data.sold_quantity;
+        const expiryDate = new Date(data.expiry_date);
+        const today = new Date();
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        if (remaining <= 0) {
+            return 'Out of Stock';
+        } else if (remaining < 5) {
+            return 'Low Stock';
+        } else if (diffDays < 30 && diffDays >= 0) {
+            return 'Expiring Soon';
+        } else if (diffDays < 0) {
+            return 'Expired';
+        } else {
+            return 'In Stock';
+        }
+    }
+
+    // Helper function to get stock status class
+    function getStockStatusClass(data) {
+        const remaining = data.stocked_quantity - data.sold_quantity;
+        const expiryDate = new Date(data.expiry_date);
+        const today = new Date();
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        
+        if (remaining <= 0) {
+            return 'text-danger font-weight-bold';
+        } else if (remaining < 10) {
+            return 'text-warning font-weight-bold';
+        } else if (diffDays < 30 && diffDays >= 0) {
+            return 'text-warning';
+        } else if (diffDays < 0) {
+            return 'text-danger';
+        } else {
+            return 'text-success';
+        }
+    }
+
+    // Load controlled drug data for editing
+    function loadControlledDrugData(drugId) {
+        $.get('/api/controlled-drugs/' + drugId, function(drug) {
+            $('#edit_controlled_drug_id').val(drug.id);
+            $('#edit_controlled_drug_number').val(drug.controlled_drug_number);
+            $('#edit_name').val(drug.name);
+            $('#edit_specification').val(drug.specification);
+            $('#edit_buying_price').val(drug.buying_price);
+            $('#edit_selling_price').val(drug.selling_price);
+            $('#edit_ip_drug_price').val(drug.ip_drug_price || drug.selling_price || 0);
+            $('#edit_stocked_quantity').val(drug.stocked_quantity);
+            $('#edit_expiry_date').val(new Date(drug.expiry_date).toISOString().split('T')[0]);
+        }).fail(function() {
+            showAlert('danger', 'Failed to load controlled drug data');
+        });
+    }
+
+    // Generate next controlled drug number
+    function generateNextControlledDrugNumber() {
+        $.ajax({
+            url: '/api/controlled-drugs/next-number',
+            method: 'GET',
+            success: function(response) {
+                $('#controlled_drug_number').val(response.controlled_drug_number);
+                $('#controlled_drug_number_display').val(response.controlled_drug_number);
+            },
+            error: function(xhr) {
+                // If error, generate a default number
+                $('#controlled_drug_number').val('CTR-' + String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0'));
+                $('#controlled_drug_number_display').val($('#controlled_drug_number').val());
+                console.error('Error generating controlled drug number:', xhr);
+            }
+        });
+    }
+
+    // Submit controlled drug form (add/edit/delete)
+    function submitControlledDrugForm(action) {
+        var formData = $('#' + action + 'ControlledDrugForm').serialize();
+        var modalId = '#' + action + 'ControlledDrugModal';
+        
+        $.ajax({
+            url: '/admin/controlled-drugs',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                hideModal(modalId);
+                showAlert('success', 'Controlled drug ' + (action === 'delete' ? 'deleted' : 'saved') + ' successfully');
+                
+                // Refresh DataTable
+                controlledDrugsTable.ajax.reload(null, false); // false to keep current page
+                
+                // Reload summary stats
+                loadSummaryStats();
+                
+                // Reset forms
+                if (action !== 'delete') {
+                    $('#' + action + 'ControlledDrugForm')[0].reset();
+                }
+            },
+            error: function(xhr) {
+                showAlert('danger', 'Error: ' + (xhr.responseJSON?.error || 'Operation failed'));
+            }
+        });
+    }
+
+    // Load summary statistics
+    function loadSummaryStats() {
+        $.get('/api/controlled-drugs/stats', function(stats) {
+            $('#totalInventoryValue').text('Ksh ' + parseFloat(stats.total_value).toFixed(2));
+            $('#lowStockCount').text(stats.low_stock);
+            $('#expiringSoonCount').text(stats.expiring_soon);
+            $('#outOfStockCount').text(stats.out_of_stock);
+        }).fail(function() {
+            showAlert('danger', 'Failed to load summary statistics');
+        });
+    }
+
+    // Show alert message
+    function showAlert(type, message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), type || 'info');
+            return;
+        }
+        window.alert(String(message ?? ''));
+    }
+
+    // Filter handlers
+    $('#viewLowStock').click(function() {
+        currentFilter = 'low_stock';
+        controlledDrugsTable.ajax.url('/api/controlled-drugs?filter=low_stock').load();
+    });
+
+    $('#viewExpiringSoon').click(function() {
+        currentFilter = 'expiring_soon';
+        controlledDrugsTable.ajax.url('/api/controlled-drugs?filter=expiring_soon').load();
+    });
+
+    $('#viewOutOfStock').click(function() {
+        currentFilter = 'out_of_stock';
+        controlledDrugsTable.ajax.url('/api/controlled-drugs?filter=out_of_stock').load();
+    });
+
+    $('#viewExpired').click(function() {
+        currentFilter = 'expired';
+        controlledDrugsTable.ajax.url('/api/controlled-drugs?filter=expired').load();
+    });
+
+    $('#clearFilters').click(function() {
+        currentFilter = 'all';
+        controlledDrugsTable.ajax.url('/api/controlled-drugs').load();
+    });
+
+    // Add CSS for the active filter state
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            .filter-btn.active {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+            .text-danger.font-weight-bold {
+                font-weight: bold !important;
+                color: #dc3545 !important;
+            }
+            .text-warning.font-weight-bold {
+                font-weight: bold !important;
+                color: #ffc107 !important;
+            }
+            .dosage-section {
+                margin-bottom: 15px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .dosage-section:last-child {
+                border-bottom: none;
+            }
+            .dosage-section h6 {
+                color: #333;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .dosage-section p {
+                color: #666;
+                margin: 0;
+                line-height: 1.5;
+            }
+        `)
+        .appendTo('head');
+});
+</script>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.drug-management-container {
+    padding: 20px;
+    max-width: 100%;
+}
+
+.dashboard-header {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--primary) 0%, #5370f2 100%);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.header-title h1 {
+    color: white;
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.header-title p {
+    color: rgba(255, 255, 255, 0.9);
+    margin: 5px 0 0 0;
+}
+
+.summary-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.summary-card.total-value .card-icon {
+    background: linear-gradient(135deg, #43cea2, #185a9d);
+}
+
+.summary-card.low-stock .card-icon {
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+}
+
+.summary-card.expiring .card-icon {
+    background: linear-gradient(135deg, #ff9966, #ff5e62);
+}
+
+.summary-card.out-of-stock .card-icon {
+    background: linear-gradient(135deg, #f5515f, #9f041b);
+}
+
+.card-content h3 {
+    margin: 0;
+    color: #666;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.card-content .amount {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-top: 5px;
+}
+
+.summary-card.total-value {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border-left: 4px solid #4caf50;
+}
+
+.summary-card.low-stock {
+    background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+    border-left: 4px solid #ff9800;
+}
+
+.summary-card.expiring {
+    background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+    border-left: 4px solid #e91e63;
+}
+
+.summary-card.out-of-stock {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+    border-left: 4px solid #f44336;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.filter-btn {
+    padding: 8px 15px;
+    border: 1px solid var(--secondary);
+    color: var(--dark);
+    background: white;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.filter-btn:hover {
+    background: var(--light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.table-container {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    border: 3px solid #333;
+}
+
+.simple-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #ddd;
+    table-layout: auto;
+}
+
+.simple-table thead {
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+}
+
+#controlledDrugsTable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f5f5f5;
+}
+
+.simple-table th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-right: 1px solid #ddd;
+    white-space: nowrap;
+}
+
+.simple-table th:last-child {
+    border-right: none;
+}
+
+.simple-table tbody tr {
+    border-bottom: 1px solid #eee;
+    transition: var(--transition);
+}
+
+.simple-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.simple-table td {
+    padding: 12px 15px;
+    color: #555;
+    border-right: 1px solid #eee;
+    white-space: nowrap;
+}
+
+.simple-table td:last-child {
+    border-right: none;
+}
+
+.action-btns {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3a52d5;
+}
+
+.action-btn.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.action-btn.btn-info {
+    background: var(--info);
+    color: white;
+}
+
+.action-btn.btn-info:hover {
+    background: #138496;
+}
+
+.btn {
+    padding: 10px 15px;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #3a52d5;
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    color: var(--dark);
+    border: 1px solid var(--secondary);
+}
+
+.btn-outline:hover {
+    background: var(--light);
+    border-color: var(--primary);
+}
+
+.btn-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-badge.text-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.text-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.text-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* Header buttons: keep on a single row and compact */
+    .header-actions {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+
+    .header-actions .btn {
+        padding: 6px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .summary-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-actions {
+        flex-direction: column;
+    }
+
+    .filter-btn {
+        width: 100%;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .drug-management-container {
+        padding: 12px;
+    }
+
+    .summary-cards-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .summary-card {
+        padding: 8px 6px;
+        gap: 8px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .card-icon {
+        display: none;
+    }
+
+    .card-content h3 {
+        font-size: 10px;
+        line-height: 1.1;
+    }
+
+    .card-content .amount {
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+    .filter-actions {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .filter-btn {
+        width: auto;
+        padding: 6px 6px;
+        font-size: 10px;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .filter-btn i {
+        display: none;
+    }
+
+    .table-container {
+        max-height: 72vh;
+    }
+
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .action-btn {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+}
+</style>
+
+{% endblock %}

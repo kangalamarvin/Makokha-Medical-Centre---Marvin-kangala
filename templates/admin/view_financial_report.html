@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}View Financial Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Financial Report Details</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Report Summary</h6>
+            <a href="{{ url_for('financial_reports') }}" class="btn btn-secondary btn-sm">Back to Reports</a>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Report Type:</strong> {{ report.report_type|capitalize }}</p>
+                    <p><strong>Date Range:</strong> {{ report.start_date.strftime('%Y-%m-%d') }} to {{ report.end_date.strftime('%Y-%m-%d') }}</p>
+                    <p><strong>Generated At:</strong> {{ report.generated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="col-md-8">
+                    <p><strong>Total Revenue:</strong> <span class="text-success">{{ report.total_revenue }}</span></p>
+                    <p><strong>Total Expenses:</strong> <span class="text-danger">{{ report.total_expenses }}</span></p>
+                    <p><strong>Net Profit:</strong> <span class="text-primary font-weight-bold">{{ report.net_profit }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Revenue Items</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in report.items if item.item_type == 'revenue' %}
+                                <tr>
+                                    <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ item.description }}</td>
+                                    <td>{{ item.amount }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Expense Items</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in report.items if item.item_type == 'expense' %}
+                                <tr>
+                                    <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ item.description }}</td>
+                                    <td>{{ item.amount }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

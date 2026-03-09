@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{% if invoice %}Edit Invoice{% else %}Create Invoice{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">{% if invoice %}Edit Invoice{% else %}Create Invoice{% endif %}</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-invoice me-1"></i>
+            Invoice Details
+        </div>
+        <div class="card-body">
+            <form id="invoiceForm" method="POST">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label">Patient</label>
+                            <select class="form-control" id="patient_id" name="patient_id" required>
+                                <option value="">Select Patient</option>
+                                {% for patient in patients %}
+                                    <option value="{{ patient.id }}" {% if invoice and invoice.patient_id == patient.id %}selected{% endif %}>
+                                        {{ patient.firstname }} {{ patient.lastname }} (ID: {{ patient.id }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="date_issued" class="form-label">Date Issued</label>
+                            <input type="date" class="form-control" id="date_issued" name="date_issued" value="{{ invoice.date_issued.strftime('%Y-%m-%d') if invoice else '' }}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="due_date" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="due_date" name="due_date" value="{{ invoice.due_date.strftime('%Y-%m-%d') if invoice and invoice.due_date else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mt-4">Invoice Items</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoice-items">
+                        {% if invoice %}
+                            {% for item in invoice.items %}
+                            <tr>
+                                <td><input type="text" class="form-control" name="item_description" value="{{ item.description }}" required></td>
+                                <td><input type="number" class="form-control quantity" name="item_quantity" value="{{ item.quantity }}" required></td>
+                                <td><input type="number" step="0.01" class="form-control unit_price" name="item_unit_price" value="{{ item.unit_price }}" required></td>
+                                <td><input type="text" class="form-control total" name="item_total" value="{{ item.total_price }}" readonly></td>
+                                <td><button type="button" class="btn btn-danger btn-sm remove-item"><i class="fas fa-trash"></i></button></td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+                <button type="button" id="add-item" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Add Item</button>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ invoice.notes if invoice else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-end">
+                            <h5>Subtotal: <span id="subtotal">0.00</span></h5>
+                            <h5>Tax (0%): <span id="tax">0.00</span></h5>
+                            <h3>Total: <span id="grand_total">0.00</span></h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Save Invoice</button>
+                    <a href="{{ url_for('invoices') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#patient_id').select2();
+
+    function calculateTotal() {
+        let subtotal = 0;
+        $('#invoice-items tr').each(function() {
+            const quantity = parseFloat($(this).find('.quantity').val()) || 0;
+            const unitPrice = parseFloat($(this).find('.unit_price').val()) || 0;
+            const total = quantity * unitPrice;
+            $(this).find('.total').val(total.toFixed(2));
+            subtotal += total;
+        });
+        
+        const tax = 0; // Assuming no tax for now
+        const grandTotal = subtotal + tax;
+
+        $('#subtotal').text(subtotal.toFixed(2));
+        $('#tax').text(tax.toFixed(2));
+        $('#grand_total').text(grandTotal.toFixed(2));
+    }
+
+    $('#add-item').on('click', function() {
+        const newRow = `
+            <tr>
+                <td><input type="text" class="form-control" name="item_description" required></td>
+                <td><input type="number" class="form-control quantity" name="item_quantity" value="1" required></td>
+                <td><input type="number" step="0.01" class="form-control unit_price" name="item_unit_price" value="0.00" required></td>
+                <td><input type="text" class="form-control total" name="item_total" readonly></td>
+                <td><button type="button" class="btn btn-danger btn-sm remove-item"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `;
+        $('#invoice-items').append(newRow);
+    });
+
+    $('#invoice-items').on('click', '.remove-item', function() {
+        $(this).closest('tr').remove();
+        calculateTotal();
+    });
+
+    $('#invoice-items').on('input', '.quantity, .unit_price', function() {
+        calculateTotal();
+    });
+
+    calculateTotal(); // Initial calculation
+});
+</script>
+{% endblock %}

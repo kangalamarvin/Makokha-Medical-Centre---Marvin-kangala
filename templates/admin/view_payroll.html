@@ -1,0 +1,78 @@
+
+{% extends "base.html" %}
+
+{% block title %}View Payroll{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Payroll Details</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('edit_payroll', payroll_id=payroll.id) }}" class="btn btn-sm btn-outline-primary">
+            Edit
+        </a>
+        <a href="{{ url_for('payroll_list') }}" class="btn btn-sm btn-outline-secondary">
+            Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Payroll #{{ payroll.payroll_number }}</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Employee:</strong> {{ payroll.employee.name }}</p>
+                <p><strong>Pay Period:</strong> {{ payroll.pay_period }}</p>
+                <p><strong>Amount:</strong> {{ "{:,.2f}".format(payroll.amount) }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Payment Date:</strong> {{ payroll.payment_date.strftime('%Y-%m-%d') if payroll.payment_date else 'N/A' }}</p>
+                <p><strong>Status:</strong> <span class="badge bg-{% if payroll.status == 'paid' %}success{% elif payroll.status == 'pending' %}warning{% else %}danger{% endif %}">{{ payroll.status }}</span></p>
+            </div>
+        </div>
+        <p><strong>Notes:</strong> {{ payroll.notes|nl2br }}</p>
+    </div>
+</div>
+
+<h3 class="mt-4">Payments</h3>
+<div class="table-responsive">
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Paid By</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payroll.payments %}
+            <tr>
+                <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ "{:,.2f}".format(payment.amount) }}</td>
+                <td>{{ payment.user.username }}</td>
+                <td>{{ payment.notes }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if payroll.status == 'pending' %}
+<h3 class="mt-4">Make a Payment</h3>
+<form method="POST" action="{{ url_for('make_payroll_payment', payroll_id=payroll.id) }}">
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label for="amount" class="form-label">Amount</label>
+            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+        </div>
+        <div class="col-md-8 mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <input type="text" class="form-control" id="notes" name="notes">
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Payment</button>
+</form>
+{% endif %}
+
+{% endblock %}

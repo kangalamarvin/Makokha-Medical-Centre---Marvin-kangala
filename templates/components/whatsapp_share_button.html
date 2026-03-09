@@ -1,0 +1,363 @@
+{# Reusable WhatsApp share button.
+
+Required variables:
+- whatsapp_share_endpoint: POST endpoint that accepts JSON {to?: string}
+
+Optional variables:
+- whatsapp_fallback_pdf: PDF endpoint used for exact HTML->PNG->PDF conversion
+- whatsapp_button_label: button text
+- whatsapp_button_class: CSS classes
+- whatsapp_title: prompt title
+#}
+
+{% set _btn_id = whatsapp_btn_id|default('waShareBtn_' ~ (range(100000, 999999)|random)) %}
+{% set _fallback_pdf = whatsapp_fallback_pdf|default('') %}
+{% set _label = whatsapp_button_label|default('Share via WhatsApp (PDF)') %}
+{% set _class = whatsapp_button_class|default('btn btn-success btn-sm') %}
+{% set _title = whatsapp_title|default('Enter WhatsApp number') %}
+
+<button
+  type="button"
+  id="{{ _btn_id }}"
+  class="{{ _class }} no-print"
+  data-endpoint="{{ whatsapp_share_endpoint }}"
+  data-fallback-pdf="{{ _fallback_pdf }}"
+  data-title="{{ _title }}"
+>{{ _label }}</button>
+
+<script>
+(function(){
+  const btn = document.getElementById({{ _btn_id|tojson }});
+  if(!btn) return;
+  if (btn.dataset.mmcShareInit === '1') return;
+  btn.dataset.mmcShareInit = '1';
+  let promptOpen = false;
+  let sending = false;
+
+  {% if csrf_token is defined %}
+  const csrfFromTemplate = {{ csrf_token()|tojson }};
+  {% else %}
+  const csrfFromTemplate = '';
+  {% endif %}
+
+  function getCsrf(){
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return (meta && meta.content) ? meta.content : (csrfFromTemplate || '');
+  }
+
+  async function postJson(url, payload){
+    const headers = { 'Content-Type': 'application/json' };
+    const csrf = getCsrf();
+    if(csrf){ headers['X-CSRFToken'] = csrf; }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload || {})
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+
+    if(!res.ok){
+      const msg = (data && data.error) ? data.error : (res.status + ' ' + res.statusText);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function normalizeAbsoluteUrl(raw){
+    const text = String(raw || '').trim();
+    if (!text) return '';
+    try { return new URL(text, window.location.href).toString(); } catch (_) { return ''; }
+  }
+
+  function findReceiptRoot(){
+    return document.querySelector('[data-receipt-root]') || document.querySelector('.receipt-container') || document.getElementById('print-area');
+  }
+
+  function safeFilename(base){
+    const raw = String(base || 'receipt').trim() || 'receipt';
+    return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-');
+  }
+
+  function inferReceiptRef(){
+    const text = document.body ? document.body.textContent || '' : '';
+    const m = text.match(/(?:Receipt\s*(?:No|#)?\s*[:\-]\s*)([A-Za-z0-9\-_/]+)/i);
+    return m ? m[1] : 'receipt';
+  }
+
+  function inferSourceUrl(){
+    const root = findReceiptRoot();
+    const fromRoot = root ? String(root.getAttribute('data-receipt-source-url') || '').trim() : '';
+    const fromBody = document.body ? String(document.body.getAttribute('data-receipt-source-url') || '').trim() : '';
+    const explicit = normalizeAbsoluteUrl(fromRoot || fromBody);
+    if (explicit) return explicit;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('embedded');
+      u.searchParams.delete('embed');
+      return u.toString();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function inferPdfEndpoint(explicitPdfEndpoint){
+    const direct = normalizeAbsoluteUrl(explicitPdfEndpoint);
+    if (direct) return direct;
+
+    const root = findReceiptRoot();
+    const fromRoot = normalizeAbsoluteUrl(root ? root.getAttribute('data-receipt-pdf-endpoint') : '');
+    if (fromRoot) return fromRoot;
+
+    const src = inferSourceUrl();
+    if (!src) return '';
+    try {
+      const u = new URL(src);
+      const p = u.pathname || '';
+      let m = p.match(/^\/pharmacist\/sale\/(\d+)\/receipt\/?$/i);
+      if (m) return new URL(`/api/sales/${m[1]}/receipt.pdf`, u.origin).toString();
+      m = p.match(/^\/pharmacist\/controlled\/sale\/(\d+)\/receipt\/?$/i);
+      if (m) return new URL(`/api/controlled-sales/${m[1]}/receipt.pdf`, u.origin).toString();
+      m = p.match(/^\/pharmacist\/refund\/(\d+)\/receipt\/?$/i);
+      if (m) return new URL(`/api/refunds/${m[1]}/receipt.pdf`, u.origin).toString();
+      m = p.match(/^\/api\/(sales|controlled-sales|refunds)\/(\d+)\/receipt\.pdf$/i);
+      if (m) return new URL(`/api/${m[1]}/${m[2]}/receipt.pdf`, u.origin).toString();
+    } catch (_) {
+      return '';
+    }
+    return '';
+  }
+
+  function extractCashMeta(urlText){
+    const payload = {};
+    try {
+      const u = new URL(String(urlText || ''), window.location.href);
+      const ag = u.searchParams.get('amount_given');
+      const ch = u.searchParams.get('change');
+      if (ag !== null && ag !== '') {
+        const v = Number(ag);
+        if (Number.isFinite(v)) payload.amount_given = v;
+      }
+      if (ch !== null && ch !== '') {
+        const v = Number(ch);
+        if (Number.isFinite(v)) payload.change = v;
+      }
+    } catch (_) {
+      // ignore
+    }
+    return payload;
+  }
+
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === '1') {
+          resolve();
+        } else {
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Failed to load script')), { once: true });
+        }
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.dataset.loaded = '0';
+      s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+      s.onerror = () => reject(new Error('Failed to load script'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureHtml2CanvasReady(){
+    if (window.html2canvas) return true;
+    try { await loadScriptOnce('/vendor/jsdelivr/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (_) {}
+    if (window.html2canvas) return true;
+    try { await loadScriptOnce('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (_) {}
+    return !!window.html2canvas;
+  }
+
+  async function captureReceiptPng(){
+    const root = findReceiptRoot();
+    if (!root) return '';
+    const ready = await ensureHtml2CanvasReady();
+    if (!ready) return '';
+
+    const hidden = [];
+    root.querySelectorAll('.no-print').forEach((el) => {
+      hidden.push({ el, display: el.style.display, visibility: el.style.visibility });
+      el.style.visibility = 'hidden';
+      el.style.display = 'none';
+    });
+
+    try {
+      const canvas = await window.html2canvas(root, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
+      return canvas.toDataURL('image/png');
+    } catch (_) {
+      return '';
+    } finally {
+      hidden.forEach((h) => {
+        h.el.style.display = h.display;
+        h.el.style.visibility = h.visibility;
+      });
+    }
+  }
+
+  async function buildReceiptPdfBlob(){
+    const pdfEndpoint = inferPdfEndpoint(btn.getAttribute('data-fallback-pdf') || '');
+    if (!pdfEndpoint) {
+      throw new Error('Receipt PDF endpoint is not configured.');
+    }
+    const receiptPng = await captureReceiptPng();
+    if (!receiptPng) {
+      throw new Error('Unable to capture receipt preview for PDF.');
+    }
+
+    const payload = Object.assign({ receipt_png: receiptPng }, extractCashMeta(inferSourceUrl()));
+    const headers = { 'Content-Type': 'application/json' };
+    const csrf = getCsrf();
+    if (csrf) headers['X-CSRFToken'] = csrf;
+
+    const resp = await fetch(pdfEndpoint, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      let msg = `HTTP ${resp.status}`;
+      try {
+        const data = await resp.json();
+        if (data && data.error) msg = data.error;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const blob = await resp.blob();
+    if (!blob || !blob.size) {
+      throw new Error('Failed to build receipt PDF.');
+    }
+    return blob;
+  }
+
+  async function downloadPdf(filenameHint){
+    const blob = await buildReceiptPdfBlob();
+    if (!blob) return false;
+    const file = safeFilename(filenameHint || inferReceiptRef()) + '.pdf';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return true;
+  }
+
+  async function printPdf(){
+    const blob = await buildReceiptPdfBlob();
+    if (!blob) return false;
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = safeFilename(inferReceiptRef()) + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return false;
+    }
+    window.setTimeout(() => {
+      try { win.focus(); win.print(); } catch (_) {}
+    }, 900);
+    window.setTimeout(() => URL.revokeObjectURL(url), 120000);
+    return true;
+  }
+
+  function ensureReceiptExportHelper(){
+    if (
+      window.MMC_RECEIPT_EXPORT &&
+      typeof window.MMC_RECEIPT_EXPORT.captureReceiptPng === 'function' &&
+      typeof window.MMC_RECEIPT_EXPORT.downloadPdf === 'function' &&
+      typeof window.MMC_RECEIPT_EXPORT.printPdf === 'function'
+    ) {
+      return window.MMC_RECEIPT_EXPORT;
+    }
+
+    window.MMC_RECEIPT_EXPORT = Object.assign({}, window.MMC_RECEIPT_EXPORT || {}, {
+      inferSourceUrl,
+      inferPdfEndpoint,
+      inferReceiptRef,
+      captureReceiptPng,
+      buildReceiptPdfBlob,
+      downloadPdf,
+      printPdf,
+    });
+    return window.MMC_RECEIPT_EXPORT;
+  }
+
+  btn.addEventListener('click', async function(){
+    if (promptOpen || sending || btn.dataset.mmcShareBusy === '1') {
+      return;
+    }
+
+    const endpoint = btn.getAttribute('data-endpoint') || '';
+    const title = btn.getAttribute('data-title') || 'Enter WhatsApp number';
+
+    if(!endpoint){
+      alert('WhatsApp share endpoint not configured on this receipt.');
+      return;
+    }
+
+    promptOpen = true;
+    const input = window.prompt(title + '\n(e.g. 0712xxxxxx or +2547xxxxxxx)');
+    promptOpen = false;
+    if(input === null) return;
+
+    const to = String(input || '').trim();
+    if(!to){
+      alert('Phone number is required.');
+      return;
+    }
+
+    sending = true;
+    btn.dataset.mmcShareBusy = '1';
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = 'Preparing...';
+
+    try{
+      const exporter = ensureReceiptExportHelper();
+      const receiptPng = await exporter.captureReceiptPng();
+      if (!receiptPng) {
+        throw new Error('Unable to capture receipt preview for PDF.');
+      }
+      const payload = Object.assign({ to, receipt_png: receiptPng }, extractCashMeta(exporter.inferSourceUrl()));
+      btn.textContent = 'Sending...';
+      const resp = await postJson(endpoint, payload);
+      const sentTo = (resp && resp.to) ? (' to ' + resp.to) : '';
+      alert('Sent via WhatsApp' + sentTo + '.');
+    } catch(e){
+      const msg = (e && e.message) ? e.message : 'Failed to send via WhatsApp';
+      alert(msg);
+    } finally {
+      sending = false;
+      btn.dataset.mmcShareBusy = '0';
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
+})();
+</script>

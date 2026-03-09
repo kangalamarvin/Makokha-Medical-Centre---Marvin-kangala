@@ -1,0 +1,2986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Enhanced Mobile Viewport Settings -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="theme-color" content="#0d6efd">
+    <!-- CSRF token for forms and JS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <!-- Security feature flags (non-sensitive) -->
+    <meta name="mmc-zero-knowledge-enabled" content="{{ '1' if feature_flags.get('phase2_zero_knowledge') else '0' }}">
+    <title>{% block title %}Makokha Medical Centre{% endblock %}</title>
+
+    {% set _sr = (request.script_root if request is defined else '') %}
+
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MMC System">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
+
+    <!-- CSS Resources -->
+    <link href="{{ _sr }}/vendor/jsdelivr/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css';">
+    <link rel="stylesheet" href="{{ _sr }}/vendor/jsdelivr/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css';">
+    <link rel="stylesheet" href="{{ _sr }}/vendor/cdnjs/ajax/libs/font-awesome/5.15.3/css/all.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';">
+    <link href="{{ _sr }}/vendor/jsdelivr/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css';">
+    
+    <!-- Local CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    
+    <!-- Modern Design Styles -->
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 0px;
+            --primary-color: #0d6efd;
+            --primary-dark: #0a58ca;
+            --secondary-color: #6c757d;
+            --header-height: 60px;
+            --transition-speed: 0.3s;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --table-blue: #0d6efd;
+            --table-white: #ffffff;
+            --hamburger-red: #038d38ff;
+            --hamburger-green: #28a745;
+            --bg-light: #f8f9fa;
+            --text-dark: #212529;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+
+            /* Stamp typography (shared by SVG/PDF + HTML/CSS stamps) */
+            --stamp-font-bold: {{ stamp_typography.get('svg', {}).get('font_bold', 'Arial Black, Arial, Helvetica, sans-serif') }};
+            --stamp-font-regular: {{ stamp_typography.get('svg', {}).get('font_regular', 'Arial, Helvetica, sans-serif') }};
+
+            /* Runtime-selectable UI themes */
+            --mmc-table-header-bg: #0d6efd;
+            --mmc-table-header-color: #ffffff;
+            --mmc-table-border: #6ea8fe;
+            --mmc-table-row-bg: #ffffff;
+            --mmc-table-row-alt-bg: #f8fbff;
+            --mmc-table-row-hover: #e7f0ff;
+            --mmc-table-text: #1f2937;
+            --mmc-table-radius: 10px;
+            --mmc-table-outer-border-width: 1.5px;
+            --mmc-table-inner-h-border-width: 1px;
+            --mmc-table-inner-v-border-width: 1px;
+
+            --mmc-pharm-card-bg: #ffffff;
+            --mmc-pharm-card-border: #dbe4ff;
+            --mmc-pharm-card-shadow: 0 8px 22px rgba(30, 64, 175, 0.08);
+            --mmc-pharm-card-glow: 0 0 0 rgba(0, 0, 0, 0);
+            --mmc-pharm-card-title: #0f172a;
+            --mmc-pharm-card-text: #475569;
+            --mmc-pharm-price-color: #0d6efd;
+            --mmc-pharm-name-decoration: none;
+            --mmc-pharm-id-rule-width: 0px;
+
+            --mmc-pharm-btn-bg: #0d6efd;
+            --mmc-pharm-btn-hover: #0b5ed7;
+            --mmc-pharm-btn-text: #ffffff;
+            --mmc-pharm-btn-add-bg: #0d6efd;
+            --mmc-pharm-btn-add-hover: #0b5ed7;
+            --mmc-pharm-btn-info-bg: #0ea5e9;
+            --mmc-pharm-btn-info-hover: #0284c7;
+            --mmc-pharm-btn-rx-bg: #f97316;
+            --mmc-pharm-btn-rx-hover: #ea580c;
+            --mmc-pharm-btn-add-text: #ffffff;
+            --mmc-pharm-btn-info-text: #ffffff;
+            --mmc-pharm-btn-rx-text: #ffffff;
+
+            --mmc-theme-btn-primary-bg: #0d6efd;
+            --mmc-theme-btn-primary-hover: #0b5ed7;
+            --mmc-theme-btn-primary-text: #ffffff;
+            --mmc-theme-btn-outline-text: #0d6efd;
+
+            --mmc-summary-card-bg: #eef4ff;
+            --mmc-summary-card-border: #bfd4ff;
+            --mmc-summary-card-text: #0f172a;
+            --mmc-summary-card-shadow: 0 8px 20px rgba(13, 110, 253, 0.08);
+        }
+
+        /* Global Styles */
+        body {
+            background-color: var(--bg-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            padding-top: 20px;
+        }
+
+        /* Sidebar Styles - Hidden by default on all devices */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            height: 100dvh;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            transition: transform var(--transition-speed) ease;
+            /* Must be above .overlay (1040) so touches/scroll work */
+            z-index: 1045;
+            overflow-x: hidden;
+            box-shadow: var(--shadow);
+            transform: translateX(-100%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.show {
+            transform: translateX(0);
+        }
+
+        /* Toggle Button - Always visible */
+        .toggle-nav {
+            position: fixed;
+            left: 1rem;
+            top: 1rem;
+            z-index: 1060;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--hamburger-red);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all var(--transition-speed);
+        }
+
+        /* PC Hamburger Toggle */
+        .pc-toggle-nav {
+            position: fixed;
+            left: 1rem;
+            top: 1rem;
+            z-index: 1060;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: white;
+            border: none;
+            color: var(--hamburger-green);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all var(--transition-speed);
+        }
+
+        .pc-toggle-nav:hover {
+            background: #f8f9fa;
+            transform: scale(1.05);
+        }
+
+        .toggle-nav:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+
+        /* Sidebar Header */
+        .sidebar-header {
+            height: var(--header-height);
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand-text {
+            font-weight: 600;
+            font-size: 1.2rem;
+            white-space: nowrap;
+        }
+
+        .sidebar-header .close-sidebar {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Navigation Menu */
+        .sidebar-nav {
+            padding: 1rem 0;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+
+        /* Ensure the sidebar body is a proper flex column so scrolling works reliably */
+        .sidebar .navbar-collapse {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+
+        .nav-item {
+            margin: 0.25rem 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0.75rem 0.75rem 0;
+            color: var(--table-white) !important;
+            text-decoration: none;
+            border-radius: var(--radius);
+            transition: all var(--transition-speed);
+            white-space: nowrap;
+            overflow: hidden;
+            background-color: transparent;
+            border: none;
+            gap: 12px;
+        }
+
+        .nav-link i {
+            flex: 0 0 24px;
+            width: 24px;
+            text-align: center;
+            margin-right: 0;
+            font-size: 1.1rem;
+        }
+
+        .nav-link .nav-text {
+            font-size: 0.95rem;
+            font-weight: 500;
+            opacity: 1;
+            transition: opacity var(--transition-speed);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white !important;
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid white;
+            padding-left: 0;
+        }
+
+        /* Main Content Adjustment */
+        main.container-fluid {
+            margin-left: 0;
+            transition: margin var(--transition-speed) ease;
+            min-height: 100vh;
+            padding: 1rem;
+            width: 100%;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding: 1rem;
+        }
+
+        .profile-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+        }
+
+        .profile-picture {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Overlay for mobile */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1040;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* Floating back button for pharmacist-in-reception */
+        .floating-back-btn {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1062;
+            box-shadow: var(--shadow);
+        }
+
+        /* Card Styling */
+        .card {
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius) var(--radius) 0 0 !important;
+        }
+
+/* Universal Table Wrapper */
+.table-container {
+    overflow-x: auto;  /* horizontal scroll if too wide */
+    overflow-y: auto;  /* vertical scroll if too tall */
+    max-height: 400px; /* fits ~8 rows before scroll */
+    border: 2px solid var(--table-blue);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    background: white;
+    margin-bottom: 1.5rem;
+    width: 100%; /* responsive */
+}
+
+/* Global table theme application (exclude receipts) */
+body:not(.mmc-context-receipt) .table-container table,
+body:not(.mmc-context-receipt) table.table {
+    border: var(--mmc-table-outer-border-width) solid var(--mmc-table-border) !important;
+    border-radius: var(--mmc-table-radius);
+    overflow: hidden;
+    color: var(--mmc-table-text);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+body:not(.mmc-context-receipt) .table-container thead th,
+body:not(.mmc-context-receipt) table.table thead th {
+    background: var(--mmc-table-header-bg) !important;
+    color: var(--mmc-table-header-color) !important;
+}
+
+body:not(.mmc-context-receipt) .table-container tbody tr,
+body:not(.mmc-context-receipt) table.table tbody tr {
+    background: var(--mmc-table-row-bg);
+}
+
+body:not(.mmc-context-receipt) .table-container tbody tr:nth-child(even),
+body:not(.mmc-context-receipt) table.table tbody tr:nth-child(even) {
+    background: var(--mmc-table-row-alt-bg);
+}
+
+body:not(.mmc-context-receipt) .table-container tbody tr:hover,
+body:not(.mmc-context-receipt) table.table tbody tr:hover {
+    background: var(--mmc-table-row-hover) !important;
+}
+
+/* Pharmacist card/button theme application */
+body.mmc-context-pharmacist .drug-card {
+    background: var(--mmc-pharm-card-bg) !important;
+    border: 1px solid var(--mmc-pharm-card-border) !important;
+    box-shadow: var(--mmc-pharm-card-shadow), var(--mmc-pharm-card-glow) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .card-title,
+body.mmc-context-pharmacist .drug-card .fw-semibold,
+body.mmc-context-pharmacist .drug-card h5 {
+    color: var(--mmc-pharm-card-title) !important;
+    text-decoration: var(--mmc-pharm-name-decoration);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+}
+
+body.mmc-context-pharmacist .drug-card .card-text,
+body.mmc-context-pharmacist .drug-card .text-muted {
+    color: var(--mmc-pharm-card-text);
+}
+
+body.mmc-context-pharmacist .drug-card .price-value,
+body.mmc-context-pharmacist .drug-card .price {
+    color: var(--mmc-pharm-price-color) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .card-subtitle,
+body.mmc-context-pharmacist .drug-card .drug-id-line {
+    border-bottom: var(--mmc-pharm-id-rule-width) solid var(--mmc-pharm-card-border);
+    padding-bottom: calc(var(--mmc-pharm-id-rule-width) * 2);
+}
+
+body.mmc-context-pharmacist .drug-card .add-to-cart-btn,
+body.mmc-context-pharmacist .drug-card .btn-add-to-cart,
+body.mmc-context-pharmacist .drug-card button[data-action="add"] {
+    background: var(--mmc-pharm-btn-add-bg) !important;
+    border-color: var(--mmc-pharm-btn-add-bg) !important;
+    color: var(--mmc-pharm-btn-add-text) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .view-info-btn,
+body.mmc-context-pharmacist .drug-card button[data-action="dosage"] {
+    background: var(--mmc-pharm-btn-info-bg) !important;
+    border-color: var(--mmc-pharm-btn-info-bg) !important;
+    color: var(--mmc-pharm-btn-info-text) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .add-to-prescription-cart-btn,
+body.mmc-context-pharmacist .drug-card button[data-action="rx"] {
+    background: var(--mmc-pharm-btn-rx-bg) !important;
+    border-color: var(--mmc-pharm-btn-rx-bg) !important;
+    color: var(--mmc-pharm-btn-rx-text) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .add-to-cart-btn:hover,
+body.mmc-context-pharmacist .drug-card .btn-add-to-cart:hover,
+body.mmc-context-pharmacist .drug-card button[data-action="add"]:hover {
+    background: var(--mmc-pharm-btn-add-hover) !important;
+    border-color: var(--mmc-pharm-btn-add-hover) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .view-info-btn:hover,
+body.mmc-context-pharmacist .drug-card button[data-action="dosage"]:hover {
+    background: var(--mmc-pharm-btn-info-hover) !important;
+    border-color: var(--mmc-pharm-btn-info-hover) !important;
+}
+
+body.mmc-context-pharmacist .drug-card .add-to-prescription-cart-btn:hover,
+body.mmc-context-pharmacist .drug-card button[data-action="rx"]:hover {
+    background: var(--mmc-pharm-btn-rx-hover) !important;
+    border-color: var(--mmc-pharm-btn-rx-hover) !important;
+}
+
+body:not(.mmc-context-receipt) .btn-primary {
+    background: var(--mmc-theme-btn-primary-bg) !important;
+    border-color: var(--mmc-theme-btn-primary-bg) !important;
+    color: var(--mmc-theme-btn-primary-text) !important;
+}
+
+body:not(.mmc-context-receipt) .btn-primary:hover {
+    background: var(--mmc-theme-btn-primary-hover) !important;
+    border-color: var(--mmc-theme-btn-primary-hover) !important;
+}
+
+body:not(.mmc-context-receipt) .btn-outline-primary {
+    color: var(--mmc-theme-btn-outline-text) !important;
+    border-color: var(--mmc-theme-btn-outline-text) !important;
+}
+
+body:not(.mmc-context-receipt) .btn-outline-primary:hover {
+    color: var(--mmc-theme-btn-primary-text) !important;
+    background: var(--mmc-theme-btn-primary-bg) !important;
+    border-color: var(--mmc-theme-btn-primary-bg) !important;
+}
+
+body:not(.mmc-context-receipt) .summary-card,
+body:not(.mmc-context-receipt) .widget,
+body:not(.mmc-context-receipt) .stat-card,
+body:not(.mmc-context-receipt) .bed-stat-card,
+body:not(.mmc-context-receipt) .summary-box {
+    background: var(--mmc-summary-card-bg) !important;
+    border: 1px solid var(--mmc-summary-card-border) !important;
+    color: var(--mmc-summary-card-text) !important;
+    box-shadow: var(--mmc-summary-card-shadow) !important;
+}
+
+/* Doctor/Admin text entry enhancement */
+.mmc-rich-wrap {
+    border: 1px solid #d7deed;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.mmc-rich-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e8edf8;
+    background: #f8faff;
+}
+
+.mmc-rich-toolbar .btn {
+    padding: 0.2rem 0.45rem;
+    font-size: 0.78rem;
+}
+
+.mmc-rich-wrap textarea,
+.mmc-rich-wrap input[type="text"] {
+    border: 0 !important;
+    border-radius: 0 0 8px 8px !important;
+    box-shadow: none !important;
+}
+
+/* Reception tables (Admin Drugs style) */
+.reception-table-container {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+}
+
+.reception-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin: 0;
+    font-size: 14px;
+}
+
+.reception-table thead {
+    background: var(--mmc-table-header-bg);
+    color: var(--mmc-table-header-color);
+}
+
+.reception-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--mmc-table-header-bg);
+}
+
+.reception-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    border-top: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-bottom: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-left: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    border-right: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    white-space: nowrap;
+}
+
+.reception-table td {
+    padding: 10px 12px;
+    border-top: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-bottom: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-left: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    border-right: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+}
+
+.reception-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.reception-table tbody tr:hover {
+    background-color: var(--mmc-table-row-hover);
+}
+
+.reception-action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.reception-action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+    text-decoration: none;
+}
+
+.reception-action-btn i {
+    font-size: 12px;
+}
+
+.reception-action-btn:hover {
+    transform: scale(1.05);
+}
+
+.reception-action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.reception-action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.reception-action-btn.btn-success {
+    background: #28a745;
+}
+
+.reception-action-btn.btn-success:hover {
+    background: #218838;
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+    .reception-table {
+        font-size: 12px;
+    }
+
+    .reception-table th,
+    .reception-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
+    .reception-action-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    .reception-action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .reception-table {
+        font-size: 12px;
+    }
+
+    .reception-table th,
+    .reception-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
+    .reception-action-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    .reception-action-btn i {
+        font-size: 11px;
+    }
+}
+
+/* Responsive Table */
+body:not(.mmc-context-receipt) .table-container table {
+    width: 100%; /* fills container */
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto; /* auto fit columns */
+}
+
+/* Table Headers */
+body:not(.mmc-context-receipt) .table-container th {
+    background-color: var(--mmc-table-header-bg) !important;
+    color: var(--mmc-table-header-color) !important;
+    position: sticky;
+    top: 0;
+    padding: 0.6rem 0.8rem; 
+    font-weight: 600;
+    white-space: nowrap;
+    border-top: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-bottom: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-left: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    border-right: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    text-align: left;
+    z-index: 2;
+}
+
+body:not(.mmc-context-receipt) .table-container th:first-child,
+body:not(.mmc-context-receipt) .table-container td:first-child {
+    border-left-width: 0;
+}
+
+body:not(.mmc-context-receipt) .table-container th:last-child,
+body:not(.mmc-context-receipt) .table-container td:last-child {
+    border-right-width: 0;
+}
+
+/* Table Cells */
+body:not(.mmc-context-receipt) .table-container td {
+    padding: 0.6rem 0.8rem;
+    vertical-align: middle;
+    border-top: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-bottom: var(--mmc-table-inner-h-border-width) solid var(--mmc-table-border);
+    border-left: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    border-right: var(--mmc-table-inner-v-border-width) solid var(--mmc-table-border);
+    color: var(--mmc-table-text);
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px; 
+}
+
+/* Hover Effect */
+body:not(.mmc-context-receipt) .table-container tbody tr {
+    transition: background-color 0.2s;
+}
+body:not(.mmc-context-receipt) .table-container tbody tr:hover {
+    background-color: var(--mmc-table-row-hover) !important;
+}
+
+/* Make table scroll well on small devices */
+@media (min-width: 320px) and (max-width: 480px) {
+    body:not(.mmc-context-receipt) .table-container {
+        max-height: 300px; /* smaller on phones */
+    }
+    body:not(.mmc-context-receipt) .table-container th, 
+    body:not(.mmc-context-receipt) .table-container td {
+        max-width: 180px;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+    body:not(.mmc-context-receipt) .table-container {
+        max-height: 300px; /* smaller on phones */
+    }
+    body:not(.mmc-context-receipt) .table-container th, 
+    body:not(.mmc-context-receipt) .table-container td {
+        max-width: 180px;
+    }
+}
+
+        /* Form Styling */
+        .form-control, .form-select {
+            border-radius: var(--radius);
+            padding: 0.75rem 1rem;
+            border: 1px solid #ced4da;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            border-color: #86b7fe;
+        }
+
+        .btn {
+            border-radius: var(--radius);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Alert Styling */
+        .alert {
+            border-radius: var(--radius);
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Footer */
+        footer {
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Responsive Design */
+        /* Desktop (PC) */
+        @media (min-width: 1200px) {
+            .pc-toggle-nav {
+                display: flex !important;
+            }
+            
+            .toggle-nav {
+                display: none !important;
+            }
+            
+            .overlay {
+                display: none !important;
+            }
+        }
+        
+        /* Tablet and Landscape Phone - 481px to 767px */
+        @media (min-width: 481px) and (max-width: 767px) {
+            .sidebar {
+                width: var(--sidebar-width);
+                z-index: 1050;
+            }
+
+            /* Make sidebar scrollable with touch and keep Logout reachable */
+            .sidebar .navbar-collapse {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+                overscroll-behavior: contain;
+                height: calc(100dvh - var(--header-height));
+            }
+
+            /* On smaller devices, remove the flex spacer gap above the profile/logout block */
+            .sidebar .mt-auto {
+                margin-top: 0 !important;
+            }
+
+            /* Let the whole sidebar (including logout) scroll together */
+            .sidebar-nav {
+                flex: 0 0 auto;
+                overflow: visible;
+            }
+
+            .toggle-nav {
+                display: flex !important;
+                z-index: 1060;
+            }
+            
+            .pc-toggle-nav {
+                display: none !important;
+            }
+        }
+        
+        /* Phone Portrait - 320px to 480px */
+        @media (min-width: 320px) and (max-width: 480px) {
+            .sidebar {
+                width: 85%;
+                z-index: 1050;
+            }
+
+            .toggle-nav {
+                display: flex !important;
+                z-index: 1060;
+                left: 1rem;
+                top: 1rem;
+            }
+            
+            .pc-toggle-nav {
+                display: none !important;
+            }
+            
+            main.container-fluid {
+                padding: 0.5rem;
+            }
+            
+            /* Mobile-specific sidebar nav adjustments */
+            .sidebar-nav {
+                padding: 0.5rem 0;
+            }
+            
+            .nav-item {
+                margin: 0.2rem 0;
+            }
+            
+            .nav-link {
+                padding: 0.6rem 0.6rem 0.6rem 0;
+                font-size: 0.9rem;
+            }
+            
+            .nav-link i {
+                margin-right: 0;
+                font-size: 1rem;
+            }
+
+            /* On mobile, keep Profile/Logout directly after last link (no big gap) */
+            .sidebar .mt-auto {
+                margin-top: 0 !important;
+            }
+
+            /* Make sidebar content scrollable (including Logout), and enable smooth touch scrolling */
+            .sidebar .navbar-collapse {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+                overscroll-behavior: contain;
+                height: calc(100dvh - var(--header-height));
+            }
+
+            /* Let the whole sidebar (including logout) scroll together */
+            .sidebar-nav {
+                flex: 0 0 auto;
+                overflow: visible;
+            }
+
+            /* Stack table on mobile */
+            .table-responsive table {
+                display: block;
+                width: 100%;
+            }
+
+            .table-responsive thead {
+                display: none;
+            }
+
+            .table-responsive tbody, 
+            .table-responsive tr, 
+            .table-responsive td {
+                display: block;
+                width: 100%;
+            }
+
+            .table-responsive tr {
+                margin-bottom: 1rem;
+                border: 1px solid #dee2e6;
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
+            .table-responsive td {
+                text-align: right;
+                padding: 0.5rem;
+                position: relative;
+                border-bottom: 1px solid #dee2e6;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .table-responsive td:before {
+                content: attr(data-label);
+                font-weight: bold;
+                text-align: left;
+                margin-right: 1rem;
+            }
+
+            .table-responsive td:last-child {
+                border-bottom: none;
+            }
+        }
+
+        /* Landscape phones/tablets: keep sidebar scroll + touch reliable */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .sidebar {
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .sidebar .navbar-collapse {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+                overscroll-behavior: contain;
+                height: calc(100dvh - var(--header-height));
+            }
+
+            .sidebar-nav {
+                flex: 0 0 auto;
+                overflow: visible;
+            }
+
+            .sidebar .mt-auto {
+                margin-top: 0 !important;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+    <!-- jQuery 3.7.1 with correct SRI and robust fallback -->
+    <script src="{{ _sr }}/vendor/codejquery/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script>
+    if (typeof window.jQuery === 'undefined') {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js';
+            s.integrity = 'sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==';
+      s.crossOrigin = 'anonymous';
+      document.head.appendChild(s);
+    }
+    </script>
+    <!-- Global jQuery AJAX setup to include CSRF token for unsafe HTTP methods -->
+    <script>
+    (function(){
+      function getCsrfToken(){
+        var el = document.querySelector('meta[name="csrf-token"]');
+        return el ? el.getAttribute('content') : null;
+      }
+      // Wait until jQuery is available (covers fallback async load)
+      function setup(){
+        if (!window.jQuery) { return setTimeout(setup, 10); }
+        $.ajaxSetup({
+          beforeSend: function(xhr, settings){
+            try{
+              var method = (settings.type || settings.method || '').toUpperCase();
+              if(['POST','PUT','PATCH','DELETE'].indexOf(method) !== -1){
+                var token = getCsrfToken();
+                if(token){ xhr.setRequestHeader('X-CSRFToken', token); }
+              }
+            }catch(e){ /* no-op */ }
+          }
+        });
+      }
+      setup();
+    })();
+    </script>
+</head>
+{% set is_embed = request.args.get('embed') %}
+{# Base role never changes; active role may be temporarily switched (doctor→labtech, pharmacist→receptionist) #}
+{% set user_role = (mmc_base_role|lower) if (mmc_base_role is defined and mmc_base_role) else (current_user.role|lower if current_user.is_authenticated and current_user.role else '') %}
+{% set active_role = (mmc_active_role|lower) if (mmc_active_role is defined and mmc_active_role) else user_role %}
+{% set is_pharmacist = user_role == 'pharmacist' %}
+{% set is_reception_context = request.path.startswith('/receptionist') %}
+{% set is_pharmacist_context = request.path.startswith('/pharmacist') or active_role == 'pharmacist' %}
+{% set is_rich_typing_context = active_role in ['doctor', 'admin'] %}
+{% set is_receipt_context = '/receipt' in (request.path or '') %}
+<body class="mmc-role-{{ active_role }} mmc-base-role-{{ user_role }}{% if is_pharmacist_context %} mmc-context-pharmacist{% endif %}{% if is_rich_typing_context %} mmc-context-rich-typing{% endif %}{% if is_receipt_context %} mmc-context-receipt{% endif %}"
+      data-mmc-active-role="{{ active_role }}"
+      data-mmc-base-role="{{ user_role }}"
+      data-mmc-pharmacist-context="{{ '1' if is_pharmacist_context else '0' }}"
+      data-mmc-rich-typing-context="{{ '1' if is_rich_typing_context else '0' }}"
+      data-mmc-receipt-context="{{ '1' if is_receipt_context else '0' }}">
+    {% if is_embed %}
+        <style>
+            body { padding-top: 0 !important; background: #fff; }
+        </style>
+
+        <script>
+            // Global CSRF helper: automatically attach CSRF token to same-origin non-GET requests.
+            (function() {
+                function getCsrfToken() {
+                    try {
+                        var el = document.querySelector('meta[name="csrf-token"]');
+                        return el ? (el.getAttribute('content') || '') : '';
+                    } catch (e) {
+                        return '';
+                    }
+                }
+
+                function isSameOrigin(url) {
+                    try {
+                        var u = new URL(url, window.location.href);
+                        return u.origin === window.location.origin;
+                    } catch (e) {
+                        // If URL parsing fails, assume same-origin (relative path)
+                        return true;
+                    }
+                }
+
+                // Patch fetch
+                try {
+                    if (window.fetch) {
+                        var _origFetch = window.fetch.bind(window);
+                        window.fetch = function(input, init) {
+                            init = init || {};
+                            var method = (init.method || 'GET').toUpperCase();
+                            var url = (typeof input === 'string') ? input : (input && input.url);
+
+                            if (url && isSameOrigin(url) && !['GET','HEAD','OPTIONS','TRACE'].includes(method)) {
+                                var headers = new Headers(init.headers || {});
+                                if (!headers.has('X-CSRFToken') && !headers.has('X-CSRF-Token')) {
+                                    var token = getCsrfToken();
+                                    if (token) headers.set('X-CSRFToken', token);
+                                }
+                                init.headers = headers;
+                            }
+                            return _origFetch(input, init);
+                        };
+                    }
+                } catch (e) {
+                    // no-op
+                }
+
+                // Patch jQuery AJAX (when jQuery is available)
+                function patchJQuery() {
+                    try {
+                        if (!window.jQuery || !window.jQuery.ajaxSetup) return;
+                        window.jQuery.ajaxSetup({
+                            beforeSend: function(xhr, settings) {
+                                try {
+                                    var method = (settings.type || settings.method || 'GET').toUpperCase();
+                                    if (!settings.url || !isSameOrigin(settings.url)) return;
+                                    if (['GET','HEAD','OPTIONS','TRACE'].includes(method)) return;
+
+                                    var token = getCsrfToken();
+                                    if (token) xhr.setRequestHeader('X-CSRFToken', token);
+                                } catch (e) {
+                                    // no-op
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        // no-op
+                    }
+                }
+
+                // jQuery may be loaded later in the page
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', patchJQuery);
+                } else {
+                    patchJQuery();
+                }
+            })();
+        </script>
+    {% endif %}
+
+    {% if not is_embed and (not is_pharmacist or is_reception_context) %}
+    <!-- PC Hamburger Toggle (Green with white background) -->
+    <button class="pc-toggle-nav" id="pcToggleNav">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Mobile Navigation Toggle Button -->
+    <button class="toggle-nav" id="toggleNav">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <span class="brand-text">MMC System</span>
+            <button class="close-sidebar" id="closeSidebar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+            
+        <div class="navbar-collapse flex-column h-100" id="navbarNav">               
+            <!-- Navigation Menu -->
+            <nav class="sidebar-nav">
+                {% if current_user.is_authenticated %}
+                    {% if active_role == 'admin' %}
+                        <!-- Admin Navigation -->
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_users') }}" class="nav-link">
+                                <i class="bi bi-people"></i>
+                                <span class="nav-text">Users</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_drugs') }}" class="nav-link">
+                                <i class="bi bi-capsule"></i>
+                                <span class="nav-text">Drugs</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_employees') }}" class="nav-link">
+                                <i class="bi bi-person-vcard"></i>
+                                <span class="nav-text">Employees</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_reports') }}" class="nav-link">
+                                <i class="bi bi-file-earmark-bar-graph"></i>
+                                <span class="nav-text">Reports</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_transactions') }}" class="nav-link">
+                                <i class="bi bi-cash-stack"></i>
+                                <span class="nav-text">Transactions</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_money') }}" class="nav-link">
+                                <i class="bi bi-wallet2"></i>
+                                <span class="nav-text">Money</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_credit_control') }}" class="nav-link">
+                                <i class="bi bi-journal-check"></i>
+                                <span class="nav-text">Credit Control</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_dosage_dashboard') }}" class="nav-link">
+                                <i class="bi bi-file-medical"></i>
+                                <span class="nav-text">Dosage</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_patients') }}" class="nav-link">
+                                <i class="bi bi-file-person"></i>
+                                <span class="nav-text">Patients</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_tests') }}" class="nav-link">
+                                <i class="bi bi-clipboard2-pulse"></i>
+                                <span class="nav-text">Medical Tests</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('manage_beds') }}" class="nav-link">
+                                <i class="bi bi-hospital"></i>
+                                <span class="nav-text">Beds</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('backup_management') }}" class="nav-link">
+                                <i class="bi bi-database"></i>
+                                <span class="nav-text">Backup</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('invoices') }}" class="nav-link">
+                                <i class="fas fa-file-invoice"></i>
+                                <span class="nav-text">Invoices</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('vendors') }}" class="nav-link">
+                                <i class="fas fa-store"></i>
+                                <span class="nav-text">Vendors</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('financial_reports') }}" class="nav-link">
+                                <i class="fas fa-chart-bar"></i>
+                                <span class="nav-text">Financial Reports</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_whatsapp_settings') }}" class="nav-link">
+                                <i class="bi bi-whatsapp"></i>
+                                <span class="nav-text">WhatsApp Settings</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_ui_customization') }}" class="nav-link">
+                                <i class="bi bi-palette2"></i>
+                                <span class="nav-text">UI Themes</span>
+                            </a>
+                        </div>
+                    {% elif active_role == 'doctor' %}
+                        <!-- Doctor Navigation -->
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_dashboard') }}" class="nav-link">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_credit_control') }}" class="nav-link">
+                                <i class="bi bi-journal-check"></i>
+                                <span class="nav-text">Credit Accounts</span>
+                            </a>
+                        </div>
+                        {% if mmc_can_switch_labtech and user_role == 'doctor' %}
+                        <div class="nav-item">
+                            <form method="post" action="{{ url_for('switch_role_to_labtech') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="nav-link w-100 text-start border-0 bg-transparent" title="Switch to Lab Technician mode">
+                                    <i class="bi bi-flask"></i>
+                                    <span class="nav-text">Open LabTech</span>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_inpatients') }}" class="nav-link">
+                                <i class="bi bi-hospital"></i>
+                                <span class="nav-text">Inpatient</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_outpatients') }}" class="nav-link">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span class="nav-text">Outpatient</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_discharged_queue') }}" class="nav-link">
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span class="nav-text">Discharged</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_old_inpatients') }}" class="nav-link">
+                                <i class="bi bi-archive"></i>
+                                <span class="nav-text">Old Inpatient</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_old_outpatients') }}" class="nav-link">
+                                <i class="bi bi-archive-fill"></i>
+                                <span class="nav-text">Old Outpatient</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_archived_patients') }}" class="nav-link">
+                                <i class="bi bi-archive"></i>
+                                <span class="nav-text">Archived Patients</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('doctor_patients') }}" class="nav-link">
+                                <i class="bi bi-people"></i>
+                                <span class="nav-text">All Patients</span>
+                            </a>
+                        </div>
+                    {% elif active_role == 'nurse' %}
+                        <!-- Nurse Navigation -->
+                        <div class="nav-item">
+                            <a href="{{ url_for('nurse_dashboard') }}" class="nav-link">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('nurse_patients') }}" class="nav-link">
+                                <i class="bi bi-people"></i>
+                                <span class="nav-text">Patients</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('nurse_medication_schedule') }}" class="nav-link">
+                                <i class="bi bi-capsule"></i>
+                                <span class="nav-text">Medication Schedule</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('nurse_notifications') }}" class="nav-link">
+                                <i class="bi bi-bell"></i>
+                                <span class="nav-text">Notifications</span>
+                            </a>
+                        </div>
+                    {% elif active_role == 'labtech' %}
+                        <!-- Lab Technician Navigation -->
+                        {% if user_role == 'doctor' %}
+                        <div class="nav-item">
+                            <form method="post" action="{{ url_for('switch_role_to_doctor') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="nav-link w-100 text-start border-0 bg-transparent" title="Switch back to Doctor mode">
+                                    <i class="bi bi-arrow-left-circle"></i>
+                                    <span class="nav-text">Back to Doctor</span>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        <div class="nav-item">
+                            <a href="{{ url_for('labtech_dashboard') }}" class="nav-link">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('labtech_lab_requests') }}" class="nav-link">
+                                <i class="bi bi-flask"></i>
+                                <span class="nav-text">Lab Requests</span>
+                            </a>
+                        </div>
+                    {% elif active_role == 'receptionist' %}
+                        <!-- Receptionist Navigation -->
+                        <div class="nav-item">
+                            <a href="{{ url_for('receptionist_dashboard') }}" class="nav-link">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('admin_credit_control') }}" class="nav-link">
+                                <i class="bi bi-journal-check"></i>
+                                <span class="nav-text">Credit Accounts</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('receptionist_patients') }}" class="nav-link">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span class="nav-text">Patients</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="{{ url_for('receptionist_billing') }}" class="nav-link">
+                                <i class="bi bi-cash-coin"></i>
+                                <span class="nav-text">Billing</span>
+                            </a>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </nav>
+            
+            <!-- Profile Section at Bottom -->
+            <div class="mt-auto border-top border-light w-100">
+                {% if current_user.is_authenticated %}
+                    <div class="nav-item dropdown w-100">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center fs-6 px-3 py-3" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            {% if current_user.profile_picture %}
+                                {% set _pic = (current_user.profile_picture|string)|replace('uploads/', '') %}
+                                <img src="{{ url_for('serve_private_upload', filename=_pic) }}" alt="Profile" class="profile-picture rounded-circle me-2" style="width: 32px; height: 32px;">
+                            {% else %}
+                                <i class="bi bi-person-circle me-2"></i>
+                            {% endif %}
+                            <span class="flex-grow-1">{{ current_user.username }}</span>
+                        </a>
+                        <ul class="dropdown-menu w-100 m-0 border-0 rounded-0">
+                            <li><a class="dropdown-item py-2" href="{{ url_for('profile') }}"><i class="bi bi-person me-2"></i>Profile</a></li>
+
+                            <li><hr class="dropdown-divider mx-2 my-1"></li>
+                            <form id="logout-form" action="{{ url_for('logout') }}" method="POST" style="display: none;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_value }}"/>
+                            </form>
+                            <li><a class="dropdown-item py-2" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="nav-item w-100">
+                        <a class="nav-link fs-6 px-3 py-3" href="{{ url_for('auth.login') }}">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+    {% endif %}
+
+    {% if not is_embed and is_pharmacist and is_reception_context and active_role == 'receptionist' %}
+    <form method="post" action="{{ url_for('switch_role_to_pharmacist') }}" class="floating-back-btn" title="Back to Pharmacist Dashboard">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-pills me-1"></i><span class="d-none d-sm-inline">Back to Pharmacist</span>
+        </button>
+    </form>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="container-fluid flex-grow-1 py-3" {% if is_embed %}style="padding: 0 !important;"{% endif %}>
+        {% if not is_embed %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-auto-close mb-3" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% endif %}
+        <div id="global-alert-container"></div>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    {% if not is_embed %}
+    <footer class="bg-light py-3 mt-auto">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-0">&copy; {{ current_year }} Makokha Medical Centre (MMC)</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="mb-0">Version 1.0.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    {% endif %}
+
+    <!-- Backup Access Modal (in-app popup) -->
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <div class="modal fade" id="backupAccessModal" tabindex="-1" aria-labelledby="backupAccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="backupAccessModalLabel">
+                        <i class="bi bi-shield-lock"></i> Backup Access
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="backupAccessAlert" class="alert alert-danger d-none" role="alert"></div>
+
+                    <!-- LOGIN VIEW -->
+                    <div id="backupAccessViewLogin">
+                        <div class="mb-2 text-muted small">Enter backup email + password to access backups.</div>
+                        <form id="backupAccessLoginForm">
+                            <div class="mb-3">
+                                <label class="form-label" for="backup_login_email">Email</label>
+                                <input class="form-control" type="email" id="backup_login_email" name="email" autocomplete="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="backup_login_password">Password</label>
+                                <input class="form-control" type="password" id="backup_login_password" name="password" autocomplete="current-password" required>
+                            </div>
+                            <button class="btn btn-primary w-100" type="submit" id="backupLoginSubmitBtn">
+                                Login
+                            </button>
+                        </form>
+
+                        {% if current_user.id == 1 %}
+                        <div class="mt-3">
+                            <button class="btn btn-outline-secondary w-100" type="button" id="backupShowRegisterBtn">
+                                First-time setup (Register)
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- REGISTER VIEW (main admin only) -->
+                    {% if current_user.id == 1 %}
+                    <div id="backupAccessViewRegister" class="d-none">
+                        <div class="mb-2 text-muted small">Main admin one-time setup: hospital backup email → OTP → password.</div>
+
+                        <div id="backupRegisterStepEmail">
+                            <form id="backupRegisterEmailForm">
+                                <div class="mb-3">
+                                    <label class="form-label" for="backup_register_email">Hospital Backup Email</label>
+                                    <input class="form-control" type="email" id="backup_register_email" name="backup_email" autocomplete="email" required>
+                                </div>
+                                <button class="btn btn-primary w-100" type="submit" id="backupRegisterEmailBtn">
+                                    Send OTP
+                                </button>
+                            </form>
+                        </div>
+
+                        <div id="backupRegisterStepOtp" class="d-none">
+                            <div class="small text-muted mb-2">OTP sent to <strong id="backupRegisterEmailDisplay"></strong></div>
+                            <form id="backupRegisterOtpForm">
+                                <div class="mb-3">
+                                    <label class="form-label" for="backup_register_otp">OTP</label>
+                                    <input class="form-control" type="text" id="backup_register_otp" name="otp_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+                                </div>
+                                <button class="btn btn-primary w-100" type="submit" id="backupRegisterOtpBtn">
+                                    Verify OTP
+                                </button>
+                            </form>
+                            <button class="btn btn-outline-secondary w-100 mt-2" type="button" id="backupRegisterResendOtpBtn">
+                                <i class="fas fa-redo"></i> Resend OTP
+                            </button>
+                        </div>
+
+                        <div id="backupRegisterStepPassword" class="d-none">
+                            <form id="backupRegisterPasswordForm">
+                                <div class="mb-3">
+                                    <label class="form-label" for="backup_register_password">Password</label>
+                                    <input class="form-control" type="password" id="backup_register_password" name="password" autocomplete="new-password" required>
+                                    <div class="form-text">8+ chars with uppercase, lowercase, digit, and symbol</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="backup_register_confirm">Confirm Password</label>
+                                    <input class="form-control" type="password" id="backup_register_confirm" name="confirm_password" autocomplete="new-password" required>
+                                </div>
+                                <button class="btn btn-success w-100" type="submit" id="backupRegisterPasswordBtn">
+                                    Complete Registration
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-link w-100" type="button" id="backupBackToLoginBtn">Back to Login</button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- JavaScript Libraries -->
+    <script src="{{ _sr }}/vendor/jsdelivr/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';"></script>
+    <script src="{{ _sr }}/vendor/jsdelivr/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js';"></script>
+    <script src="{{ _sr }}/vendor/cdnjs/ajax/libs/font-awesome/5.15.4/js/all.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js';"></script>
+    <script>
+    (function () {
+        document.addEventListener('click', function (event) {
+            const openTrigger = event.target.closest('[data-toggle="modal"][data-target]');
+            if (openTrigger) {
+                const targetSel = openTrigger.getAttribute('data-target') || '';
+                const targetEl = targetSel ? document.querySelector(targetSel) : null;
+                if (targetEl && window.bootstrap && bootstrap.Modal) {
+                    event.preventDefault();
+                    bootstrap.Modal.getOrCreateInstance(targetEl).show();
+                }
+            }
+
+            const closeTrigger = event.target.closest('[data-dismiss="modal"], [data-bs-dismiss="modal"]');
+            if (closeTrigger) {
+                const explicitTarget = closeTrigger.getAttribute('data-target') || closeTrigger.getAttribute('data-bs-target') || '';
+                let modalEl = explicitTarget ? document.querySelector(explicitTarget) : null;
+                if (!modalEl) {
+                    modalEl = closeTrigger.closest('.modal');
+                }
+                if (modalEl && window.bootstrap && bootstrap.Modal) {
+                    event.preventDefault();
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                }
+            }
+        }, true);
+    })();
+    </script>
+    
+    <!-- Local JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+    {% if current_user.is_authenticated and active_role == 'doctor' %}
+    <script src="{{ url_for('static', filename='js/doctor_resume.js') }}"></script>
+    {% endif %}
+    
+
+    <!-- Enhanced Sidebar Behavior -->
+    {% if not is_embed and (not is_pharmacist or is_reception_context) %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleNav = document.getElementById('toggleNav');
+        const pcToggleNav = document.getElementById('pcToggleNav');
+        const closeSidebar = document.getElementById('closeSidebar');
+        const overlay = document.getElementById('overlay');
+        
+        // Function to toggle sidebar
+        function toggleSidebar() {
+            sidebar.classList.toggle('show');
+            
+            if (window.innerWidth < 1200) {
+                overlay.classList.toggle('show');
+            }
+            
+            if (sidebar.classList.contains('show')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // Toggle sidebar when buttons are clicked
+        if (toggleNav) {
+            toggleNav.addEventListener('click', toggleSidebar);
+        }
+        
+        if (pcToggleNav) {
+            pcToggleNav.addEventListener('click', toggleSidebar);
+        }
+        
+        if (closeSidebar) {
+            closeSidebar.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
+            });
+        }
+        
+        // Close sidebar when overlay is clicked
+        if (overlay) {
+            overlay.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
+            });
+        }
+        
+        // Close sidebar when ESC key is pressed
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1200) {
+                // Desktop view - hide overlay
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
+            } else {
+                // Mobile/tablet view - hide sidebar by default
+                if (sidebar.classList.contains('show')) {
+                    overlay.classList.add('show');
+                } else {
+                    overlay.classList.remove('show');
+                }
+            }
+        });
+        
+        // Initialize for current screen size - sidebar hidden by default on all devices
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+        document.body.style.overflow = 'auto';
+    });
+    </script>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <script>
+    (function () {
+        const HAS_BACKUP_ACCESS = "{{ 'true' if has_backup_access else 'false' }}" === "true";
+        const IS_MAIN_ADMIN = "{{ 'true' if current_user.id == 1 else 'false' }}" === "true";
+        const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+        const modalEl = document.getElementById('backupAccessModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+
+        const alertEl = document.getElementById('backupAccessAlert');
+        const viewLogin = document.getElementById('backupAccessViewLogin');
+        const viewRegister = document.getElementById('backupAccessViewRegister');
+
+        const showAlert = (msg, type = 'danger') => {
+            if (!alertEl) return;
+            alertEl.className = 'alert alert-' + type;
+            alertEl.textContent = msg || '';
+            alertEl.classList.toggle('d-none', !msg);
+        };
+
+        const showLoginView = () => {
+            showAlert('');
+            if (viewLogin) viewLogin.classList.remove('d-none');
+            if (viewRegister) viewRegister.classList.add('d-none');
+        };
+
+        const showRegisterView = () => {
+            showAlert('');
+            if (viewLogin) viewLogin.classList.add('d-none');
+            if (viewRegister) viewRegister.classList.remove('d-none');
+
+            const stepEmail = document.getElementById('backupRegisterStepEmail');
+            const stepOtp = document.getElementById('backupRegisterStepOtp');
+            const stepPass = document.getElementById('backupRegisterStepPassword');
+            if (stepEmail) stepEmail.classList.remove('d-none');
+            if (stepOtp) stepOtp.classList.add('d-none');
+            if (stepPass) stepPass.classList.add('d-none');
+        };
+
+        const postForm = async (url, dataObj) => {
+            const body = new URLSearchParams();
+            body.set('csrf_token', csrfToken);
+            Object.entries(dataObj || {}).forEach(([k, v]) => body.set(k, v));
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                credentials: 'same-origin',
+                body
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = payload && payload.message ? payload.message : 'Request failed';
+                throw new Error(msg);
+            }
+            return payload;
+        };
+
+        // Intercept any click to /admin/backup and open modal if not authenticated
+        document.addEventListener('click', function (e) {
+            const a = e.target && e.target.closest ? e.target.closest('a') : null;
+            if (!a) return;
+            const href = a.getAttribute('href') || '';
+            if (!href) return;
+
+            // Only intercept same-origin backup links
+            try {
+                const u = new URL(href, window.location.origin);
+                if (u.origin !== window.location.origin) return;
+                if (u.pathname !== "{{ url_for('backup_management') }}") return;
+            } catch {
+                return;
+            }
+
+            if (HAS_BACKUP_ACCESS) return; // normal navigation
+
+            e.preventDefault();
+            showLoginView();
+            modal.show();
+
+            // Focus email input when opened
+            window.setTimeout(() => {
+                const emailInput = document.getElementById('backup_login_email');
+                if (emailInput) emailInput.focus();
+            }, 150);
+        });
+
+        // Login submit
+        const loginForm = document.getElementById('backupAccessLoginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                showAlert('');
+                const email = (document.getElementById('backup_login_email') || {}).value || '';
+                const password = (document.getElementById('backup_login_password') || {}).value || '';
+                try {
+                    const resp = await postForm("{{ url_for('backup_login_page') }}", { email, password });
+                    modal.hide();
+                    // Navigate into backup dashboard (server session is now set)
+                    window.location.href = resp.redirect || "{{ url_for('backup_management') }}";
+                } catch (err) {
+                    showAlert(err.message || 'Login failed');
+                }
+            });
+        }
+
+        // Register flow (main admin only)
+        if (IS_MAIN_ADMIN) {
+            const showRegBtn = document.getElementById('backupShowRegisterBtn');
+            if (showRegBtn) showRegBtn.addEventListener('click', showRegisterView);
+
+            const backBtn = document.getElementById('backupBackToLoginBtn');
+            if (backBtn) backBtn.addEventListener('click', showLoginView);
+
+            const regEmailForm = document.getElementById('backupRegisterEmailForm');
+            const regOtpForm = document.getElementById('backupRegisterOtpForm');
+            const regPassForm = document.getElementById('backupRegisterPasswordForm');
+
+            const stepEmail = document.getElementById('backupRegisterStepEmail');
+            const stepOtp = document.getElementById('backupRegisterStepOtp');
+            const stepPass = document.getElementById('backupRegisterStepPassword');
+            const emailDisplay = document.getElementById('backupRegisterEmailDisplay');
+
+            if (regEmailForm) {
+                regEmailForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    showAlert('');
+                    const email = (document.getElementById('backup_register_email') || {}).value || '';
+                    try {
+                        const resp = await postForm("{{ url_for('backup_login_register_email') }}", { backup_email: email });
+                        if (emailDisplay) emailDisplay.textContent = resp.email || email;
+                        if (stepEmail) stepEmail.classList.add('d-none');
+                        if (stepOtp) stepOtp.classList.remove('d-none');
+                        if (stepPass) stepPass.classList.add('d-none');
+                        const otpInput = document.getElementById('backup_register_otp');
+                        if (otpInput) otpInput.focus();
+                    } catch (err) {
+                        showAlert(err.message || 'Failed to send OTP');
+                    }
+                });
+            }
+
+            if (regOtpForm) {
+                regOtpForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    showAlert('');
+                    const otp = (document.getElementById('backup_register_otp') || {}).value || '';
+                    try {
+                        await postForm("{{ url_for('backup_login_register_otp') }}", { otp_code: otp });
+                        if (stepEmail) stepEmail.classList.add('d-none');
+                        if (stepOtp) stepOtp.classList.add('d-none');
+                        if (stepPass) stepPass.classList.remove('d-none');
+                        const passInput = document.getElementById('backup_register_password');
+                        if (passInput) passInput.focus();
+                    } catch (err) {
+                        showAlert(err.message || 'OTP verification failed');
+                    }
+                });
+            }
+
+            // Resend OTP handler
+            const resendOtpBtn = document.getElementById('backupRegisterResendOtpBtn');
+            if (resendOtpBtn) {
+                resendOtpBtn.addEventListener('click', async function () {
+                    showAlert('');
+                    const email = (document.getElementById('backup_register_email') || {}).value || '';
+                    if (!email) {
+                        showAlert('Email not found. Please start over.', 'warning');
+                        showRegisterView();
+                        return;
+                    }
+                    try {
+                        resendOtpBtn.disabled = true;
+                        resendOtpBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                        await postForm("{{ url_for('backup_login_register_email') }}", { backup_email: email });
+                        showAlert('OTP resent successfully!', 'success');
+                        resendOtpBtn.innerHTML = '<i class="fas fa-redo"></i> Resend OTP';
+                        resendOtpBtn.disabled = false;
+                    } catch (err) {
+                        showAlert(err.message || 'Failed to resend OTP');
+                        resendOtpBtn.innerHTML = '<i class="fas fa-redo"></i> Resend OTP';
+                        resendOtpBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (regPassForm) {
+                regPassForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    showAlert('');
+                    const password = (document.getElementById('backup_register_password') || {}).value || '';
+                    const confirm_password = (document.getElementById('backup_register_confirm') || {}).value || '';
+                    try {
+                        await postForm("{{ url_for('backup_login_register_password') }}", { password, confirm_password });
+                        showAlert('Registration complete. Now login with email + password.', 'success');
+                        showLoginView();
+                    } catch (err) {
+                        showAlert(err.message || 'Failed to complete registration');
+                    }
+                });
+            }
+        }
+    })();
+    </script>
+    {% endif %}
+    <script>
+    (function () {
+        const AUTO_CLOSE_MS = 2000;
+
+        function mapAlertType(type) {
+            const normalized = String(type || 'info').toLowerCase();
+            if (normalized === 'error') return 'danger';
+            if (normalized === 'fail' || normalized === 'failed') return 'danger';
+            if (normalized === 'ok') return 'success';
+            return normalized;
+        }
+
+        function ensureGlobalContainer() {
+            let container = document.getElementById('global-alert-container');
+            if (container) return container;
+
+            const main = document.querySelector('main');
+            if (!main) return null;
+
+            container = document.createElement('div');
+            container.id = 'global-alert-container';
+            main.insertBefore(container, main.firstChild);
+            return container;
+        }
+
+        function removeCloseButtons(alertEl) {
+            if (!alertEl) return;
+            alertEl.classList.remove('alert-dismissible');
+            const closeSelectors = [
+                'button.close',
+                'button.btn-close',
+                '.btn-close',
+                '.close-alert',
+                '[data-dismiss="alert"]',
+                '[data-bs-dismiss="alert"]'
+            ];
+            closeSelectors.forEach((sel) => {
+                alertEl.querySelectorAll(sel).forEach((btn) => btn.remove());
+            });
+        }
+
+        function scheduleAutoClose(alertEl) {
+            if (!alertEl) return;
+            if (alertEl.dataset.autoCloseScheduled === '1') return;
+            alertEl.dataset.autoCloseScheduled = '1';
+
+            // Ensure we can animate out (Bootstrap uses fade/show)
+            alertEl.classList.add('fade', 'show');
+            window.setTimeout(() => {
+                alertEl.classList.remove('show');
+                window.setTimeout(() => {
+                    alertEl.remove();
+                }, 180);
+            }, AUTO_CLOSE_MS);
+        }
+
+        function normalizeAutoCloseAlerts() {
+            const selectors = [
+                '.alert-auto-close',
+                '.auto-close-alert',
+                '.alert-dismissible'
+            ];
+            document.querySelectorAll(selectors.join(',')).forEach((alertEl) => {
+                // Only treat as popup if it is meant to be dismissible/auto-closing.
+                // Avoid touching inline informational alerts in content areas.
+                if (!(alertEl.classList.contains('alert-auto-close') || alertEl.classList.contains('auto-close-alert') || alertEl.classList.contains('alert-dismissible'))) {
+                    return;
+                }
+                removeCloseButtons(alertEl);
+                scheduleAutoClose(alertEl);
+            });
+        }
+
+        function clearContainer(container) {
+            if (!container) return;
+            container.querySelectorAll('.alert').forEach((el) => el.remove());
+        }
+
+        // Global alert helper (only define if missing)
+        if (typeof window.showAlert !== 'function') {
+            window.showAlert = function (message, type = 'info', options = {}) {
+                const container = (options && options.containerSelector)
+                    ? document.querySelector(options.containerSelector)
+                    : ensureGlobalContainer();
+
+                if (!container) return;
+
+                clearContainer(container);
+
+                const bsType = mapAlertType(type);
+                const alertEl = document.createElement('div');
+                alertEl.className = `alert alert-${bsType} mb-3 alert-auto-close`;
+                alertEl.setAttribute('role', 'alert');
+                alertEl.textContent = String(message ?? '');
+
+                container.appendChild(alertEl);
+                removeCloseButtons(alertEl);
+                scheduleAutoClose(alertEl);
+            };
+        }
+
+        // Provide a stable alias for any templates expecting it
+        if (typeof window.showPopupMessage !== 'function') {
+            window.showPopupMessage = window.showAlert;
+        }
+
+        function inferTypeFromMessage(message) {
+            const text = String(message ?? '').toLowerCase();
+            if (text.includes('success') || text.includes('successfully') || text.includes('completed') || text.includes('saved')) {
+                return 'success';
+            }
+            if (text.includes('error') || text.includes('failed') || text.includes('fail')) {
+                return 'danger';
+            }
+            if (text.includes('missing') || text.includes('required') || text.includes('cannot') || text.includes('out of stock') || text.includes('empty')) {
+                return 'warning';
+            }
+            return 'info';
+        }
+
+        // Convert native alert() popups to the same auto-closing UI
+        if (!window.__mmc_native_alert) {
+            window.__mmc_native_alert = window.alert;
+            window.alert = function (msg) {
+                try {
+                    window.showAlert(String(msg ?? ''), inferTypeFromMessage(msg));
+                } catch (e) {
+                    // Fallback to native alert if something goes wrong
+                    window.__mmc_native_alert(String(msg ?? ''));
+                }
+            };
+        }
+
+        function standardizeToastrIfPresent() {
+            if (window.toastr && window.toastr.options) {
+                window.toastr.options.closeButton = false;
+                window.toastr.options.timeOut = AUTO_CLOSE_MS;
+                window.toastr.options.extendedTimeOut = 0;
+                window.toastr.options.progressBar = false;
+                return true;
+            }
+            return false;
+        }
+
+        // If toastr loads after this script, keep trying briefly
+        let toastrTries = 0;
+        const toastrTimer = window.setInterval(() => {
+            toastrTries += 1;
+            if (standardizeToastrIfPresent() || toastrTries >= 15) {
+                window.clearInterval(toastrTimer);
+            }
+        }, 250);
+
+        document.addEventListener('DOMContentLoaded', normalizeAutoCloseAlerts);
+
+        // Also handle alerts inserted after load
+        const observer = new MutationObserver(() => normalizeAutoCloseAlerts());
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    })();
+    </script>
+    
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("table").forEach(table => {
+        // Skip if already wrapped
+        if (!table.parentElement.classList.contains("table-container")) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "table-container";
+
+        // Insert wrapper before table and move table inside
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+        }
+    });
+    });
+    </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const body = document.body;
+  if (body && body.dataset.mmcReceiptContext === '1') {
+    return;
+  }
+
+  function wrapTable(table) {
+    // Only wrap if the table is NOT already inside .table-container
+    if (!table.closest(".table-container")) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-container";
+
+      // Insert wrapper before table and move table inside
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    }
+  }
+
+  // Wrap only unwrapped tables on load
+  document.querySelectorAll("table").forEach(wrapTable);
+
+  // Watch for new tables dynamically
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeName === "TABLE") {
+          wrapTable(node);
+        } else if (node.querySelectorAll) {
+          node.querySelectorAll("table").forEach(wrapTable);
+        }
+      });
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const body = document.body;
+  if (body && body.dataset.mmcReceiptContext === '1') {
+    return;
+  }
+
+  function addSearchForTable(table) {
+    const container = table.closest(".table-container");
+    if (!container) return;
+
+    // If label+search already exist, skip
+    if (container.previousElementSibling && container.previousElementSibling.classList.contains("table-search-wrapper")) {
+      return;
+    }
+
+    // Create wrapper for label + input
+    const wrapper = document.createElement("div");
+    wrapper.className = "table-search-wrapper";
+    wrapper.style.cssText = `
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      background: white;
+      padding: 4px;
+      border-radius: 6px;
+    `;
+
+    // Create label
+    const label = document.createElement("label");
+    label.textContent = "🔍 Search in this table";
+    label.style.cssText = `
+      color: var(--table-blue, #007bff);
+      font-weight: 600;
+      margin-bottom: 4px;
+    `;
+
+    // Create search input
+    const searchBox = document.createElement("input");
+    searchBox.type = "text";
+    searchBox.placeholder = "Type to filter...";
+    searchBox.className = "table-search";
+    searchBox.style.cssText = `
+      width: 100%;
+      max-width: 300px;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    `;
+
+    // Search filter logic
+    searchBox.addEventListener("input", () => {
+      const filter = searchBox.value.toLowerCase();
+      const rows = table.querySelectorAll("tbody tr");
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+      });
+    });
+
+    // Append label + input into wrapper
+    wrapper.appendChild(label);
+    wrapper.appendChild(searchBox);
+
+    // Insert before table container
+    container.parentNode.insertBefore(wrapper, container);
+  }
+
+  function wrapTable(table) {
+    if (!table.closest(".table-container")) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-container";
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+      addSearchForTable(table);
+    } else {
+      addSearchForTable(table);
+    }
+  }
+
+  // Wrap & add search to existing tables
+  document.querySelectorAll("table").forEach(wrapTable);
+
+  // Watch for dynamically added tables
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeName === "TABLE") {
+          wrapTable(node);
+        } else if (node.querySelectorAll) {
+          node.querySelectorAll("table").forEach(wrapTable);
+        }
+      });
+    });
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+});
+</script>
+
+
+
+    <!-- Table Responsiveness Script -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const body = document.body;
+        if (body && body.dataset.mmcReceiptContext === '1') {
+            return;
+        }
+
+        // Make tables responsive by adding data-labels
+        function makeTablesResponsive() {
+            document.querySelectorAll('table').forEach(table => {
+                if (!table.classList.contains('responsive-processed')) {
+                    // Get header texts
+                    const headers = [];
+                    if (table.tHead && table.tHead.rows.length > 0) {
+                        Array.from(table.tHead.rows[0].cells).forEach(cell => {
+                            headers.push(cell.textContent.trim());
+                        });
+                    }
+                    
+                    // Add data-label attributes to cells
+                    if (table.tBodies.length > 0) {
+                        Array.from(table.tBodies[0].rows).forEach(row => {
+                            Array.from(row.cells).forEach((cell, index) => {
+                                if (headers[index]) {
+                                    cell.setAttribute('data-label', headers[index]);
+                                }
+                            });
+                        });
+                    }
+                    
+                    table.classList.add('responsive-processed');
+                }
+            });
+        }
+        
+        makeTablesResponsive();
+        
+        // Re-run when content changes (for dynamic content)
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length) {
+                    makeTablesResponsive();
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+    </script>
+
+    <script>
+    (function () {
+        const bodyEl = document.body;
+        const isReceiptContext = !!(bodyEl && bodyEl.dataset && bodyEl.dataset.mmcReceiptContext === '1');
+        const defaults = {
+            table_theme: 'table-full-grid-classic-blue',
+            pharmacist_card_theme: 'card-standard-classic-blue',
+            pharmacist_button_theme: 'btn-triad-classic-blue',
+        };
+
+        const saved = {{ (mmc_ui_customization or {})|tojson }} || {};
+        let activePayload = Object.assign({}, defaults, saved);
+        const tableStyles = ['outer-only', 'outer-longitudinal', 'full-grid', 'striped'];
+        const cardStyles = ['standard', 'name-underline', 'id-rule', 'glow'];
+        const buttonStyles = ['triad'];
+        const paletteHueMap = {
+            'classic-blue': 215,
+            'emerald': 154,
+            'carbon': 210,
+            'slate': 225,
+            'sunrise': 28,
+            'crimson': 350,
+            'navy': 221,
+            'forest': 132,
+            'gold': 42,
+            'graphite': 205,
+            'berry': 325,
+            'ocean': 195,
+            'copper': 24,
+            'ice': 196,
+            'mint': 165,
+            'rose': 340,
+            'lime': 92,
+            'amber': 34,
+            'indigo': 248,
+            'charcoal': 210,
+            'sky': 203,
+            'ruby': 352,
+            'aqua': 178,
+            'cobalt': 224,
+            'violet': 274,
+            'olive': 82,
+            'orange': 26,
+            'steel': 206,
+            'pearl': 215,
+            'sand': 38,
+        };
+
+        function hashString(input) {
+            const text = String(input || '');
+            let hash = 0;
+            for (let i = 0; i < text.length; i += 1) {
+                hash = ((hash << 5) - hash) + text.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash);
+        }
+
+        function clamp(n, min, max) {
+            const v = Number.isFinite(Number(n)) ? Number(n) : min;
+            return Math.max(min, Math.min(max, v));
+        }
+
+        function hsl(h, s, l) {
+            const hh = ((Math.round(Number(h) || 0) % 360) + 360) % 360;
+            return `hsl(${hh}, ${clamp(s, 0, 100)}%, ${clamp(l, 0, 100)}%)`;
+        }
+
+        function normalizeHueFromPalette(palette, fallbackHue) {
+            if (Object.prototype.hasOwnProperty.call(paletteHueMap, palette)) {
+                return paletteHueMap[palette];
+            }
+            return (hashString(palette) + (fallbackHue || 0)) % 360;
+        }
+
+        function parseThemeId(themeId, prefix, styles, legacyDefaultStyle, fallbackPalette) {
+            const id = String(themeId || '').trim();
+            const normalizedFallback = {
+                style: legacyDefaultStyle,
+                palette: fallbackPalette || 'classic-blue',
+            };
+            if (!id) {
+                return normalizedFallback;
+            }
+            const expectedPrefix = `${prefix}-`;
+            if (!id.startsWith(expectedPrefix)) {
+                return normalizedFallback;
+            }
+
+            const remainder = id.slice(expectedPrefix.length);
+            for (const style of styles) {
+                if (remainder === style) {
+                    return { style, palette: fallbackPalette || 'classic-blue' };
+                }
+                const needle = `${style}-`;
+                if (remainder.startsWith(needle)) {
+                    const palette = remainder.slice(needle.length) || (fallbackPalette || 'classic-blue');
+                    return { style, palette };
+                }
+            }
+
+            return {
+                style: legacyDefaultStyle,
+                palette: remainder || (fallbackPalette || 'classic-blue'),
+            };
+        }
+
+        function computeTablePalette(themeId) {
+            const id = String(themeId || defaults.table_theme);
+            const parsed = parseThemeId(id, 'table', tableStyles, 'full-grid', 'classic-blue');
+            const hue = normalizeHueFromPalette(parsed.palette, 210);
+            const isDark = /(carbon|graphite|charcoal|cobalt|navy|indigo|slate|steel)/i.test(parsed.palette);
+            const isWarm = /(sunrise|gold|amber|copper|sand|orange|olive)/i.test(parsed.palette);
+            const headerBg = isDark ? hsl(hue, 45, 22) : hsl(hue, 68, isWarm ? 43 : 39);
+            const headerColor = isWarm ? '#1f2937' : '#ffffff';
+            const border = isDark ? hsl(hue, 26, 38) : hsl(hue, 58, 66);
+            const rowBg = '#ffffff';
+            const rowAltBg = parsed.style === 'striped'
+                ? (isDark ? hsl(hue, 18, 92) : hsl(hue, 62, 95))
+                : rowBg;
+            const rowHover = isDark ? hsl(hue, 24, 90) : hsl(hue, 72, 92);
+            const text = '#1f2937';
+            const radius = isDark ? '10px' : '12px';
+            const outerBorderWidth = parsed.style === 'outer-only' ? '2px' : '1.5px';
+            const innerHBorderWidth = (parsed.style === 'full-grid' || parsed.style === 'striped') ? '1px' : '0px';
+            const innerVBorderWidth = (parsed.style === 'full-grid' || parsed.style === 'outer-longitudinal' || parsed.style === 'striped') ? '1px' : '0px';
+            const primary = headerBg;
+            const primaryHover = isDark ? hsl(hue, 52, 30) : hsl(hue, 72, 34);
+            const primaryText = isWarm ? '#0f172a' : '#ffffff';
+            const outlineText = isDark ? '#e2e8f0' : headerBg;
+            const summaryBg = isDark ? hsl(hue, 24, 90) : hsl(hue, 76, 96);
+            const summaryBorder = isDark ? hsl(hue, 28, 44) : hsl(hue, 66, 82);
+            const summaryText = '#0f172a';
+            const summaryShadow = isDark
+                ? `0 10px 24px ${hsl(hue, 35, 18)}`
+                : `0 10px 24px ${hsl(hue, 64, 88)}`;
+            return {
+                style: parsed.style,
+                palette: parsed.palette,
+                headerBg,
+                headerColor,
+                border,
+                rowBg,
+                rowAltBg,
+                rowHover,
+                text,
+                radius,
+                outerBorderWidth,
+                innerHBorderWidth,
+                innerVBorderWidth,
+                primary,
+                primaryHover,
+                primaryText,
+                outlineText,
+                summaryBg,
+                summaryBorder,
+                summaryText,
+                summaryShadow,
+            };
+        }
+
+        function computeCardPalette(themeId) {
+            const id = String(themeId || defaults.pharmacist_card_theme);
+            const parsed = parseThemeId(id, 'card', cardStyles, 'standard', 'classic-blue');
+            const hue = normalizeHueFromPalette(parsed.palette, 212);
+            const isDark = /(carbon|graphite|charcoal|cobalt|navy|indigo|slate|onyx|midnight|steel)/i.test(parsed.palette);
+            const isWarm = /(sunrise|gold|amber|copper|sand|orange)/i.test(parsed.palette);
+            const bg = isDark ? hsl(hue, 30, 14) : hsl(hue, 45, 99);
+            const border = isDark ? hsl(hue, 24, 28) : hsl(hue, 45, 84);
+            const shadow = isDark
+                ? `0 12px 24px ${hsl(hue, 40, 8)}`
+                : `0 10px 24px ${hsl(hue, 56, 89)}`;
+            const title = isDark ? '#f8fafc' : '#0f172a';
+            const text = isDark ? '#d1d5db' : '#475569';
+            const price = isWarm ? hsl(hue, 78, 42) : hsl(hue, 76, 44);
+            const glow = parsed.style === 'glow'
+                ? `0 0 0 1px ${hsl(hue, 78, 62)}, 0 0 14px ${hsl(hue, 88, 72)}`
+                : '0 0 0 rgba(0,0,0,0)';
+            return {
+                style: parsed.style,
+                palette: parsed.palette,
+                bg,
+                border,
+                shadow,
+                title,
+                text,
+                price,
+                glow,
+                nameDecoration: parsed.style === 'name-underline' ? 'underline' : 'none',
+                idRuleWidth: parsed.style === 'id-rule' ? '2px' : '0px',
+            };
+        }
+
+        function computeButtonPalette(themeId) {
+            const id = String(themeId || defaults.pharmacist_button_theme);
+            const parsed = parseThemeId(id, 'btn', buttonStyles, 'triad', 'classic-blue');
+            const hue = normalizeHueFromPalette(parsed.palette, 215);
+            const addBg = hsl(hue, 72, 42);
+            const addHover = hsl(hue, 76, 34);
+            const infoBg = hsl((hue + 34) % 360, 70, 44);
+            const infoHover = hsl((hue + 34) % 360, 74, 36);
+            const rxBg = hsl((hue + 312) % 360, 72, 45);
+            const rxHover = hsl((hue + 312) % 360, 76, 37);
+            const textColor = '#ffffff';
+            return {
+                style: parsed.style,
+                palette: parsed.palette,
+                bg: addBg,
+                hover: addHover,
+                text: textColor,
+                addBg,
+                addHover,
+                addText: textColor,
+                infoBg,
+                infoHover,
+                infoText: textColor,
+                rxBg,
+                rxHover,
+                rxText: textColor,
+            };
+        }
+
+        function applyThemePayload(nextPayload, target) {
+            const root = target || document.documentElement;
+            const payload = Object.assign({}, defaults, nextPayload || {});
+            const tablePalette = computeTablePalette(payload.table_theme);
+            const cardPalette = computeCardPalette(payload.pharmacist_card_theme);
+            const btnPalette = computeButtonPalette(payload.pharmacist_button_theme);
+
+            root.style.setProperty('--mmc-table-header-bg', tablePalette.headerBg);
+            root.style.setProperty('--mmc-table-header-color', tablePalette.headerColor);
+            root.style.setProperty('--mmc-table-border', tablePalette.border);
+            root.style.setProperty('--mmc-table-row-bg', tablePalette.rowBg);
+            root.style.setProperty('--mmc-table-row-alt-bg', tablePalette.rowAltBg);
+            root.style.setProperty('--mmc-table-row-hover', tablePalette.rowHover);
+            root.style.setProperty('--mmc-table-text', tablePalette.text);
+            root.style.setProperty('--mmc-table-radius', tablePalette.radius);
+            root.style.setProperty('--mmc-table-outer-border-width', tablePalette.outerBorderWidth);
+            root.style.setProperty('--mmc-table-inner-h-border-width', tablePalette.innerHBorderWidth);
+            root.style.setProperty('--mmc-table-inner-v-border-width', tablePalette.innerVBorderWidth);
+            root.style.setProperty('--table-blue', tablePalette.headerBg);
+            root.style.setProperty('--table-white', tablePalette.headerColor);
+
+            root.style.setProperty('--mmc-pharm-card-bg', cardPalette.bg);
+            root.style.setProperty('--mmc-pharm-card-border', cardPalette.border);
+            root.style.setProperty('--mmc-pharm-card-shadow', cardPalette.shadow);
+            root.style.setProperty('--mmc-pharm-card-glow', cardPalette.glow);
+            root.style.setProperty('--mmc-pharm-card-title', cardPalette.title);
+            root.style.setProperty('--mmc-pharm-card-text', cardPalette.text);
+            root.style.setProperty('--mmc-pharm-price-color', cardPalette.price);
+            root.style.setProperty('--mmc-pharm-name-decoration', cardPalette.nameDecoration);
+            root.style.setProperty('--mmc-pharm-id-rule-width', cardPalette.idRuleWidth);
+
+            root.style.setProperty('--mmc-pharm-btn-bg', btnPalette.bg);
+            root.style.setProperty('--mmc-pharm-btn-hover', btnPalette.hover);
+            root.style.setProperty('--mmc-pharm-btn-text', btnPalette.text);
+            root.style.setProperty('--mmc-pharm-btn-add-bg', btnPalette.addBg);
+            root.style.setProperty('--mmc-pharm-btn-add-hover', btnPalette.addHover);
+            root.style.setProperty('--mmc-pharm-btn-add-text', btnPalette.addText);
+            root.style.setProperty('--mmc-pharm-btn-info-bg', btnPalette.infoBg);
+            root.style.setProperty('--mmc-pharm-btn-info-hover', btnPalette.infoHover);
+            root.style.setProperty('--mmc-pharm-btn-info-text', btnPalette.infoText);
+            root.style.setProperty('--mmc-pharm-btn-rx-bg', btnPalette.rxBg);
+            root.style.setProperty('--mmc-pharm-btn-rx-hover', btnPalette.rxHover);
+            root.style.setProperty('--mmc-pharm-btn-rx-text', btnPalette.rxText);
+
+            root.style.setProperty('--mmc-theme-btn-primary-bg', tablePalette.primary);
+            root.style.setProperty('--mmc-theme-btn-primary-hover', tablePalette.primaryHover);
+            root.style.setProperty('--mmc-theme-btn-primary-text', tablePalette.primaryText);
+            root.style.setProperty('--mmc-theme-btn-outline-text', tablePalette.outlineText);
+            root.style.setProperty('--mmc-summary-card-bg', tablePalette.summaryBg);
+            root.style.setProperty('--mmc-summary-card-border', tablePalette.summaryBorder);
+            root.style.setProperty('--mmc-summary-card-text', tablePalette.summaryText);
+            root.style.setProperty('--mmc-summary-card-shadow', tablePalette.summaryShadow);
+
+            activePayload = payload;
+            return {
+                payload,
+                tablePalette,
+                cardPalette,
+                btnPalette,
+            };
+        }
+
+        const engine = {
+            defaults,
+            getPayload: function () { return Object.assign({}, activePayload); },
+            computeTablePalette,
+            computeCardPalette,
+            computeButtonPalette,
+            applyThemePayload,
+        };
+
+        window.MMC_UI_THEME_ENGINE = engine;
+        window.applyMmcUiThemes = function (partialPayload, target) {
+            const merged = Object.assign({}, activePayload, partialPayload || {});
+            return applyThemePayload(merged, target || document.documentElement);
+        };
+
+        if (isReceiptContext) {
+            return;
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                applyThemePayload(activePayload, document.documentElement);
+            });
+        } else {
+            applyThemePayload(activePayload, document.documentElement);
+        }
+    })();
+    </script>
+
+    <script>
+    (function () {
+        const body = document.body;
+        if (!body || body.dataset.mmcRichTypingContext !== '1') {
+            return;
+        }
+
+        const TOKEN_STORE_KEY = 'mmc_typing_suggestions_v1';
+        const NARRATIVE_RE = /(note|history|complaint|diagnos|remark|summary|finding|treatment|plan|instruction|assessment|advice|description|comment|observation|review|impression|chief|symptom|exam)/i;
+        const EXCLUDED_RE = /(\bsearch\b|\bfilter\b|\bcode\b|\bemail\b|\busername\b|\bpassword\b|\btoken\b|\botp\b|\bpolicy\b|\bphone\b|\bmobile\b|\bnumber\b|\bdrug_number\b|\bop_number\b|\bip_number\b|(^|[_-])id($|[_-])|_id\b)/i;
+        const MAX_TOKENS = 250;
+        const LIST_ID = 'mmcTypingSuggestions';
+        let tokens = [];
+
+        function loadTokens() {
+            try {
+                const raw = localStorage.getItem(TOKEN_STORE_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                if (Array.isArray(parsed)) {
+                    return parsed.map((x) => String(x || '').trim()).filter(Boolean).slice(0, MAX_TOKENS);
+                }
+            } catch (e) {
+                // no-op
+            }
+            return [];
+        }
+
+        function saveTokens() {
+            try {
+                localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify(tokens.slice(0, MAX_TOKENS)));
+            } catch (e) {
+                // no-op
+            }
+        }
+
+        function getListEl() {
+            let list = document.getElementById(LIST_ID);
+            if (!list) {
+                list = document.createElement('datalist');
+                list.id = LIST_ID;
+                document.body.appendChild(list);
+            }
+            return list;
+        }
+
+        function updateSuggestionsList(prefix) {
+            const list = getListEl();
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            list.innerHTML = '';
+            tokens
+                .filter((word) => !safePrefix || word.toLowerCase().startsWith(safePrefix))
+                .slice(0, 20)
+                .forEach((word) => {
+                    const option = document.createElement('option');
+                    option.value = word;
+                    list.appendChild(option);
+                });
+        }
+
+        function collectTokens(value) {
+            const input = String(value || '');
+            const found = input
+                .split(/[^\w']+/)
+                .map((p) => p.trim())
+                .filter((p) => p.length >= 3 && !/^\d+$/.test(p));
+
+            if (!found.length) {
+                return;
+            }
+
+            for (let i = 0; i < found.length; i += 1) {
+                const word = found[i];
+                if (!tokens.includes(word)) {
+                    tokens.unshift(word);
+                }
+            }
+
+            if (tokens.length > MAX_TOKENS) {
+                tokens = tokens.slice(0, MAX_TOKENS);
+            }
+            saveTokens();
+        }
+
+        function sentenceCase(value) {
+            const text = String(value || '');
+            if (!text) {
+                return text;
+            }
+            let shouldCapitalize = true;
+            let out = '';
+            for (let i = 0; i < text.length; i += 1) {
+                const ch = text[i];
+                if (/[A-Za-z]/.test(ch)) {
+                    out += shouldCapitalize ? ch.toUpperCase() : ch;
+                    shouldCapitalize = false;
+                } else {
+                    out += ch;
+                    if (/[.!?]/.test(ch)) {
+                        shouldCapitalize = true;
+                    }
+                }
+            }
+            return out;
+        }
+
+        function applySentenceCaseToField(field) {
+            try {
+                const prev = field.value || '';
+                const next = sentenceCase(prev);
+                if (next === prev) {
+                    return;
+                }
+                const selStart = field.selectionStart;
+                const selEnd = field.selectionEnd;
+                const prevScrollTop = field.scrollTop;
+                field.value = next;
+                if (Number.isInteger(selStart) && Number.isInteger(selEnd) && field.setSelectionRange) {
+                    field.setSelectionRange(selStart, selEnd);
+                }
+                if (Number.isFinite(prevScrollTop)) {
+                    field.scrollTop = prevScrollTop;
+                }
+            } catch (e) {
+                // no-op
+            }
+        }
+
+        function isTextInput(el) {
+            return el && el.tagName === 'INPUT' && String(el.type || '').toLowerCase() === 'text';
+        }
+
+        function isEligible(el) {
+            if (!el || !el.tagName) {
+                return false;
+            }
+            if (el.disabled || el.readOnly || el.dataset.mmcRichDisabled === '1') {
+                return false;
+            }
+            if (!(el.tagName === 'TEXTAREA' || isTextInput(el))) {
+                return false;
+            }
+            const keyText = `${el.id || ''} ${el.name || ''} ${el.placeholder || ''} ${el.className || ''}`;
+            if (EXCLUDED_RE.test(keyText)) {
+                return false;
+            }
+            return true;
+        }
+
+        function isNarrativeField(el) {
+            if (!isEligible(el)) {
+                return false;
+            }
+            if (el.tagName === 'TEXTAREA') {
+                return true;
+            }
+            const keyText = `${el.id || ''} ${el.name || ''} ${el.placeholder || ''} ${el.className || ''}`;
+            return NARRATIVE_RE.test(keyText);
+        }
+
+        function setFieldStyle(field, key, value) {
+            field.dataset[key] = value;
+            field.style.fontWeight = field.dataset.mmcBold === '1' ? '700' : '';
+            field.style.fontStyle = field.dataset.mmcItalic === '1' ? 'italic' : '';
+            field.style.textDecoration = field.dataset.mmcUnderline === '1' ? 'underline' : '';
+            field.style.textAlign = field.dataset.mmcAlign || '';
+        }
+
+        function createToolbarButton(label, title, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-primary';
+            btn.textContent = label;
+            btn.title = title;
+            btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function ensureToolbar(field) {
+            if (!isNarrativeField(field)) {
+                return;
+            }
+            if (field.dataset.mmcToolbarReady === '1') {
+                return;
+            }
+            if (!field.parentNode || field.closest('.mmc-rich-wrap') || field.closest('.input-group')) {
+                return;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mmc-rich-wrap';
+            const toolbar = document.createElement('div');
+            toolbar.className = 'mmc-rich-toolbar';
+
+            const syncActiveState = () => {
+                toolbar.querySelectorAll('[data-mmc-toggle]').forEach((btn) => {
+                    const key = btn.getAttribute('data-mmc-toggle');
+                    const active = field.dataset[key] === '1';
+                    btn.classList.toggle('active', active);
+                });
+                toolbar.querySelectorAll('[data-mmc-align]').forEach((btn) => {
+                    const align = btn.getAttribute('data-mmc-align');
+                    const active = (field.dataset.mmcAlign || 'left') === align;
+                    btn.classList.toggle('active', active);
+                });
+            };
+
+            const boldBtn = createToolbarButton('B', 'Bold', () => {
+                setFieldStyle(field, 'mmcBold', field.dataset.mmcBold === '1' ? '0' : '1');
+                syncActiveState();
+                field.focus();
+            });
+            boldBtn.dataset.mmcToggle = 'mmcBold';
+            boldBtn.style.fontWeight = '700';
+
+            const italicBtn = createToolbarButton('I', 'Italic', () => {
+                setFieldStyle(field, 'mmcItalic', field.dataset.mmcItalic === '1' ? '0' : '1');
+                syncActiveState();
+                field.focus();
+            });
+            italicBtn.dataset.mmcToggle = 'mmcItalic';
+            italicBtn.style.fontStyle = 'italic';
+
+            const underlineBtn = createToolbarButton('U', 'Underline', () => {
+                setFieldStyle(field, 'mmcUnderline', field.dataset.mmcUnderline === '1' ? '0' : '1');
+                syncActiveState();
+                field.focus();
+            });
+            underlineBtn.dataset.mmcToggle = 'mmcUnderline';
+            underlineBtn.style.textDecoration = 'underline';
+
+            const alignLeft = createToolbarButton('L', 'Align Left', () => {
+                setFieldStyle(field, 'mmcAlign', 'left');
+                syncActiveState();
+                field.focus();
+            });
+            alignLeft.dataset.mmcAlign = 'left';
+
+            const alignCenter = createToolbarButton('C', 'Align Center', () => {
+                setFieldStyle(field, 'mmcAlign', 'center');
+                syncActiveState();
+                field.focus();
+            });
+            alignCenter.dataset.mmcAlign = 'center';
+
+            const alignRight = createToolbarButton('R', 'Align Right', () => {
+                setFieldStyle(field, 'mmcAlign', 'right');
+                syncActiveState();
+                field.focus();
+            });
+            alignRight.dataset.mmcAlign = 'right';
+
+            const alignJustify = createToolbarButton('J', 'Justify', () => {
+                setFieldStyle(field, 'mmcAlign', 'justify');
+                syncActiveState();
+                field.focus();
+            });
+            alignJustify.dataset.mmcAlign = 'justify';
+
+            toolbar.appendChild(boldBtn);
+            toolbar.appendChild(italicBtn);
+            toolbar.appendChild(underlineBtn);
+            toolbar.appendChild(alignLeft);
+            toolbar.appendChild(alignCenter);
+            toolbar.appendChild(alignRight);
+            toolbar.appendChild(alignJustify);
+
+            field.parentNode.insertBefore(wrapper, field);
+            wrapper.appendChild(toolbar);
+            wrapper.appendChild(field);
+            field.dataset.mmcToolbarReady = '1';
+
+            setFieldStyle(field, 'mmcAlign', field.dataset.mmcAlign || 'left');
+            syncActiveState();
+        }
+
+        function applyEnhancements(field) {
+            if (!isEligible(field) || field.dataset.mmcTypingReady === '1') {
+                return;
+            }
+
+            field.setAttribute('spellcheck', 'true');
+            field.setAttribute('autocorrect', 'on');
+            field.setAttribute('autocapitalize', 'sentences');
+            if (!field.getAttribute('autocomplete')) {
+                field.setAttribute('autocomplete', 'on');
+            }
+
+            if (isTextInput(field)) {
+                field.setAttribute('list', LIST_ID);
+                field.addEventListener('input', () => updateSuggestionsList(field.value));
+                field.addEventListener('focus', () => updateSuggestionsList(field.value));
+            }
+
+            if (isNarrativeField(field)) {
+                field.addEventListener('input', () => applySentenceCaseToField(field));
+                field.addEventListener('blur', () => applySentenceCaseToField(field));
+            }
+
+            field.addEventListener('blur', () => collectTokens(field.value));
+
+            ensureToolbar(field);
+            field.dataset.mmcTypingReady = '1';
+        }
+
+        function scan(root) {
+            if (!root) {
+                return;
+            }
+            if (root.matches && root.matches('textarea, input[type="text"]')) {
+                applyEnhancements(root);
+            }
+            if (root.querySelectorAll) {
+                root.querySelectorAll('textarea, input[type="text"]').forEach(applyEnhancements);
+            }
+        }
+
+        tokens = loadTokens();
+        updateSuggestionsList('');
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { scan(document); });
+        } else {
+            scan(document);
+        }
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((m) => {
+                m.addedNodes.forEach((n) => scan(n));
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
+    </script>
+    
+    <!-- Communication System -->
+    {% if current_user.is_authenticated %}
+        <!-- User Settings -->
+        <script src="{{ url_for('static', filename='js/user-settings.js') }}"></script>
+
+        <!-- Add user ID meta tag for communication system -->
+        <meta name="user-id" content="{{ current_user.id }}">
+        
+        <!-- Include Socket.IO -->
+        <script src="{{ _sr }}/vendor/jsdelivr/npm/socket.io-client@4.5.4/dist/socket.io.min.js" onerror="this.onerror=null;this.src='https://cdn.socket.io/4.5.4/socket.io.min.js';"></script>
+        
+        <!-- Include Communication Components -->
+        {% include 'components/communication_icon.html' %}
+        {% include 'components/communication_modal.html' %}
+        
+        <!-- Include Communication JavaScript -->
+        <script src="{{ url_for('static', filename='js/communication.js') }}"></script>
+
+        {% if user_role in ['doctor', 'nurse'] %}
+            {% include 'components/emergency_code_button.html' %}
+            {% include 'components/emergency_code_modal.html' %}
+            <script src="{{ url_for('static', filename='js/emergency-codes.js') }}"></script>
+        {% endif %}
+    {% endif %}
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

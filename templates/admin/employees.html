@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .employees-page .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .employees-page .btn-add-employee {
+        padding: 6px 10px;
+        font-size: 12px;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .employees-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .employee-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .employee-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #4f46e5, #22c55e);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        flex: 0 0 auto;
+    }
+
+    .employee-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .employee-main {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .employee-name {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .employee-subtitle {
+        margin: 2px 0 10px 0;
+        font-size: 12px;
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .employee-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 10px;
+    }
+
+    .employee-meta .meta-item {
+        min-width: 0;
+    }
+
+    .employee-meta .meta-label {
+        display: block;
+        font-size: 10px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .employee-meta .meta-value {
+        font-size: 12px;
+        color: #111827;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .employee-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex: 0 0 auto;
+    }
+
+    .employee-actions .btn {
+        padding: 6px 8px;
+        font-size: 12px;
+        line-height: 1;
+    }
+
+    @media (min-width: 320px) and (max-width: 480px) {
+        .employees-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .employee-card {
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .employee-avatar {
+            width: 46px;
+            height: 46px;
+        }
+
+        .employee-meta {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<div class="content">
+    <div class="employees-page">
+    <div class="page-header">
+        <h2><i class="fas fa-id-badge"></i> Employee Management</h2>
+        <div class="page-actions">
+            <button class="btn btn-primary btn-add-employee" data-toggle="modal" data-target="#addEmployeeModal">
+                <i class="fas fa-plus"></i> Add New Employee
+            </button>
+        </div>
+    </div>
+    
+    <!-- Flash Messages (embed only; base.html already renders flashes) -->
+    {% if is_embed %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% endif %}
+    
+    <div class="employees-grid">
+        {% for employee in employees %}
+        <div class="employee-card">
+            <div class="employee-avatar" aria-hidden="true">
+                {% set _pic = '' %}
+                {% if employee.user %}
+                    {% set _pic = (employee.user.profile_picture or '')|replace('\\', '/') %}
+                    {% if _pic.startswith('/') %}{% set _pic = _pic[1:] %}{% endif %}
+                    {% if _pic.startswith('uploads/') %}{% set _pic = _pic[8:] %}{% endif %}
+                {% endif %}
+                {% if _pic and _pic.startswith('profile_pictures/') %}
+                    <img src="{{ url_for('serve_private_upload', filename=_pic) }}" alt="{{ employee.name }} profile picture">
+                {% else %}
+                    {{ (employee.name[:1] if employee.name else 'E')|upper }}
+                {% endif %}
+            </div>
+
+            <div class="employee-main">
+                <h3 class="employee-name">{{ employee.name }}</h3>
+                <div class="employee-subtitle">{{ employee.position if employee.position else 'No position set' }}</div>
+
+                <div class="employee-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Salary</span>
+                        <div class="meta-value">{{ "Ksh {:,.2f}".format(employee.salary) if employee.salary else 'N/A' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Hire Date</span>
+                        <div class="meta-value">{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else 'N/A' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Contact</span>
+                        <div class="meta-value">{{ employee.contact if employee.contact else 'N/A' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Email</span>
+                        <div class="meta-value">
+                            {{ employee.email if employee.email else (employee.user.email if employee.user and employee.user.email else 'N/A') }}
+                        </div>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">User</span>
+                        <div class="meta-value">
+                            {% if employee.user %}
+                                {{ employee.user.username }} ({{ employee.user.role }})
+                            {% else %}
+                                Not linked
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="employee-actions">
+                <button class="btn btn-sm btn-edit" data-id="{{ employee.id }}" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-delete" data-id="{{ employee.id }}" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+
+<!-- Add Employee Modal -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" role="dialog" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEmployeeModalLabel">Add New Employee</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addEmployeeForm" method="POST" action="{{ url_for('manage_employees') }}">
+                <input type="hidden" name="action" value="add">
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% endif %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="position">Position *</label>
+                        <input type="text" class="form-control" id="position" name="position" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="salary">Salary (Ksh)</label>
+                        <input type="number" step="0.01" class="form-control" id="salary" name="salary" placeholder="Enter amount in Ksh">
+                    </div>
+                    <div class="form-group">
+                        <label for="hire_date">Hire Date</label>
+                        <input type="date" class="form-control" id="hire_date" name="hire_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact">Contact Information</label>
+                        <input type="text" class="form-control" id="contact" name="contact" placeholder="Phone or email">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="employee@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="user_id">Associated User (optional)</label>
+                        <select class="form-control" id="user_id" name="user_id">
+                            <option value="">-- Select User --</option>
+                            {% for user in users|default([]) %}
+                                <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1" role="dialog" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editEmployeeModalLabel">Edit Employee</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editEmployeeForm" method="POST" action="{{ url_for('manage_employees') }}">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" id="edit_employee_id" name="employee_id">
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% endif %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit_name">Full Name *</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_position">Position *</label>
+                        <input type="text" class="form-control" id="edit_position" name="position" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_salary">Salary (Ksh)</label>
+                        <input type="number" step="0.01" class="form-control" id="edit_salary" name="salary" placeholder="Enter amount in Ksh">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_hire_date">Hire Date</label>
+                        <input type="date" class="form-control" id="edit_hire_date" name="hire_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_contact">Contact Information</label>
+                        <input type="text" class="form-control" id="edit_contact" name="contact" placeholder="Phone or email">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_email">Email Address</label>
+                        <input type="email" class="form-control" id="edit_email" name="email" placeholder="employee@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_user_id">Associated User (optional)</label>
+                        <select class="form-control" id="edit_user_id" name="user_id">
+                            <option value="">-- Select User --</option>
+                            {% for user in users|default([]) %}
+                                <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteEmployeeModal" tabindex="-1" role="dialog" aria-labelledby="deleteEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEmployeeModalLabel">Confirm Deletion</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('manage_employees') }}">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" id="delete_employee_id" name="employee_id">
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% endif %}
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this employee? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- DataTables and other JS libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    
+    // Edit employee modal handler with row data extraction
+    $('.btn-edit').click(function() {
+        const employeeId = $(this).data('id');
+
+        // Load full employee data via AJAX (works for both table and card layouts)
+        $.get(`/admin/employees/${employeeId}`, function(employeeData) {
+            if (employeeData.error) {
+                alert('Error: ' + employeeData.error);
+                return;
+            }
+
+            $('#edit_employee_id').val(employeeData.id);
+            $('#edit_name').val(employeeData.name || '');
+            $('#edit_position').val(employeeData.position || '');
+            $('#edit_salary').val(employeeData.salary ?? '');
+            $('#edit_hire_date').val(employeeData.hire_date || '');
+            $('#edit_contact').val(employeeData.contact || '');
+            $('#edit_email').val(employeeData.email || '');
+            $('#edit_user_id').val(employeeData.user_id || '');
+
+            $('#editEmployeeModal').modal('show');
+        }).fail(function(xhr, status, error) {
+            console.error('AJAX Error:', error);
+            alert('Error loading employee details. Please try again.');
+        });
+    });
+    
+    // Delete employee modal handler
+    $('.btn-delete').click(function() {
+        const employeeId = $(this).data('id');
+        $('#delete_employee_id').val(employeeId);
+        $('#deleteEmployeeModal').modal('show');
+    });
+    
+    // Form validation
+    $('#addEmployeeForm, #editEmployeeForm').on('submit', function() {
+        // Clear any previous error messages
+        $('.is-invalid').removeClass('is-invalid');
+        $('.invalid-feedback').remove();
+        
+        let isValid = true;
+        
+        // Validate required fields
+        $(this).find('[required]').each(function() {
+            if (!$(this).val().trim()) {
+                $(this).addClass('is-invalid');
+                $(this).after('<div class="invalid-feedback">This field is required</div>');
+                isValid = false;
+            }
+        });
+        
+        // Validate salary format if provided
+        const salaryInput = $(this).find('input[name="salary"]');
+        if (salaryInput.val().trim()) {
+            const salaryValue = parseFloat(salaryInput.val());
+            if (isNaN(salaryValue) || salaryValue < 0) {
+                salaryInput.addClass('is-invalid');
+                salaryInput.after('<div class="invalid-feedback">Please enter a valid salary amount</div>');
+                isValid = false;
+            }
+        }
+        
+        return isValid;
+    });
+});
+</script>
+{% endblock %}

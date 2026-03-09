@@ -1,0 +1,51 @@
+
+{% extends "base.html" %}
+
+{% block title %}Payroll{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Payroll</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('create_payroll') }}" class="btn btn-sm btn-outline-secondary">
+            Create Payroll
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Payroll Number</th>
+                <th>Employee</th>
+                <th>Pay Period</th>
+                <th>Amount</th>
+                <th>Payment Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payroll in payrolls %}
+            <tr>
+                <td>{{ payroll.payroll_number }}</td>
+                <td>{{ payroll.employee.name }}</td>
+                <td>{{ payroll.pay_period }}</td>
+                <td>{{ "{:,.2f}".format(payroll.amount) }}</td>
+                <td>{{ payroll.payment_date.strftime('%Y-%m-%d') if payroll.payment_date else '' }}</td>
+                <td>{{ payroll.status }}</td>
+                <td>
+                    <a href="{{ url_for('view_payroll', payroll_id=payroll.id) }}" class="btn btn-sm btn-info">View</a>
+                    <a href="{{ url_for('edit_payroll', payroll_id=payroll.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                    <form action="{{ url_for('delete_payroll', payroll_id=payroll.id) }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this payroll record?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

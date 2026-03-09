@@ -1,0 +1,1805 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+<div class="medical-tests-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1><i class="fas fa-flask"></i> Medical Tests Management</h1>
+                <p>Manage services, lab tests, and imaging tests</p>
+            </div>
+            <div class="current-date">
+                <span id="current-date"></span>
+            </div>
+        </div>
+    </div>
+
+    {% if is_embed %}
+    <div id="alert-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    {% endif %}
+
+    <div class="summary-cards-grid">
+        <div class="summary-card services">
+            <div class="card-icon">
+                <i class="fas fa-stethoscope"></i>
+            </div>
+            <div class="card-content">
+                <h3>Total Services</h3>
+                <div class="amount" id="total-services">{{ services|length }}</div>
+                <p>Medical services available</p>
+            </div>
+        </div>
+        
+        <div class="summary-card lab-tests">
+            <div class="card-icon">
+                <i class="fas fa-microscope"></i>
+            </div>
+            <div class="card-content">
+                <h3>Lab Tests</h3>
+                <div class="amount" id="total-lab-tests">{{ lab_tests|length }}</div>
+                <p>Laboratory tests available</p>
+            </div>
+        </div>
+        
+        <div class="summary-card imaging-tests">
+            <div class="card-icon">
+                <i class="fas fa-x-ray"></i>
+            </div>
+            <div class="card-content">
+                <h3>Imaging Tests</h3>
+                <div class="amount" id="total-imaging-tests">{{ imaging_tests|length }}</div>
+                <p>Imaging and radiology tests</p>
+            </div>
+        </div>
+        
+        <div class="summary-card active-tests">
+            <div class="card-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="card-content">
+                <h3>Active Items</h3>
+                <div class="amount" id="active-tests">{{ services|selectattr("is_active")|list|length + lab_tests|selectattr("is_active")|list|length + imaging_tests|selectattr("is_active")|list|length }}</div>
+                <p>Currently enabled services and tests</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigation-tabs">
+        <div class="tab active" data-tab="services">
+            <i class="fas fa-stethoscope"></i>
+            <span>Services</span>
+        </div>
+        <div class="tab" data-tab="lab-tests">
+            <i class="fas fa-microscope"></i>
+            <span>Lab Tests</span>
+        </div>
+        <div class="tab" data-tab="imaging-tests">
+            <i class="fas fa-x-ray"></i>
+            <span>Imaging Tests</span>
+        </div>
+    </div>
+
+    <!-- Services Tab -->
+    <div class="tab-content active" id="services-tab">
+        <div class="section-header">
+            <div class="section-title">
+                <h2><i class="fas fa-stethoscope"></i> Medical Services</h2>
+                <p>Manage medical services and their pricing</p>
+            </div>
+            <button class="btn btn-primary btn-with-icon" data-modal-target="add-service">
+                <i class="fas fa-plus"></i> Add Service
+            </button>
+        </div>
+        <div class="table-container">
+            <table id="services-table" class="simple-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Price (Ksh)</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in services %}
+                    <tr data-record-type="service" data-record-id="{{ service.id }}">
+                        {% set active = service.is_active if service.is_active is defined else true %}
+                        <td>{{ service.name }}</td>
+                        <td class="amount-cell">Ksh {{ "%.2f"|format(service.price) }}</td>
+                        <td>
+                            <span class="status-badge {% if active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ service.description or 'No description' }}</td>
+                        <td class="action-btns">
+                            <div class="btn-group">
+                                <button type="button" class="action-btn btn-primary"
+                                    data-action="edit-service"
+                                    data-service-id="{{ service.id }}"
+                                    data-service-name="{{ (service.name or '')|e }}"
+                                    data-service-price="{{ service.price }}"
+                                    data-service-description="{{ (service.description or '')|e }}"
+                                    data-service-active="{{ '1' if active else '0' }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="action-btn btn-secondary"
+                                        data-action="toggle-active"
+                                        data-record-type="service"
+                                        data-record-id="{{ service.id }}">
+                                    <i class="fas fa-toggle-{% if active %}on{% else %}off{% endif %}"></i>
+                                </button>
+                                <button class="action-btn btn-danger" 
+                                        data-delete-record="{{ service.id }}" 
+                                        data-record-type="service">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not services %}
+            <div class="empty-state" id="services-empty">
+                <i class="fas fa-stethoscope"></i>
+                <h3>No services added yet</h3>
+                <p>Add your first medical service to get started</p>
+                <button class="btn btn-primary" data-modal-target="add-service">
+                    <i class="fas fa-plus"></i> Add Service
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lab Tests Tab -->
+    <div class="tab-content" id="lab-tests-tab">
+        <div class="section-header">
+            <div class="section-title">
+                <h2><i class="fas fa-microscope"></i> Laboratory Tests</h2>
+                <p>Manage laboratory tests and their pricing</p>
+            </div>
+            <button class="btn btn-primary btn-with-icon" data-modal-target="add-lab-test">
+                <i class="fas fa-plus"></i> Add Lab Test
+            </button>
+        </div>
+        <div class="table-container">
+            <table id="lab-tests-table" class="simple-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Price (Ksh)</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test in lab_tests %}
+                    <tr data-record-type="lab-test" data-record-id="{{ test.id }}">
+                        {% set active = test.is_active if test.is_active is defined else true %}
+                        <td>{{ test.name }}</td>
+                        <td class="amount-cell">Ksh {{ "%.2f"|format(test.price) }}</td>
+                        <td>
+                            <span class="status-badge {% if active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ test.description or 'No description' }}</td>
+                        <td class="action-btns">
+                            <div class="btn-group">
+                                <button type="button" class="action-btn btn-primary"
+                                    data-action="edit-lab-test"
+                                    data-test-id="{{ test.id }}"
+                                    data-test-name="{{ (test.name or '')|e }}"
+                                    data-test-price="{{ test.price }}"
+                                    data-test-description="{{ (test.description or '')|e }}"
+                                    data-test-active="{{ '1' if active else '0' }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="action-btn btn-secondary"
+                                        data-action="toggle-active"
+                                        data-record-type="lab-test"
+                                        data-record-id="{{ test.id }}">
+                                    <i class="fas fa-toggle-{% if active %}on{% else %}off{% endif %}"></i>
+                                </button>
+                                <button class="action-btn btn-danger" 
+                                        data-delete-record="{{ test.id }}" 
+                                        data-record-type="lab-test">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not lab_tests %}
+            <div class="empty-state" id="lab-tests-empty">
+                <i class="fas fa-microscope"></i>
+                <h3>No lab tests added yet</h3>
+                <p>Add your first laboratory test to get started</p>
+                <button class="btn btn-primary" data-modal-target="add-lab-test">
+                    <i class="fas fa-plus"></i> Add Lab Test
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Imaging Tests Tab -->
+    <div class="tab-content" id="imaging-tests-tab">
+        <div class="section-header">
+            <div class="section-title">
+                <h2><i class="fas fa-x-ray"></i> Imaging Tests</h2>
+                <p>Manage imaging tests and their status</p>
+            </div>
+            <button class="btn btn-primary btn-with-icon" data-modal-target="add-imaging-test">
+                <i class="fas fa-plus"></i> Add Imaging Test
+            </button>
+        </div>
+        <div class="table-container">
+            <table id="imaging-tests-table" class="simple-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Price (Ksh)</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test in imaging_tests %}
+                    <tr data-record-type="imaging-test" data-record-id="{{ test.id }}">
+                        <td>{{ test.name }}</td>
+                        <td class="amount-cell">Ksh {{ "%.2f"|format(test.price) }}</td>
+                        <td>
+                            <span class="status-badge {% if test.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if test.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ test.description or 'No description' }}</td>
+                        <td class="action-btns">
+                            <div class="btn-group">
+                                <button type="button" class="action-btn btn-primary"
+                                    data-action="edit-imaging-test"
+                                    data-test-id="{{ test.id }}"
+                                    data-test-name="{{ (test.name or '')|e }}"
+                                    data-test-price="{{ test.price }}"
+                                    data-test-description="{{ (test.description or '')|e }}"
+                                    data-test-active="{{ '1' if test.is_active else '0' }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="action-btn btn-secondary"
+                                        data-action="toggle-active"
+                                        data-record-type="imaging-test"
+                                        data-record-id="{{ test.id }}">
+                                    <i class="fas fa-toggle-{% if test.is_active %}on{% else %}off{% endif %}"></i>
+                                </button>
+                                <button class="action-btn btn-danger" 
+                                        data-delete-record="{{ test.id }}" 
+                                        data-record-type="imaging-test">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not imaging_tests %}
+            <div class="empty-state" id="imaging-tests-empty">
+                <i class="fas fa-x-ray"></i>
+                <h3>No imaging tests added yet</h3>
+                <p>Add your first imaging test to get started</p>
+                <button class="btn btn-primary" data-modal-target="add-imaging-test">
+                    <i class="fas fa-plus"></i> Add Imaging Test
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal" id="add-service-modal" role="dialog" aria-modal="true" aria-labelledby="add-service-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="add-service-title">Add Medical Service</h2>
+            <button class="close-btn" data-modal-target="add-service">&times;</button>
+        </div>
+        <form id="add-service-form" method="POST" action="/admin/services/add">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="service-name">Service Name *</label>
+                <input type="text" id="service-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="service-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="service-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="service-description">Description</label>
+                <textarea id="service-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="service-active" name="is_active" value="true" checked>
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="add-service">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Service Modal -->
+<div class="modal" id="edit-service-modal" role="dialog" aria-modal="true" aria-labelledby="edit-service-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="edit-service-title">Edit Medical Service</h2>
+            <button class="close-btn" data-modal-target="edit-service">&times;</button>
+        </div>
+        <form id="edit-service-form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="id" id="edit-service-id">
+            <div class="form-group">
+                <label for="edit-service-name">Service Name *</label>
+                <input type="text" id="edit-service-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-service-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="edit-service-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="edit-service-description">Description</label>
+                <textarea id="edit-service-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit-service-active" name="is_active" value="true" checked>
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="edit-service">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Lab Test Modal -->
+<div class="modal" id="add-lab-test-modal" role="dialog" aria-modal="true" aria-labelledby="add-lab-test-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="add-lab-test-title">Add Laboratory Test</h2>
+            <button class="close-btn" data-modal-target="add-lab-test">&times;</button>
+        </div>
+        <form id="add-lab-test-form" method="POST" action="/admin/lab-tests/add">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="lab-test-name">Test Name *</label>
+                <input type="text" id="lab-test-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="lab-test-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="lab-test-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="lab-test-description">Description</label>
+                <textarea id="lab-test-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="lab-test-active" name="is_active" value="true" checked>
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="add-lab-test">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Lab Test Modal -->
+<div class="modal" id="edit-lab-test-modal" role="dialog" aria-modal="true" aria-labelledby="edit-lab-test-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="edit-lab-test-title">Edit Laboratory Test</h2>
+            <button class="close-btn" data-modal-target="edit-lab-test">&times;</button>
+        </div>
+        <form id="edit-lab-test-form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="id" id="edit-lab-test-id">
+            <div class="form-group">
+                <label for="edit-lab-test-name">Test Name *</label>
+                <input type="text" id="edit-lab-test-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-lab-test-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="edit-lab-test-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="edit-lab-test-description">Description</label>
+                <textarea id="edit-lab-test-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit-lab-test-active" name="is_active" value="true" checked>
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="edit-lab-test">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Imaging Test Modal -->
+<div class="modal" id="add-imaging-test-modal" role="dialog" aria-modal="true" aria-labelledby="add-imaging-test-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="add-imaging-test-title">Add Imaging Test</h2>
+            <button class="close-btn" data-modal-target="add-imaging-test">&times;</button>
+        </div>
+        <form id="add-imaging-test-form" method="POST" action="/admin/imaging-tests/add">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="imaging-test-name">Test Name *</label>
+                <input type="text" id="imaging-test-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="imaging-test-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="imaging-test-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="imaging-test-description">Description</label>
+                <textarea id="imaging-test-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="imaging-test-active" name="is_active" value="true" checked>
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="add-imaging-test">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Imaging Test Modal -->
+<div class="modal" id="edit-imaging-test-modal" role="dialog" aria-modal="true" aria-labelledby="edit-imaging-test-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="edit-imaging-test-title">Edit Imaging Test</h2>
+            <button class="close-btn" data-modal-target="edit-imaging-test">&times;</button>
+        </div>
+        <form id="edit-imaging-test-form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="id" id="edit-imaging-test-id">
+            <div class="form-group">
+                <label for="edit-imaging-test-name">Test Name *</label>
+                <input type="text" id="edit-imaging-test-name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-imaging-test-price">Price (Ksh) *</label>
+                <input type="number" step="0.01" id="edit-imaging-test-price" name="price" required min="0">
+            </div>
+            <div class="form-group">
+                <label for="edit-imaging-test-description">Description</label>
+                <textarea id="edit-imaging-test-description" name="description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit-imaging-test-active" name="is_active" value="true">
+                    <span class="checkmark"></span>
+                    Active
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" data-modal-target="edit-imaging-test">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal" id="delete-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="delete-confirm-title">Confirm Deletion</h2>
+            <button class="close-btn" data-modal-target="delete-confirm">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="delete-confirm-message">Are you sure you want to delete this record?</p>
+            <form id="delete-form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="id" id="delete-record-id">
+                <input type="hidden" name="type" id="delete-record-type">
+            </form>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn" data-modal-target="delete-confirm">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirm-delete-button">Delete</button>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.medical-tests-container {
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7f9;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--box-shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title h1 {
+    margin: 0;
+    color: var(--gray-800);
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.header-title p {
+    margin: 5px 0 0;
+    color: var(--gray-600);
+    font-size: 16px;
+}
+
+.current-date {
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.alert-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.summary-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.summary-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    box-shadow: var(--box-shadow);
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 24px;
+    color: white;
+}
+
+.services .card-icon {
+    background: linear-gradient(135deg, #17ead9, #6078ea);
+}
+
+.lab-tests .card-icon {
+    background: linear-gradient(135deg, #43cea2, #185a9d);
+}
+
+.imaging-tests .card-icon {
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+}
+
+.active-tests .card-icon {
+    background: linear-gradient(135deg, #f5515f, #9f041b);
+}
+
+.card-content h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+.amount {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 5px 0;
+}
+
+.card-content p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.navigation-tabs {
+    display: flex;
+    background: var(--white);
+    border-radius: var(--border-radius);
+    margin-bottom: 24px;
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+.tab {
+    padding: 16px 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+    border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+    background-color: var(--gray-100);
+}
+
+.tab.active {
+    border-bottom: 3px solid var(--primary);
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.tab i {
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-title h2 {
+    margin: 0;
+    color: var(--gray-800);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.section-title p {
+    margin: 5px 0 0;
+    color: var(--gray-600);
+    font-size: 14px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: #3651d3;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: var(--success);
+    color: var(--white);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.btn-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    /* Scroll vertically once rows exceed ~5 */
+    max-height: min(420px, 70vh);
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+    border: 2px solid #1f2937;
+}
+
+.simple-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+    background: var(--white);
+    margin: 0;
+    font-size: 14px;
+    border: none;
+}
+
+.simple-table thead {
+    background: #0d6efd;
+    color: white;
+}
+
+.simple-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d6efd;
+}
+
+.simple-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    border: 2px solid #0d6efd;
+    white-space: nowrap;
+    color: white;
+}
+
+.simple-table td {
+    padding: 12px 16px;
+    border: 1px solid #dee2e6;
+    white-space: nowrap;
+    background: #fff;
+}
+
+/* Compact row height */
+.simple-table th,
+.simple-table td {
+    padding: 8px 12px;
+    line-height: 1.3;
+}
+
+.simple-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.simple-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.simple-table tbody tr:last-child td {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.amount-cell {
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-active {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.status-inactive {
+    background: #fef7e0;
+    color: #b06000;
+}
+
+.action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.btn-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    flex-direction: row;
+}
+
+.action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+.action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.action-btn.btn-danger {
+    background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--gray-500);
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    color: var(--gray-600);
+}
+
+.empty-state p {
+    margin: 0 0 20px;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--gray-800);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--gray-500);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin-right: 10px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* Responsive Design */
+@media (min-width: 481px) and (max-width: 767px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .simple-table {
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .medical-tests-container {
+        padding: 16px;
+        margin: 0;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .summary-cards-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .summary-card {
+        padding: 10px;
+    }
+
+    .card-icon {
+        display: none;
+    }
+
+    .card-content h3 {
+        font-size: 10px;
+    }
+
+    .amount {
+        font-size: 14px;
+    }
+
+    .card-content p {
+        display: none;
+    }
+    
+    .navigation-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .tab {
+        flex: 0 0 auto;
+        min-width: unset;
+        justify-content: center;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+    }
+    
+    .action-btns .btn-group {
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+    
+    .simple-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .action-btn {
+        padding: 4px 8px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+
+window.medicalTests = {
+    tables: {},
+
+    init: function() {
+        this.setCurrentDate();
+        this.setupEventListeners();
+        this.initDataTables();
+        this.restoreTab();
+        this.updateEmptyStates();
+        this.recalculateCounts();
+    },
+
+    setCurrentDate: function() {
+        const today = new Date();
+        const el = document.getElementById('current-date');
+        if (!el) return;
+        el.textContent = today.toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+    },
+
+    restoreTab: function() {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = params.get('tab');
+        let fromStorage = null;
+        try {
+            if (window.localStorage) fromStorage = localStorage.getItem('medicalTests.activeTab');
+        } catch (_) {}
+        const tabId = fromUrl || fromStorage;
+        if (tabId && document.querySelector(`.tab[data-tab="${tabId}"]`)) {
+            this.switchTab(tabId);
+        }
+    },
+
+    setupEventListeners: function() {
+        // Tab switching
+        $(document).on('click', '.tab', function() {
+            const tabId = $(this).data('tab');
+            medicalTests.switchTab(tabId);
+        });
+
+        // Edit buttons (avoid inline onclick with templated strings)
+        $(document).on('click', '[data-action="edit-service"]', function() {
+            const id = Number(this.getAttribute('data-service-id'));
+            const name = this.getAttribute('data-service-name') || '';
+            const price = Number(this.getAttribute('data-service-price'));
+            const description = this.getAttribute('data-service-description') || '';
+            const isActive = this.getAttribute('data-service-active') === '1';
+            medicalTests.editService(id, name, price, description, isActive);
+        });
+
+        $(document).on('click', '[data-action="edit-lab-test"]', function() {
+            const id = Number(this.getAttribute('data-test-id'));
+            const name = this.getAttribute('data-test-name') || '';
+            const price = Number(this.getAttribute('data-test-price'));
+            const description = this.getAttribute('data-test-description') || '';
+            const isActive = this.getAttribute('data-test-active') === '1';
+            medicalTests.editLabTest(id, name, price, description, isActive);
+        });
+
+        $(document).on('click', '[data-action="edit-imaging-test"]', function() {
+            const id = Number(this.getAttribute('data-test-id'));
+            const name = this.getAttribute('data-test-name') || '';
+            const price = Number(this.getAttribute('data-test-price'));
+            const description = this.getAttribute('data-test-description') || '';
+            const isActive = this.getAttribute('data-test-active') === '1';
+            medicalTests.editImagingTest(id, name, price, description, isActive);
+        });
+
+        // Enable/disable toggle
+        $(document).on('click', '[data-action="toggle-active"]', function() {
+            const recordId = Number(this.getAttribute('data-record-id'));
+            const recordType = this.getAttribute('data-record-type');
+            medicalTests.toggleActive(recordType, recordId);
+        });
+
+        // Modal handling
+        $(document).on('click', '[data-modal-target]', function() {
+            const modalId = $(this).data('modal-target');
+            medicalTests.openModal(modalId);
+        });
+
+        $(document).on('click', '.close-btn', function() {
+            const modal = $(this).closest('.modal');
+            const modalId = modal.attr('id').replace('-modal', '');
+            medicalTests.closeModal(modalId);
+        });
+
+        $(document).on('click', '.modal', function(e) {
+            if (e.target === this) {
+                const modalId = $(this).attr('id').replace('-modal', '');
+                medicalTests.closeModal(modalId);
+            }
+        });
+
+        // Delete confirmation
+        $(document).on('click', '[data-delete-record]', function() {
+            const recordId = $(this).data('delete-record');
+            const recordType = $(this).data('record-type');
+            medicalTests.confirmDeleteRecord(recordId, recordType);
+        });
+
+        // Confirm delete button
+        $(document).on('click', '#confirm-delete-button', function() {
+            medicalTests.confirmDelete();
+        });
+
+        // Form submissions
+        this.setupFormSubmissions();
+    },
+
+    setupFormSubmissions: function() {
+        $('form[id$="-form"]').on('submit', function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const action = form.attr('action');
+            const method = form.attr('method') || 'POST';
+            const formData = new FormData(this);
+
+            fetch(action, {
+                method: method,
+                body: formData,
+                headers: {
+                    'X-CSRFToken': medicalTests.getCSRFToken()
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || data.success !== true) {
+                    medicalTests.showAlert('danger', (data && data.error) ? data.error : 'Request failed');
+                    return;
+                }
+
+                const modalId = form.closest('.modal').attr('id').replace('-modal', '');
+                medicalTests.closeModal(modalId);
+                medicalTests.showAlert('success', 'Saved successfully');
+
+                medicalTests.applyUpsertFromForm(this.id, data.data || {});
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                medicalTests.showAlert('danger', 'An error occurred. Please try again.');
+            });
+        });
+    },
+
+    initDataTables: function() {
+        if (!$.fn || !$.fn.DataTable) {
+            return;
+        }
+
+        const common = {
+            responsive: true,
+            paging: false,
+            info: false,
+            scrollY: '320px',
+            scrollCollapse: true,
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search...",
+            }
+        };
+
+        if ($('#services-table').length && !$.fn.DataTable.isDataTable('#services-table')) {
+            this.tables['service'] = $('#services-table').DataTable(common);
+        }
+        if ($('#lab-tests-table').length && !$.fn.DataTable.isDataTable('#lab-tests-table')) {
+            this.tables['lab-test'] = $('#lab-tests-table').DataTable(common);
+        }
+        if ($('#imaging-tests-table').length && !$.fn.DataTable.isDataTable('#imaging-tests-table')) {
+            this.tables['imaging-test'] = $('#imaging-tests-table').DataTable(common);
+        }
+    },
+
+    switchTab: function(tabId) {
+        $('.tab').removeClass('active');
+        $(`.tab[data-tab="${tabId}"]`).addClass('active');
+
+        $('.tab-content').removeClass('active');
+        $(`#${tabId}-tab`).addClass('active');
+
+        try {
+            if (window.localStorage) localStorage.setItem('medicalTests.activeTab', tabId);
+        } catch (_) {}
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', tabId);
+            window.history.replaceState({}, '', url.toString());
+        } catch (_) {}
+    },
+
+    openModal: function(modalId) {
+        $(`#${modalId}-modal`).css('display', 'flex');
+        $('body').css('overflow', 'hidden');
+    },
+
+    closeModal: function(modalId) {
+        $(`#${modalId}-modal`).hide();
+        $('body').css('overflow', '');
+    },
+
+    // Edit functions
+    editService: function(id, name, price, description, isActive) {
+        $('#edit-service-id').val(id);
+        $('#edit-service-name').val(name);
+        $('#edit-service-price').val(price);
+        $('#edit-service-description').val(description || '');
+        $('#edit-service-active').prop('checked', !!isActive);
+        $('#edit-service-form').attr('action', `/admin/services/${id}/update`);
+        this.openModal('edit-service');
+    },
+
+    editLabTest: function(id, name, price, description, isActive) {
+        $('#edit-lab-test-id').val(id);
+        $('#edit-lab-test-name').val(name);
+        $('#edit-lab-test-price').val(price);
+        $('#edit-lab-test-description').val(description || '');
+        $('#edit-lab-test-active').prop('checked', !!isActive);
+        $('#edit-lab-test-form').attr('action', `/admin/lab-tests/${id}/update`);
+        this.openModal('edit-lab-test');
+    },
+
+    editImagingTest: function(id, name, price, description, isActive) {
+        $('#edit-imaging-test-id').val(id);
+        $('#edit-imaging-test-name').val(name);
+        $('#edit-imaging-test-price').val(price);
+        $('#edit-imaging-test-description').val(description || '');
+        $('#edit-imaging-test-active').prop('checked', !!isActive);
+        $('#edit-imaging-test-form').attr('action', `/admin/imaging-tests/${id}/update`);
+        this.openModal('edit-imaging-test');
+    },
+
+    confirmDeleteRecord: function(id, type) {
+        $('#delete-record-id').val(id);
+        $('#delete-record-type').val(type);
+
+        let message = '';
+        switch(type) {
+            case 'service': message = 'Are you sure you want to delete this service?'; break;
+            case 'lab-test': message = 'Are you sure you want to delete this lab test?'; break;
+            case 'imaging-test': message = 'Are you sure you want to delete this imaging test?'; break;
+            default: message = 'Are you sure you want to delete this record?';
+        }
+
+        $('#delete-confirm-message').text(message);
+        $('#delete-form').attr('action', `/admin/${type}s/${id}/delete`);
+        this.openModal('delete-confirm');
+    },
+
+    confirmDelete: function() {
+        const form = document.getElementById('delete-form');
+        const action = form.getAttribute('action');
+        const formData = new FormData(form);
+        const headers = {};
+        const token = medicalTests.getCSRFToken();
+        if (token) headers['X-CSRFToken'] = token;
+        fetch(action, { method: 'POST', body: formData, headers })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    medicalTests.closeModal('delete-confirm');
+                    medicalTests.showAlert('success', 'Record deleted successfully');
+
+                    const id = Number(document.getElementById('delete-record-id').value);
+                    const type = document.getElementById('delete-record-type').value;
+                    medicalTests.removeRow(type, id);
+                    medicalTests.recalculateCounts();
+                } else {
+                    medicalTests.showAlert('danger', (data && data.error) ? data.error : 'Failed to delete record');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                medicalTests.showAlert('danger', 'An error occurred while deleting the record');
+            });
+    },
+
+    applyUpsertFromForm: function(formId, record) {
+        let type = null;
+        if (formId === 'add-service-form' || formId === 'edit-service-form') type = 'service';
+        if (formId === 'add-lab-test-form' || formId === 'edit-lab-test-form') type = 'lab-test';
+        if (formId === 'add-imaging-test-form' || formId === 'edit-imaging-test-form') type = 'imaging-test';
+
+        if (!type || !record || !record.id) {
+            this.recalculateCounts();
+            return;
+        }
+
+        this.upsertRow(type, record);
+        this.recalculateCounts();
+    },
+
+    escapeHtml: function(value) {
+        const s = String(value ?? '');
+        return s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    formatMoney: function(value) {
+        const num = Number(value);
+        if (Number.isFinite(num)) return num.toFixed(2);
+        return '0.00';
+    },
+
+    upsertRow: function(type, record) {
+        const table = this.tables[type] || null;
+
+        const id = Number(record.id);
+        const isActive = record.is_active === undefined ? true : !!record.is_active;
+
+        let rowData;
+        let rowHtml;
+        if (type === 'service') {
+            rowData = [
+                this.escapeHtml(record.name),
+                `<span class="amount-cell">Ksh ${this.formatMoney(record.price)}</span>`,
+                `<span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">${isActive ? 'Active' : 'Inactive'}</span>`,
+                this.escapeHtml(record.description || 'No description'),
+                `<div class="action-btns"><div class="btn-group">
+                    <button type="button" class="action-btn btn-primary"
+                        data-action="edit-service"
+                        data-service-id="${id}"
+                        data-service-name="${this.escapeHtml(record.name)}"
+                        data-service-price="${Number(record.price)}"
+                        data-service-description="${this.escapeHtml(record.description || '')}"
+                        data-service-active="${isActive ? '1' : '0'}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="action-btn btn-secondary"
+                        data-action="toggle-active"
+                        data-record-type="service"
+                        data-record-id="${id}">
+                        <i class="fas fa-toggle-${isActive ? 'on' : 'off'}"></i>
+                    </button>
+                    <button class="action-btn btn-danger"
+                        data-delete-record="${id}"
+                        data-record-type="service">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div></div>`
+            ];
+            rowHtml = `
+                <td>${rowData[0]}</td>
+                <td>${rowData[1]}</td>
+                <td>${rowData[2]}</td>
+                <td>${rowData[3]}</td>
+                <td>${rowData[4]}</td>`;
+        } else if (type === 'lab-test') {
+            rowData = [
+                this.escapeHtml(record.name),
+                `<span class="amount-cell">Ksh ${this.formatMoney(record.price)}</span>`,
+                `<span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">${isActive ? 'Active' : 'Inactive'}</span>`,
+                this.escapeHtml(record.description || 'No description'),
+                `<div class="action-btns"><div class="btn-group">
+                    <button type="button" class="action-btn btn-primary"
+                        data-action="edit-lab-test"
+                        data-test-id="${id}"
+                        data-test-name="${this.escapeHtml(record.name)}"
+                        data-test-price="${Number(record.price)}"
+                        data-test-description="${this.escapeHtml(record.description || '')}"
+                        data-test-active="${isActive ? '1' : '0'}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="action-btn btn-secondary"
+                        data-action="toggle-active"
+                        data-record-type="lab-test"
+                        data-record-id="${id}">
+                        <i class="fas fa-toggle-${isActive ? 'on' : 'off'}"></i>
+                    </button>
+                    <button class="action-btn btn-danger"
+                        data-delete-record="${id}"
+                        data-record-type="lab-test">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div></div>`
+            ];
+            rowHtml = `
+                <td>${rowData[0]}</td>
+                <td>${rowData[1]}</td>
+                <td>${rowData[2]}</td>
+                <td>${rowData[3]}</td>
+                <td>${rowData[4]}</td>`;
+        } else if (type === 'imaging-test') {
+            rowData = [
+                this.escapeHtml(record.name),
+                `<span class="amount-cell">Ksh ${this.formatMoney(record.price)}</span>`,
+                `<span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">${isActive ? 'Active' : 'Inactive'}</span>`,
+                this.escapeHtml(record.description || 'No description'),
+                `<div class="action-btns"><div class="btn-group">
+                    <button type="button" class="action-btn btn-primary"
+                        data-action="edit-imaging-test"
+                        data-test-id="${id}"
+                        data-test-name="${this.escapeHtml(record.name)}"
+                        data-test-price="${Number(record.price)}"
+                        data-test-description="${this.escapeHtml(record.description || '')}"
+                        data-test-active="${isActive ? '1' : '0'}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="action-btn btn-secondary"
+                        data-action="toggle-active"
+                        data-record-type="imaging-test"
+                        data-record-id="${id}">
+                        <i class="fas fa-toggle-${isActive ? 'on' : 'off'}"></i>
+                    </button>
+                    <button class="action-btn btn-danger"
+                        data-delete-record="${id}"
+                        data-record-type="imaging-test">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div></div>`
+            ];
+            rowHtml = `
+                <td>${rowData[0]}</td>
+                <td>${rowData[1]}</td>
+                <td>${rowData[2]}</td>
+                <td>${rowData[3]}</td>
+                <td>${rowData[4]}</td>`;
+        }
+
+        const selector = `tr[data-record-type="${type}"][data-record-id="${id}"]`;
+        if (table) {
+            const existing = $(selector);
+            if (existing.length) {
+                table.row(existing).data(rowData).draw(false);
+                const node = table.row(existing).node();
+                if (node) {
+                    node.setAttribute('data-record-type', type);
+                    node.setAttribute('data-record-id', String(id));
+                }
+            } else {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-record-type', type);
+                tr.setAttribute('data-record-id', String(id));
+                table.row.add(tr).draw(false);
+                const node = table.row(tr).node();
+                if (node) {
+                    table.row(node).data(rowData).draw(false);
+                    node.setAttribute('data-record-type', type);
+                    node.setAttribute('data-record-id', String(id));
+                }
+            }
+        } else {
+            const tableEl = this.getTableElement(type);
+            if (!tableEl) return;
+            const tbody = tableEl.querySelector('tbody');
+            if (!tbody) return;
+            let row = tbody.querySelector(selector);
+            if (!row) {
+                row = document.createElement('tr');
+                row.setAttribute('data-record-type', type);
+                row.setAttribute('data-record-id', String(id));
+                tbody.appendChild(row);
+            }
+            row.innerHTML = rowHtml;
+        }
+
+        this.updateEmptyStates();
+    },
+
+    getTableElement: function(type) {
+        if (type === 'service') return document.getElementById('services-table');
+        if (type === 'lab-test') return document.getElementById('lab-tests-table');
+        if (type === 'imaging-test') return document.getElementById('imaging-tests-table');
+        return null;
+    },
+
+    removeRow: function(type, id) {
+        const table = this.tables[type] || null;
+        const selector = `tr[data-record-type="${type}"][data-record-id="${Number(id)}"]`;
+        if (table) {
+            const existing = $(selector);
+            if (existing.length) {
+                table.row(existing).remove().draw(false);
+            }
+        } else {
+            const tableEl = this.getTableElement(type);
+            const tbody = tableEl ? tableEl.querySelector('tbody') : null;
+            const row = tbody ? tbody.querySelector(selector) : null;
+            if (row) row.remove();
+        }
+        this.updateEmptyStates();
+    },
+
+    updateEmptyStates: function() {
+        const serviceCount = this.tables['service'] ? this.tables['service'].rows().count() : document.querySelectorAll('#services-table tbody tr').length;
+        const labCount = this.tables['lab-test'] ? this.tables['lab-test'].rows().count() : document.querySelectorAll('#lab-tests-table tbody tr').length;
+        const imagingCount = this.tables['imaging-test'] ? this.tables['imaging-test'].rows().count() : document.querySelectorAll('#imaging-tests-table tbody tr').length;
+
+        $('#services-empty').toggle(serviceCount === 0);
+        $('#lab-tests-empty').toggle(labCount === 0);
+        $('#imaging-tests-empty').toggle(imagingCount === 0);
+    },
+
+    recalculateCounts: function() {
+        const serviceCount = this.tables['service'] ? this.tables['service'].rows().count() : document.querySelectorAll('#services-table tbody tr').length;
+        const labCount = this.tables['lab-test'] ? this.tables['lab-test'].rows().count() : document.querySelectorAll('#lab-tests-table tbody tr').length;
+        const imagingCount = this.tables['imaging-test'] ? this.tables['imaging-test'].rows().count() : document.querySelectorAll('#imaging-tests-table tbody tr').length;
+
+        $('#total-services').text(serviceCount);
+        $('#total-lab-tests').text(labCount);
+        $('#total-imaging-tests').text(imagingCount);
+
+        const activeBadges = document.querySelectorAll('.tab-content table tbody .status-badge.status-active');
+        $('#active-tests').text(activeBadges ? activeBadges.length : 0);
+    },
+
+    toggleActive: function(type, id) {
+        const endpoint = this.getToggleEndpoint(type, id);
+        if (!endpoint) return;
+
+        const headers = {};
+        const token = this.getCSRFToken();
+        if (token) headers['X-CSRFToken'] = token;
+
+        fetch(endpoint, { method: 'POST', headers })
+            .then(r => r.json())
+            .then(data => {
+                if (!data || data.success !== true) {
+                    this.showAlert('danger', (data && data.error) ? data.error : 'Failed to toggle');
+                    return;
+                }
+                const isActive = data.data ? !!data.data.is_active : false;
+                this.updateRowActiveState(type, id, isActive);
+                this.recalculateCounts();
+            })
+            .catch(err => {
+                console.error(err);
+                this.showAlert('danger', 'An error occurred while toggling');
+            });
+    },
+
+    getToggleEndpoint: function(type, id) {
+        if (type === 'service') return `/admin/services/${id}/toggle-active`;
+        if (type === 'lab-test') return `/admin/lab-tests/${id}/toggle-active`;
+        if (type === 'imaging-test') return `/admin/imaging-tests/${id}/toggle-active`;
+        return null;
+    },
+
+    updateRowActiveState: function(type, id, isActive) {
+        const row = document.querySelector(`tr[data-record-type="${type}"][data-record-id="${Number(id)}"]`);
+        if (!row) return;
+
+        const badge = row.querySelector('.status-badge');
+        if (badge) {
+            badge.classList.toggle('status-active', !!isActive);
+            badge.classList.toggle('status-inactive', !isActive);
+            badge.textContent = isActive ? 'Active' : 'Inactive';
+        }
+
+        const toggleBtnIcon = row.querySelector('[data-action="toggle-active"] i');
+        if (toggleBtnIcon) {
+            toggleBtnIcon.classList.remove('fa-toggle-on', 'fa-toggle-off');
+            toggleBtnIcon.classList.add(isActive ? 'fa-toggle-on' : 'fa-toggle-off');
+        }
+
+        // Keep edit button dataset in sync (so the modal loads correct state)
+        if (type === 'service') {
+            const editBtn = row.querySelector('[data-action="edit-service"]');
+            if (editBtn) editBtn.setAttribute('data-service-active', isActive ? '1' : '0');
+        } else if (type === 'lab-test') {
+            const editBtn = row.querySelector('[data-action="edit-lab-test"]');
+            if (editBtn) editBtn.setAttribute('data-test-active', isActive ? '1' : '0');
+        } else if (type === 'imaging-test') {
+            const editBtn = row.querySelector('[data-action="edit-imaging-test"]');
+            if (editBtn) editBtn.setAttribute('data-test-active', isActive ? '1' : '0');
+        }
+    },
+
+    getCSRFToken: function() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content) return meta.content;
+        const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+        if (match) return decodeURIComponent(match[1]);
+        const alt = document.cookie.match(/(?:^|; )csrf-access-token=([^;]*)/);
+        return alt ? decodeURIComponent(alt[1]) : null;
+    },
+
+    showAlert: function(type, message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), type || 'info');
+            return;
+        }
+        window.alert(String(message ?? ''));
+    }
+};
+
+// Initialize when DOM is ready
+$(document).ready(function() {
+    medicalTests.init();
+});
+</script>
+
+{% endblock %}

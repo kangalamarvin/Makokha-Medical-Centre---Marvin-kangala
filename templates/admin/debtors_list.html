@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Debtors{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Debtor Management</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Debtors List</h6>
+            <a href="{{ url_for('add_debtor') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Add Debtor
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Total Debt</th>
+                            <th>Amount Paid</th>
+                            <th>Amount Owed</th>
+                            <th>Last Payment</th>
+                            <th>Next Payment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for debtor in debtors %}
+                        <tr>
+                            <td>{{ debtor.name }}</td>
+                            <td>{{ debtor.contact }}</td>
+                            <td>{{ "%.2f"|format(debtor.Total_debt) }}</td>
+                            <td>{{ "%.2f"|format(debtor.amount_paid) }}</td>
+                            <td>{{ "%.2f"|format(debtor.amount_owed) }}</td>
+                            <td>{{ debtor.last_payment_date.strftime('%Y-%m-%d') if debtor.last_payment_date else 'N/A' }}</td>
+                            <td>{{ debtor.next_payment_date.strftime('%Y-%m-%d') if debtor.next_payment_date else 'N/A' }}</td>
+                            <td>
+                                <a href="{{ url_for('view_debtor', debtor_id=debtor.id) }}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('edit_debtor', debtor_id=debtor.id) }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('delete_debtor', debtor_id=debtor.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this debtor?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center">No debtors found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

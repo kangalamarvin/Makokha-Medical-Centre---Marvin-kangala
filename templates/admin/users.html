@@ -1,0 +1,1607 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+<div class="user-management-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1><i class="fas fa-users"></i> User Management</h1>
+                <p>Manage system users and their permissions</p>
+            </div>
+            <button class="btn btn-primary btn-with-icon btn-add-user" data-toggle="modal" data-target="#addUserModal">
+                <i class="fas fa-plus"></i> Add New User
+            </button>
+        </div>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <div class="table-container">
+        <table id="usersTable" class="simple-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">
+                                {% set pic = (user.profile_picture or '')|replace('\\', '/') %}
+                                {% if pic.startswith('uploads/') %}{% set pic = pic[8:] %}{% endif %}
+                                {% if pic and pic.startswith('profile_pictures/') %}
+                                    <img src="{{ url_for('serve_private_upload', filename=pic) }}" alt="{{ user.username }} profile picture">
+                                {% else %}
+                                    <i class="fas fa-user"></i>
+                                {% endif %}
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name">{{ user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td><span class="badge badge-role">{{ user.role }}</span></td>
+                    <td>
+                        <span class="status-badge {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
+                            {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% set ll = user.last_login_dt or user.last_login %}
+                        {% if ll %}
+                            {% if ll is string %}
+                                {{ ll }}
+                            {% else %}
+                                {{ ll.strftime('%Y-%m-%d %H:%M') }}
+                            {% endif %}
+                        {% else %}
+                            Never
+                        {% endif %}
+                    </td>
+                    <td class="action-btns">
+                        <div class="btn-group">
+                            <button
+                                class="action-btn btn-primary btn-edit"
+                                data-id="{{ user.id }}"
+                                data-allow-doctor-labtech="{{ '1' if cross_role_perms.get(user.id, {}).get('doctor_labtech') else '0' }}"
+                                data-allow-pharmacist-receptionist="{{ '1' if cross_role_perms.get(user.id, {}).get('pharmacist_receptionist') else '0' }}"
+                                data-toggle="modal"
+                                data-target="#editUserModal"
+                            >
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% if user.id != current_user.id %}
+                            <button class="action-btn btn-danger btn-delete" data-id="{{ user.id }}" data-toggle="modal" data-target="#deleteUserModal">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel" aria-hidden="true" {% if open_add_user_modal %}data-show="true"{% endif %}>
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="addUserModalLabel">Add New User</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {% set add_state = add_user_state or {} %}
+            {% set add_stage = add_state.get('stage', 'start') %}
+
+            <div class="modal-body">
+                <!-- Step 1: Email OTP -->
+                <form id="addUserOtpForm" method="POST" action="{{ url_for('manage_users') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="add_email">Email *</label>
+                            {% if add_stage in ['otp_sent', 'verified'] %}
+                                <input type="email" class="form-control" id="add_email" value="{{ add_state.get('email','') }}" disabled>
+                                <input type="hidden" name="email" value="{{ add_state.get('email','') }}">
+                            {% else %}
+                                <input type="email" class="form-control" id="add_email" name="email" value="{{ add_state.get('email','') }}" required>
+                            {% endif %}
+                        </div>
+
+                        {% if add_stage == 'otp_sent' %}
+                        <div class="form-group col-md-6">
+                            <label for="add_otp">OTP *</label>
+                            <input type="text" class="form-control" id="add_otp" name="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit OTP" required>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-actions">
+                        {% if add_stage == 'start' %}
+                            <button type="submit" class="btn btn-primary" name="action" value="add_request_otp">Request OTP</button>
+                        {% elif add_stage == 'otp_sent' %}
+                            <button type="submit" class="btn btn-primary" name="action" value="add_verify_otp">Confirm OTP</button>
+                            <button type="submit" class="btn btn-secondary ml-2" name="action" value="add_resend_otp">Resend OTP</button>
+                        {% elif add_stage == 'verified' %}
+                            <button type="button" class="btn btn-outline" disabled>Email verified</button>
+                        {% endif %}
+                    </div>
+                </form>
+
+                <hr>
+
+                <!-- Step 2: Finish adding user (only after OTP verified) -->
+                {% if add_stage == 'verified' %}
+                <form id="addUserForm" method="POST" action="{{ url_for('manage_users') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add">
+                    <input type="hidden" name="email" value="{{ add_state.get('email','') }}">
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="username">Username *</label>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ add_state.get('username','') }}" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="role">Role *</label>
+                            <select class="form-control" id="role" name="role" required>
+                                <option value="admin" {% if add_state.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+                                <option value="doctor" {% if add_state.get('role') == 'doctor' %}selected{% endif %}>Doctor</option>
+                                <option value="nurse" {% if add_state.get('role') == 'nurse' %}selected{% endif %}>Nurse</option>
+                                <option value="labtech" {% if add_state.get('role') == 'labtech' %}selected{% endif %}>Lab Technician</option>
+                                <option value="pharmacist" {% if add_state.get('role') == 'pharmacist' %}selected{% endif %}>Pharmacist</option>
+                                <option value="receptionist" {% if add_state.get('role') == 'receptionist' %}selected{% endif %}>Receptionist</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password *</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary toggle-password" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="password-strength-meter mt-2">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="password-strength-text">Password strength: <span id="passwordStrengthText">None</span></small>
+                        </div>
+                        <div class="password-requirements mt-2">
+                            <small class="form-text">Password requirements:</small>
+                            <ul class="list-unstyled">
+                                <li><small><i class="fas fa-circle text-muted" id="lengthReq"></i> At least 8 characters</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="upperReq"></i> At least one uppercase letter</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="lowerReq"></i> At least one lowercase letter</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="numberReq"></i> At least one number</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="specialReq"></i> At least one special character</small></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password *</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary toggle-password" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="password-match-text" id="passwordMatchText"></small>
+                    </div>
+
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" {% if add_state.get('is_active', True) %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Active User</label>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save User</button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog" aria-labelledby="editUserModalLabel" aria-hidden="true" data-backdrop="static" data-bs-backdrop="static" data-keyboard="false" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="editUserModalLabel">Edit User</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editUserForm" method="POST" action="{{ url_for('manage_users') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" id="edit_user_id" name="user_id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_username">Username *</label>
+                            <input type="text" class="form-control" id="edit_username" name="username" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="edit_email">Email *</label>
+                            <input type="email" class="form-control" id="edit_email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_role">Role *</label>
+                        <select class="form-control" id="edit_role" name="role" required>
+                            <option value="admin">Admin</option>
+                            <option value="doctor">Doctor</option>
+                            <option value="nurse">Nurse</option>
+                            <option value="labtech">Lab Technician</option>
+                            <option value="pharmacist">Pharmacist</option>
+                            <option value="receptionist">Receptionist</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="editCrossRoleAccessSection" style="display:none;">
+                        <label>Cross-Role Access</label>
+                        <div class="form-check" id="editCrossRoleDoctorLabtechRow" style="display:none;">
+                            <input type="checkbox" class="form-check-input" id="edit_allow_doctor_labtech" name="allow_doctor_labtech" value="1" disabled>
+                            <label class="form-check-label" for="edit_allow_doctor_labtech">Allow this doctor to open Lab Technician dashboard</label>
+                        </div>
+                        <div class="form-check" id="editCrossRolePharmReceptionRow" style="display:none;">
+                            <input type="checkbox" class="form-check-input" id="edit_allow_pharmacist_receptionist" name="allow_pharmacist_receptionist" value="1" disabled>
+                            <label class="form-check-label" for="edit_allow_pharmacist_receptionist">Allow this pharmacist to open Receptionist dashboard</label>
+                        </div>
+                        <small class="form-text text-muted">Only allowlisted users see the switch buttons; access is enforced server-side.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_profile_picture">Profile Picture</label>
+                        <div class="profile-picture-row">
+                            <div class="user-avatar user-avatar-lg" id="edit_profile_picture_preview" aria-hidden="true">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="profile-picture-fields">
+                                <input type="file" class="form-control-file" id="edit_profile_picture" name="profile_picture" accept="image/png,image/jpeg,image/gif">
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" class="form-check-input" id="edit_remove_profile_picture" name="remove_profile_picture" value="1">
+                                    <label class="form-check-label" for="edit_remove_profile_picture">Remove current picture</label>
+                                </div>
+                                <small class="form-text text-muted">Accepted formats: PNG, JPG, GIF</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_password">New Password (leave blank to keep current)</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="edit_password" name="password">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary toggle-password" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="password-strength-meter mt-2">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="password-strength-text">Password strength: <span id="editPasswordStrengthText">None</span></small>
+                        </div>
+                        <div class="password-requirements mt-2">
+                            <small class="form-text">Password requirements:</small>
+                            <ul class="list-unstyled">
+                                <li><small><i class="fas fa-circle text-muted" id="editLengthReq"></i> At least 8 characters</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="editUpperReq"></i> At least one uppercase letter</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="editLowerReq"></i> At least one lowercase letter</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="editNumberReq"></i> At least one number</small></li>
+                                <li><small><i class="fas fa-circle text-muted" id="editSpecialReq"></i> At least one special character</small></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="edit_is_active" name="is_active">
+                        <label class="form-check-label" for="edit_is_active">Active User</label>
+                    </div>
+
+                    <!-- Ward Assignments Section -->
+                    <div id="editWardAssignmentsSection" style="display:none;">
+                        <hr>
+                        <h5><i class="fas fa-bed"></i> Ward Assignments</h5>
+                        <p class="text-muted small">Assign user to specific wards for inpatient care</p>
+                        <div id="editWardAssignmentsList"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddEditWardAssignment">
+                            <i class="fas fa-plus"></i> Add Ward Assignment
+                        </button>
+                    </div>
+
+                    <!-- Department Assignments Section -->
+                    <div id="editDepartmentAssignmentsSection" style="display:none;">
+                        <hr>
+                        <h5><i class="fas fa-hospital"></i> Department Assignments</h5>
+                        <p class="text-muted small">Assign user to specific outpatient departments/clinics</p>
+                        <div id="editDepartmentAssignmentsList"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddEditDepartmentAssignment">
+                            <i class="fas fa-plus"></i> Add Department Assignment
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="deleteUserModalLabel">Confirm Deletion</h2>
+                <button type="button" class="close-btn" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('manage_users') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" id="delete_user_id" name="user_id">
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.user-management-container {
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7f9;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--box-shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title h1 {
+    margin: 0;
+    color: var(--gray-800);
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.header-title p {
+    margin: 5px 0 0;
+    color: var(--gray-600);
+    font-size: 16px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: #3651d3;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: var(--white);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-600);
+}
+
+.btn-outline:hover {
+    background: var(--gray-100);
+}
+
+.btn-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-add-user {
+    background: #28a745;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+}
+
+.btn-add-user:hover {
+    background: #218838;
+}
+
+.table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+    margin: 20px;
+    border: 2px solid #1f2937;
+}
+
+.simple-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+    background: var(--white);
+    margin: 0;
+    font-size: 14px;
+    border: none;
+}
+
+.simple-table thead {
+    background: #0d6efd;
+    color: white;
+}
+
+/* Keep the full header row visible while scrolling */
+#usersTable.simple-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d6efd;
+}
+
+.simple-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    border: 2px solid #0d6efd;
+    white-space: nowrap;
+    color: white;
+}
+
+.simple-table td {
+    padding: 12px 16px;
+    border: 1px solid #dee2e6;
+    white-space: nowrap;
+    background: #fff;
+}
+
+/* Compact row height */
+#usersTable.simple-table th,
+#usersTable.simple-table td {
+    padding: 8px 12px;
+    line-height: 1.3;
+}
+
+/* Allow wrapping for username and email columns if very long */
+#usersTable.simple-table td:nth-child(1),
+#usersTable.simple-table td:nth-child(2) {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 250px;
+}
+
+.simple-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.simple-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.simple-table tbody tr:last-child td {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 120px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    flex-direction: row;
+}
+
+.action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+.action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.action-btn.btn-danger {
+    background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-active {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.status-inactive {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.badge-role {
+    background: #e8f0fe;
+    color: #1a73e8;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-600);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.user-avatar.user-avatar-lg {
+    width: 72px;
+    height: 72px;
+}
+
+.profile-picture-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-picture-fields {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 500;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--gray-800);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--gray-500);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.input-group {
+    display: flex;
+}
+
+.input-group .form-control {
+    flex: 1;
+}
+
+.input-group-append {
+    margin-left: -1px;
+}
+
+.toggle-password {
+    cursor: pointer;
+    border-color: var(--gray-300);
+    border-left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    background: var(--gray-100);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.toggle-password:hover {
+    background-color: var(--gray-200);
+}
+
+.password-strength-meter {
+    margin-top: 8px;
+}
+
+.progress {
+    background-color: var(--gray-200);
+    border-radius: 4px;
+    height: 6px;
+    margin: 8px 0;
+}
+
+.progress-bar {
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.password-strength-text {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.password-requirements {
+    margin-top: 12px;
+}
+
+.password-requirements ul {
+    margin: 8px 0 0;
+    padding-left: 20px;
+}
+
+.password-requirements li {
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+.password-requirements .fa-circle {
+    font-size: 6px;
+    margin-right: 8px;
+}
+
+.password-match-text {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-check-input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.form-check-label {
+    margin: 0;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.alert-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+/* Responsive Design */
+@media (min-width: 481px) and (max-width: 767px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .simple-table {
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .user-management-container {
+        padding: 16px;
+        margin: 0;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .btn-add-user {
+        padding: 6px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .simple-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+    }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Auto-open add user modal on OTP flow
+    var addModal = $('#addUserModal');
+    if (addModal.attr('data-show') === 'true') {
+        try { addModal.modal('show'); } catch (e) {}
+    }
+
+    // Initialize DataTable
+
+    let editUserExistingAvatarSrc = '';
+
+    function setEditProfilePicturePreview(src) {
+        const container = $('#edit_profile_picture_preview');
+        if (!container.length) return;
+        container.empty();
+        const safeSrc = String(src || '').trim();
+        if (safeSrc) {
+            $('<img>', { src: safeSrc, alt: 'Profile picture' }).appendTo(container);
+        } else {
+            $('<i>', { class: 'fas fa-user' }).appendTo(container);
+        }
+    }
+
+    $('.btn-edit').click(function(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const userId = $(this).data('id');
+        // Find the table row and extract data
+        const row = $(this).closest('tr');
+        const avatarImg = row.find('.user-avatar img');
+        editUserExistingAvatarSrc = avatarImg.length ? String(avatarImg.attr('src') || '').trim() : '';
+
+        const user = {
+            id: userId,
+            username: row.find('.user-name').text(),
+            email: row.find('td:eq(1)').text(),
+            role: row.find('.badge-role').text().toLowerCase(),
+            is_active: row.find('.status-badge').hasClass('status-active')
+        };
+        
+        // Populate the edit form
+        $('#edit_user_id').val(user.id);
+        $('#edit_username').val(user.username);
+        $('#edit_email').val(user.email);
+        $('#edit_role').val(user.role);
+        $('#edit_is_active').prop('checked', user.is_active);
+        // Cross-role allowlists (admin-managed)
+        try {
+            const allowDoctorLabtech = String($(this).data('allowDoctorLabtech') || '').trim().toLowerCase();
+            const allowPharmReception = String($(this).data('allowPharmacistReceptionist') || '').trim().toLowerCase();
+            $('#edit_allow_doctor_labtech').prop('checked', allowDoctorLabtech === '1' || allowDoctorLabtech === 'true');
+            $('#edit_allow_pharmacist_receptionist').prop('checked', allowPharmReception === '1' || allowPharmReception === 'true');
+        } catch (e) {
+            $('#edit_allow_doctor_labtech').prop('checked', false);
+            $('#edit_allow_pharmacist_receptionist').prop('checked', false);
+        }
+        $('#edit_profile_picture').val('');
+        $('#edit_remove_profile_picture').prop('checked', false);
+        setEditProfilePicturePreview(editUserExistingAvatarSrc);
+        
+        // Show/hide assignment sections based on role
+        showAssignmentSectionsForRole(user.role);
+        
+        // Load ward and department assignments
+        loadUserAssignments(user.id);
+
+        try {
+            const modalEl = document.getElementById('editUserModal');
+            if (modalEl && window.bootstrap && bootstrap.Modal) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+        } catch (err) {
+            // no-op
+        }
+    });
+
+    $('#edit_profile_picture').on('change', function() {
+        const file = this.files && this.files[0] ? this.files[0] : null;
+        $('#edit_remove_profile_picture').prop('checked', false);
+        if (!file) {
+            setEditProfilePicturePreview(editUserExistingAvatarSrc);
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            setEditProfilePicturePreview(e && e.target ? e.target.result : '');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    $('#edit_remove_profile_picture').on('change', function() {
+        const checked = $(this).is(':checked');
+        if (checked) {
+            $('#edit_profile_picture').val('');
+            setEditProfilePicturePreview('');
+            return;
+        }
+        const input = document.getElementById('edit_profile_picture');
+        const hasFile = input && input.files && input.files.length > 0;
+        if (!hasFile) {
+            setEditProfilePicturePreview(editUserExistingAvatarSrc);
+        }
+    });
+        
+    // Delete user modal handler
+    $('.btn-delete').click(function() {
+        const userId = $(this).data('id');
+        $('#delete_user_id').val(userId);
+    });
+    
+    // Password toggle functionality
+    function setupPasswordToggle() {
+        $('.toggle-password').click(function() {
+            const inputGroup = $(this).closest('.input-group');
+            const input = inputGroup.find('input');
+            const icon = $(this).find('i');
+            
+            if (input.attr('type') === 'password') {
+                input.attr('type', 'text');
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                input.attr('type', 'password');
+                icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            }
+        });
+    }
+    
+    // Password strength checker
+    function checkPasswordStrength(password, prefix) {
+        let strength = 0;
+        let requirements = {
+            length: password.length >= 8,
+            upper: /[A-Z]/.test(password),
+            lower: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[^A-Za-z0-9]/.test(password)
+        };
+        
+        // Update requirement indicators
+        Object.keys(requirements).forEach((req, index) => {
+            const element = $(`#${prefix}${req.charAt(0).toUpperCase() + req.slice(1)}Req`);
+            if (requirements[req]) {
+                element.removeClass('text-muted').addClass('text-success');
+                strength += 20;
+            } else {
+                element.removeClass('text-success').addClass('text-muted');
+            }
+        });
+        
+        // Update strength meter
+        const progressBar = $(`#${prefix === 'edit' ? 'editUserModal' : 'addUserModal'} .progress-bar`);
+        const strengthText = $(`#${prefix}PasswordStrengthText`);
+        
+        progressBar.css('width', strength + '%');
+        
+        if (strength <= 40) {
+            progressBar.removeClass('bg-warning bg-success').addClass('bg-danger');
+            strengthText.text('Weak').removeClass('text-warning text-success').addClass('text-danger');
+        } else if (strength <= 80) {
+            progressBar.removeClass('bg-danger bg-success').addClass('bg-warning');
+            strengthText.text('Medium').removeClass('text-danger text-success').addClass('text-warning');
+        } else {
+            progressBar.removeClass('bg-danger bg-warning').addClass('bg-success');
+            strengthText.text('Strong').removeClass('text-danger text-warning').addClass('text-success');
+        }
+        
+        return strength === 100;
+    }
+    
+    // Password match checker
+    function checkPasswordMatch(password, confirmPassword, prefix) {
+        const matchText = $(`#${prefix}passwordMatchText`);
+        
+        if (!confirmPassword) {
+            matchText.text('');
+            return false;
+        }
+        
+        if (password === confirmPassword) {
+            matchText.text('Passwords match').removeClass('text-danger').addClass('text-success');
+            return true;
+        } else {
+            matchText.text('Passwords do not match').removeClass('text-success').addClass('text-danger');
+            return false;
+        }
+    }
+    
+    // Setup password validation for add user form
+    $('#password').on('input', function() {
+        const password = $(this).val();
+        checkPasswordStrength(password, '');
+        
+        const confirmPassword = $('#confirm_password').val();
+        if (confirmPassword) {
+            checkPasswordMatch(password, confirmPassword, '');
+        }
+    });
+    
+    $('#confirm_password').on('input', function() {
+        const password = $('#password').val();
+        const confirmPassword = $(this).val();
+        checkPasswordMatch(password, confirmPassword, '');
+    });
+    
+    // Setup password validation for edit user form
+    $('#edit_password').on('input', function() {
+        const password = $(this).val();
+        checkPasswordStrength(password, 'edit');
+    });
+    
+    // Setup password toggles
+    setupPasswordToggle();
+    
+    // Reset password fields when modals are closed
+    $('#addUserModal, #editUserModal').on('hidden.bs.modal', function() {
+        $(this).find('input[type="password"]').val('').attr('type', 'password');
+        $(this).find('.toggle-password i').removeClass('fa-eye-slash').addClass('fa-eye');
+        $(this).find('.progress-bar').css('width', '0%').removeClass('bg-danger bg-warning bg-success');
+        $(this).find('.password-strength-text span').text('None').removeClass('text-danger text-warning text-success');
+        $(this).find('.password-requirements i').removeClass('text-success').addClass('text-muted');
+        $(this).find('.password-match-text').text('').removeClass('text-danger text-success');
+
+        if (this && this.id === 'editUserModal') {
+            editUserExistingAvatarSrc = '';
+            $('#edit_profile_picture').val('');
+            $('#edit_remove_profile_picture').prop('checked', false);
+            setEditProfilePicturePreview('');
+            $('#edit_allow_doctor_labtech').prop('checked', false).prop('disabled', true);
+            $('#edit_allow_pharmacist_receptionist').prop('checked', false).prop('disabled', true);
+            $('#editCrossRoleAccessSection').hide();
+            $('#editCrossRoleDoctorLabtechRow').hide();
+            $('#editCrossRolePharmReceptionRow').hide();
+        }
+    });
+    
+    // Form validation
+    $('#addUserForm').submit(function(e) {
+        const password = $('#password').val();
+        const confirmPassword = $('#confirm_password').val();
+        
+        if (password && !checkPasswordStrength(password, '')) {
+            e.preventDefault();
+            showAlert('danger', 'Please meet all password requirements');
+            return false;
+        }
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            showAlert('danger', 'Passwords do not match');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    $('#editUserForm').submit(function(e) {
+        const password = $('#edit_password').val();
+        
+        // Only validate if a new password was provided
+        if (password && !checkPasswordStrength(password, 'edit')) {
+            e.preventDefault();
+            showAlert('danger', 'Please meet all password requirements');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Initialize password strength when modal is shown
+    $('#addUserModal').on('shown.bs.modal', function() {
+        $('#password').trigger('input');
+    });
+    
+    // Show alert message (delegates to global popup system)
+    function showAlert(type, message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), type || 'info');
+            return;
+        }
+        window.alert(String(message ?? ''));
+    }
+    
+    // Show/hide assignment sections based on role
+    function showAssignmentSectionsForRole(role) {
+        const wardSection = $('#editWardAssignmentsSection');
+        const deptSection = $('#editDepartmentAssignmentsSection');
+        const crossSection = $('#editCrossRoleAccessSection');
+        const docRow = $('#editCrossRoleDoctorLabtechRow');
+        const pharmRow = $('#editCrossRolePharmReceptionRow');
+        const docCb = $('#edit_allow_doctor_labtech');
+        const pharmCb = $('#edit_allow_pharmacist_receptionist');
+        
+        if (role === 'doctor' || role === 'nurse') {
+            wardSection.show();
+        } else {
+            wardSection.hide();
+        }
+        
+        if (role === 'doctor') {
+            deptSection.show();
+        } else {
+            deptSection.hide();
+        }
+
+        // Cross-role allowlists: only show relevant option for the selected role
+        if (role === 'doctor') {
+            crossSection.show();
+            docRow.show();
+            docCb.prop('disabled', false);
+
+            pharmRow.hide();
+            pharmCb.prop('checked', false).prop('disabled', true);
+        } else if (role === 'pharmacist') {
+            crossSection.show();
+            pharmRow.show();
+            pharmCb.prop('disabled', false);
+
+            docRow.hide();
+            docCb.prop('checked', false).prop('disabled', true);
+        } else {
+            crossSection.hide();
+            docRow.hide();
+            pharmRow.hide();
+            docCb.prop('checked', false).prop('disabled', true);
+            pharmCb.prop('checked', false).prop('disabled', true);
+        }
+    }
+    
+    // Handle role change in edit modal
+    $('#edit_role').change(function() {
+        const role = $(this).val();
+        showAssignmentSectionsForRole(role);
+    });
+    
+    // Load user ward and department assignments
+    function loadUserAssignments(userId) {
+        // Load ward assignments
+        $.get('/admin/user/' + userId + '/ward-assignments', function(data) {
+            renderWardAssignments(data.assignments || []);
+        }).fail(function() {
+            $('#editWardAssignmentsList').html('<div class="alert alert-warning">Could not load ward assignments</div>');
+        });
+        
+        // Load department assignments
+        $.get('/admin/user/' + userId + '/department-assignments', function(data) {
+            renderDepartmentAssignments(data.assignments || []);
+        }).fail(function() {
+            $('#editDepartmentAssignmentsList').html('<div class="alert alert-warning">Could not load department assignments</div>');
+        });
+    }
+    
+    // Render ward assignments
+    function renderWardAssignments(assignments) {
+        const container = $('#editWardAssignmentsList');
+        container.empty();
+
+        function esc(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        
+        if (assignments.length === 0) {
+            container.html('<div class="alert alert-info">No ward assignments</div>');
+            return;
+        }
+        
+        assignments.forEach(function(assignment) {
+            const assignmentId = Number(assignment.id);
+            const wardName = esc(assignment.ward_name || '');
+            const roleName = esc(assignment.role || '');
+            const html = `
+                <div class="card mb-2" data-assignment-id="${assignmentId}">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${wardName}</strong>
+                                <span class="badge badge-secondary ml-2">${roleName}</span>
+                                ${assignment.is_primary ? '<span class="badge badge-success ml-1">Primary</span>' : ''}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger btn-remove-ward" data-assignment-id="${assignmentId}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.append(html);
+        });
+    }
+    
+    // Render department assignments
+    function renderDepartmentAssignments(assignments) {
+        const container = $('#editDepartmentAssignmentsList');
+        container.empty();
+
+        function esc(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        
+        if (assignments.length === 0) {
+            container.html('<div class="alert alert-info">No department assignments</div>');
+            return;
+        }
+        
+        assignments.forEach(function(assignment) {
+            const assignmentId = Number(assignment.id);
+            const departmentName = esc(assignment.department_name || '');
+            const roleName = esc(assignment.role || '');
+            const html = `
+                <div class="card mb-2" data-assignment-id="${assignmentId}">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${departmentName}</strong>
+                                <span class="badge badge-secondary ml-2">${roleName}</span>
+                                ${assignment.is_primary ? '<span class="badge badge-success ml-1">Primary</span>' : ''}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger btn-remove-department" data-assignment-id="${assignmentId}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.append(html);
+        });
+    }
+    
+    // Add ward assignment button handler
+    $('#btnAddEditWardAssignment').click(function() {
+        const userId = $('#edit_user_id').val();
+        const userRole = $('#edit_role').val();
+        
+        // Get available wards
+        $.get('/admin/wards', function(wards) {
+            const rolesHtml = userRole === 'nurse' 
+                ? '<option value="incharge">In-Charge</option><option value="general">General</option><option value="student">Student</option><option value="intern">Intern</option>'
+                : '<option value="consultant">Consultant</option><option value="general">General</option>';
+                
+            const html = `
+                <div class="form-row">
+                    <div class="form-group col-md-5">
+                        <label>Ward</label>
+                        <select class="form-control ward-select">
+                            <option value="">Select Ward...</option>
+                            ${wards.map(w => `<option value="${w.id}">${w.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Role</label>
+                        <select class="form-control role-select">
+                            ${rolesHtml}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Primary</label>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input primary-check">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const result = confirm('Add new ward assignment?\n\nNote: This will save immediately.');
+            if (result) {
+                showWardAssignmentDialog(userId, wards);
+            }
+        });
+    });
+    
+    // Add department assignment button handler
+    $('#btnAddEditDepartmentAssignment').click(function() {
+        const userId = $('#edit_user_id').val();
+        
+        // Get available departments
+        $.get('/admin/departments', function(departments) {
+            showDepartmentAssignmentDialog(userId, departments);
+        });
+    });
+    
+    // Show ward assignment dialog (simplified version - you can enhance this)
+    function showWardAssignmentDialog(userId, wards) {
+        const wardId = prompt('Enter ward ID (see available wards in console):');
+        const role = prompt('Enter role (consultant, general, incharge, student, intern):');
+        const isPrimary = confirm('Is this the primary ward?');
+        
+        if (wardId && role) {
+            $.ajax({
+                url: '/admin/user/' + userId + '/ward-assignment',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    ward_id: parseInt(wardId),
+                    role: role,
+                    is_primary: isPrimary
+                }),
+                success: function() {
+                    showAlert('success', 'Ward assignment added successfully');
+                    loadUserAssignments(userId);
+                },
+                error: function(xhr) {
+                    showAlert('danger', xhr.responseJSON?.error || 'Failed to add ward assignment');
+                }
+            });
+        }
+    }
+    
+    // Show department assignment dialog
+    function showDepartmentAssignmentDialog(userId, departments) {
+        const deptId = prompt('Enter department ID (see available departments in console):');
+        const role = prompt('Enter role (consultant, general, specialist):');
+        const isPrimary = confirm('Is this the primary department?');
+        
+        if (deptId && role) {
+            $.ajax({
+                url: '/admin/user/' + userId + '/department-assignment',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    department_id: parseInt(deptId),
+                    role: role,
+                    is_primary: isPrimary
+                }),
+                success: function() {
+                    showAlert('success', 'Department assignment added successfully');
+                    loadUserAssignments(userId);
+                },
+                error: function(xhr) {
+                    showAlert('danger', xhr.responseJSON?.error || 'Failed to add department assignment');
+                }
+            });
+        }
+    }
+    
+    // Remove ward assignment handler (using event delegation)
+    $(document).on('click', '.btn-remove-ward', function() {
+        const assignmentId = $(this).data('assignment-id');
+        const userId = $('#edit_user_id').val();
+        
+        if (confirm('Remove this ward assignment?')) {
+            $.ajax({
+                url: '/admin/user/' + userId + '/ward-assignment/' + assignmentId,
+                method: 'DELETE',
+                success: function() {
+                    showAlert('success', 'Ward assignment removed');
+                    loadUserAssignments(userId);
+                },
+                error: function(xhr) {
+                    showAlert('danger', xhr.responseJSON?.error || 'Failed to remove ward assignment');
+                }
+            });
+        }
+    });
+    
+    // Remove department assignment handler
+    $(document).on('click', '.btn-remove-department', function() {
+        const assignmentId = $(this).data('assignment-id');
+        const userId = $('#edit_user_id').val();
+        
+        if (confirm('Remove this department assignment?')) {
+            $.ajax({
+                url: '/admin/user/' + userId + '/department-assignment/' + assignmentId,
+                method: 'DELETE',
+                success: function() {
+                    showAlert('success', 'Department assignment removed');
+                    loadUserAssignments(userId);
+                },
+                error: function(xhr) {
+                    showAlert('danger', xhr.responseJSON?.error || 'Failed to remove department assignment');
+                }
+            });
+        }
+    });
+    
+    // Local close buttons removed; global popup auto-closes
+});
+</script>
+{% endblock %}

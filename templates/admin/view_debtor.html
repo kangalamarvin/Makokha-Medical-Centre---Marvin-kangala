@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}View Debtor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">View Debtor</h1>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Debtor Information</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ debtor.name }}</p>
+                    <p><strong>Contact:</strong> {{ debtor.contact }}</p>
+                    <p><strong>Email:</strong> {{ debtor.email }}</p>
+                    <p><strong>Total Debt:</strong> {{ debtor.Total_debt }}</p>
+                    <p><strong>Amount Paid:</strong> {{ debtor.amount_paid }}</p>
+                    <p><strong>Balance:</strong> {{ debtor.Total_debt - debtor.amount_paid }}</p>
+                    <p><strong>Next Payment Date:</strong> {{ debtor.next_payment_date.strftime('%Y-%m-%d') if debtor.next_payment_date }}</p>
+                    <a href="{{ url_for('edit_debtor', debtor_id=debtor.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                    <a href="{{ url_for('debtors_list') }}" class="btn btn-secondary btn-sm">Back to List</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Make Payment</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('make_debtor_payment', debtor_id=debtor.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="payment_date" class="form-label">Payment Date</label>
+                            <input type="date" class="form-control" id="payment_date" name="payment_date" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">Record Payment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in debtor.payments %}
+                        <tr>
+                            <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ payment.amount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

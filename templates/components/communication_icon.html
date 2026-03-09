@@ -1,0 +1,145 @@
+<!-- Floating Communication Icon -->
+<div id="communication-float-icon" class="communication-float-icon" title="Messages">
+    <i class="bi bi-chat-dots-fill"></i>
+    <span class="unread-count" id="unread-messages-count" style="display: none;">0</span>
+</div>
+
+<style>
+.communication-float-icon {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px !important;
+    height: 60px !important;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px !important;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+    transition: all 0.3s ease;
+    z-index: 9998;
+}
+
+.communication-float-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6);
+}
+
+.communication-float-icon .unread-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 12px !important;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+    border: 2px solid white;
+}
+
+
+/* Pulse animation for new messages */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4), 0 0 0 10px rgba(13, 110, 253, 0.1);
+    }
+    100% {
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+    }
+}
+
+.communication-float-icon.has-unread {
+    animation: pulse 2s infinite;
+}
+
+/* Responsive Floating Icon */
+/* Extra Small Phones (320px - 480px) */
+@media (max-width: 480px) {
+    .communication-float-icon {
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 22px !important;
+        bottom: 12px;
+        right: 12px;
+    }
+
+    .communication-float-icon .unread-count {
+        font-size: 10px !important;
+        padding: 2px 6px;
+        min-width: 18px;
+    }
+
+}
+
+/* Small to Medium Phones (481px - 767px) */
+@media (min-width: 481px) and (max-width: 767px) {
+    .communication-float-icon {
+        width: 52px !important;
+        height: 52px !important;
+        font-size: 24px !important;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+/* Tablets Portrait (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .communication-float-icon {
+        width: 56px !important;
+        height: 56px !important;
+        font-size: 26px !important;
+        bottom: 18px;
+        right: 18px;
+    }
+}
+
+/* Large Screens (1281px+) */
+@media (min-width: 1281px) {
+    .communication-float-icon {
+        width: 65px !important;
+        height: 65px !important;
+        font-size: 30px !important;
+        bottom: 25px;
+        right: 25px;
+    }
+
+    .communication-float-icon .unread-count {
+        font-size: 13px !important;
+        padding: 3px 9px;
+    }
+
+}
+
+/* Touch Optimization */
+@media (hover: none) and (pointer: coarse) {
+    .communication-float-icon {
+        min-width: 48px;
+        min-height: 48px;
+    }
+
+    .communication-float-icon:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Landscape Orientation */
+@media (max-width: 896px) and (orientation: landscape) {
+    .communication-float-icon {
+        bottom: 10px;
+        right: 10px;
+        width: 46px !important;
+        height: 46px !important;
+        font-size: 20px !important;
+    }
+}
+</style>

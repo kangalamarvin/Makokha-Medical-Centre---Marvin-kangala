@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPO #{{ po.po_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .header .clinic-name {
+            font-size: 24px;
+            color: #34495e;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .header .clinic-details {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .lpo-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .lpo-box {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ecf0f1;
+            margin: 0 10px;
+        }
+        
+        .lpo-box h3 {
+            color: #2c3e50;
+            font-size: 14px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+        }
+        
+        .lpo-box p {
+            font-size: 12px;
+            margin: 5px 0;
+        }
+        
+        .lpo-number {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        table thead {
+            background: #34495e;
+            color: white;
+        }
+        
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #bdc3c7;
+        }
+        
+        table th {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        table td {
+            font-size: 11px;
+        }
+        
+        table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .total-row {
+            background: #ecf0f1 !important;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .notes-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+        }
+        
+        .notes-section h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding-top: 30px;
+        }
+        
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .signature-line {
+            border-top: 2px solid #2c3e50;
+            margin-top: 60px;
+            padding-top: 10px;
+        }
+        
+        .stamp-box {
+            width: 45%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            font-size: 10px;
+            color: #7f8c8d;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-received {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .status-cancelled {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            
+            .no-print {
+                display: none;
+            }
+            
+            /* Hide signature drawing tools and buttons */
+            .signature-drawing {
+                display: none !important;
+            }
+            
+            .signature-display button,
+            .signature-display .btn {
+                display: none !important;
+            }
+            
+            #signatureCanvas {
+                border: none !important;
+            }
+            
+            .signature-display img {
+                border: none !important;
+                max-width: 100%;
+            }
+            
+            #penModeIndicator {
+                display: none !important;
+            }
+            
+            /* Ensure rubber stamp is visible */
+            svg {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="clinic-name">MAKOKHA MEDICAL CENTRE</div>
+        <h1>LOCAL PURCHASE ORDER (LPO)</h1>
+        <div class="clinic-details">
+            P.O. Box 123, Nairobi, Kenya | Tel: +254 700 000 000 | Email: info@makokhamedical.co.ke
+        </div>
+    </div>
+    
+    <div class="lpo-number">
+        LPO #{{ po.po_number }}
+    </div>
+    
+    <div class="lpo-info">
+        <div class="lpo-box">
+            <h3>VENDOR DETAILS</h3>
+            <p><strong>Name:</strong> {{ po.vendor.name }}</p>
+            {% if po.vendor.contact_person %}
+            <p><strong>Contact Person:</strong> {{ po.vendor.contact_person }}</p>
+            {% endif %}
+            {% if po.vendor.phone %}
+            <p><strong>Phone:</strong> {{ po.vendor.phone }}</p>
+            {% endif %}
+            {% if po.vendor.email %}
+            <p><strong>Email:</strong> {{ po.vendor.email }}</p>
+            {% endif %}
+            {% if po.vendor.address %}
+            <p><strong>Address:</strong> {{ po.vendor.address }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="lpo-box">
+            <h3>ORDER INFORMATION</h3>
+            <p><strong>Date Ordered:</strong> {{ po.date_ordered.strftime('%B %d, %Y') }}</p>
+            {% if po.expected_delivery_date %}
+            <p><strong>Expected Delivery:</strong> {{ po.expected_delivery_date.strftime('%B %d, %Y') }}</p>
+            {% endif %}
+            <p><strong>Status:</strong> 
+                <span class="status-badge status-{{ po.status }}">
+                    {{ po.status|capitalize }}
+                </span>
+            </p>
+            <p><strong>Prepared By:</strong> {{ current_user.username }}</p>
+            <p><strong>Date Printed:</strong> {{ now.strftime('%B %d, %Y') }}</p>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;" class="text-center">#</th>
+                <th style="width: 45%;">DESCRIPTION</th>
+                <th style="width: 15%;" class="text-center">QUANTITY</th>
+                <th style="width: 15%;" class="text-right">UNIT PRICE (KSH)</th>
+                <th style="width: 15%;" class="text-right">TOTAL (KSH)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in po.items %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ item.description }}</td>
+                <td class="text-center">{{ item.quantity }}</td>
+                <td class="text-right">{{ "{:,.2f}".format(item.unit_price) }}</td>
+                <td class="text-right">{{ "{:,.2f}".format(item.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="4" class="text-right"><strong>TOTAL AMOUNT:</strong></td>
+                <td class="text-right"><strong>KSH {{ "{:,.2f}".format(po.total_amount) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    {% if po.notes %}
+    <div class="notes-section">
+        <h4>NOTES / SPECIAL INSTRUCTIONS:</h4>
+        <p>{{ po.notes }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="signature-section">
+        <div class="signature-box">
+            {% include 'components/signature_pad.html' %}
+        </div>
+        
+        <div class="stamp-box">
+            {{ generate_rubber_stamp() }}
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>This is a computer-generated document and is valid without signature if electronically verified.</p>
+        <p>Thank you for your business | Terms: Payment within 30 days unless otherwise specified</p>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+        <button onclick="window.print()" style="padding: 10px 30px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
+            <i class="fas fa-print"></i> Print LPO
+        </button>
+        <button onclick="window.close()" style="padding: 10px 30px; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; margin-left: 10px;">
+            Close
+        </button>
+    </div>
+</body>
+</html>

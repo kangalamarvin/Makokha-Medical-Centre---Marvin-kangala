@@ -1,0 +1,2212 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+<div class="content" id="rxBillingApp">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="mb-0">Reception Billing</h2>
+            <small class="text-muted">Select patient → Generate bill → Print or Share (PDF)</small>
+        </div>
+        <div class="text-right"></div>
+    </div>
+
+    <div class="row">
+        <!-- Patient selector -->
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="fas fa-users"></i> Patients</h6>
+
+                    <div class="form-group">
+                        <label class="mb-1">Patient Type</label>
+                        <select class="form-control" id="patientType">
+                            <option value="all">All</option>
+                            <option value="inpatient">Inpatient</option>
+                            <option value="outpatient">Outpatient</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="mb-1">Search</label>
+                        <input class="form-control" id="patientSearch" placeholder="Search by name / OP / IP">
+                        <small class="text-muted">Tip: start typing to narrow results.</small>
+                    </div>
+
+                    <div id="patientList" class="list-group" style="max-height: 420px; overflow:auto;">
+                        <div class="text-muted small">Loading patients…</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing / Receipt -->
+        <div class="col-lg-8 mb-3">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h6 class="mb-0"><i class="fas fa-file-invoice"></i> Bill</h6>
+                        <div>
+                            <span class="badge badge-info" id="patientBadge" style="display:none;"></span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div id="selectedPatient" class="mb-3">
+                        <div class="alert alert-info mb-0">Select a patient to begin.</div>
+                    </div>
+
+                    <div id="billOptions" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="mb-1">Payment Method</label>
+                                    <div class="d-flex" style="gap:10px; flex-wrap:wrap;">
+                                        <button type="button" class="btn btn-outline-primary payment-btn" data-method="mpesa">
+                                            <img src="{{ url_for('static', filename='images/mpesa-logo.png') }}" alt="M-Pesa" style="height:18px;"> M-Pesa
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success payment-btn active" data-method="cash">
+                                            <img src="{{ url_for('static', filename='images/cash-logo.png') }}" alt="Cash" style="height:18px;"> Cash
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary payment-btn" data-method="card">
+                                            <i class="fas fa-credit-card"></i> Card
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info payment-btn" data-method="insurance">
+                                            <img src="{{ url_for('static', filename='images/insurance-logo.png') }}" alt="Insurance" style="height:18px;"> Insurance
+                                        </button>
+                                        <button type="button" class="btn btn-outline-dark payment-btn" data-method="paypal">
+                                            <img src="{{ url_for('static', filename='images/paypal-logo.png') }}" alt="PayPal" style="height:18px;"> PayPal
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="paymentMethod" value="cash">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div id="cashFields" class="form-group">
+                                    <label class="mb-1">Amount Given (Cash)</label>
+                                    <input type="number" min="0" step="0.01" class="form-control" id="amountGiven" placeholder="Enter amount given">
+                                    <small class="text-muted">Change will be calculated on receipt.</small>
+                                </div>
+                                <div id="insuranceFields" class="form-group" style="display:none;">
+                                    <label class="mb-1">Insurance Policy Number</label>
+                                    <input class="form-control" id="insurancePolicyNumber" placeholder="Policy number">
+                                </div>
+                                <div id="cardFields" class="form-group" style="display:none;">
+                                    <label class="mb-1">Card Reference</label>
+                                    <input class="form-control" id="cardReference" placeholder="Card ref">
+                                </div>
+                                <div id="paypalFields" class="form-group" style="display:none;">
+                                    <label class="mb-1">PayPal Reference</label>
+                                    <input class="form-control" id="paypalReference" placeholder="PayPal ref">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="custom-control custom-checkbox" id="wardStayToggleWrap" style="display:none;">
+                                    <input type="checkbox" class="custom-control-input" id="includeWardStay" checked>
+                                    <label class="custom-control-label" for="includeWardStay">Include ward stay (Inpatient only)</label>
+                                </div>
+                                <div id="creditWorkflowPanel" class="mt-3" style="display:none;">
+                                    <div class="font-weight-bold mb-2">Credit Request Details</div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-2">
+                                            <label class="mb-1 small">Pledged Date *</label>
+                                            <input type="date" class="form-control form-control-sm" id="creditPledgedDate">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="mb-1 small">Patient Email</label>
+                                            <input type="email" class="form-control form-control-sm" id="creditPatientEmail" placeholder="patient@example.com">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="mb-1 small">Credit Notes</label>
+                                            <input type="text" class="form-control form-control-sm" id="creditNotes" placeholder="Optional notes">
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-warning" id="sendCreditRequestBtn">
+                                            <i class="fas fa-paper-plane"></i> Send Credit Request to Admin
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button type="button" class="btn btn-primary" id="generateBillBtn">
+                                    <i class="fas fa-receipt"></i> Generate Bill
+                                </button>
+                                <button type="button" class="btn btn-outline-warning" id="toggleCreditSalesBtn">
+                                    <i class="fas fa-file-invoice-dollar"></i> Credit Sales
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="billStatus" class="mt-3" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm" id="receiptCard" style="display:none;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0"><i class="fas fa-print"></i> Receipt</h6>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="printBtn"><i class="fas fa-print"></i> Print</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="shareEmailBtn"><i class="fas fa-envelope"></i> Share via Email (PDF)</button>
+                            <button type="button" class="btn btn-sm btn-success" id="shareBtn"><i class="fab fa-whatsapp"></i> Share via WhatsApp (PDF)</button>
+                            <a class="btn btn-sm btn-outline-primary" id="viewReceiptLink" target="_blank" style="display:none;"><i class="fas fa-external-link-alt"></i> Open</a>
+                        </div>
+                    </div>
+
+                    <div id="receiptPreview" class="receipt-preview"></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-3" id="patientCreditCard" style="display:none;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0"><i class="fas fa-file-invoice-dollar"></i> Patient Credit Accounts</h6>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPatientCreditBtn">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Request #</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                    <th>Total</th>
+                                    <th>Paid</th>
+                                    <th>Arrears</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientCreditRows">
+                                <tr><td colspan="7" class="text-muted">Select a patient to load credit requests.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bills history -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="mb-0"><i class="fas fa-history"></i> Created Bills</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshBillsBtn"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sale #</th>
+                            <th>Patient</th>
+                            <th>IP/OP</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Time</th>
+                            <th style="width: 260px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billsTable">
+                        <tr><td colspan="7" class="text-muted">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Receipt look */
+.receipt-preview {
+    background: #fff;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    padding: 14px;
+    max-width: 520px;
+    margin: 0 auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    color: #111;
+}
+.receipt-preview .r-center { text-align:center; }
+.receipt-preview .r-small { font-size: 12px; color:#333; }
+.receipt-preview .r-muted { color:#666; }
+.receipt-preview hr { border:0; border-top:1px dashed #ccc; margin:10px 0; }
+.receipt-preview table { width:100%; font-size:12px; }
+.receipt-preview td, .receipt-preview th { padding:4px 0; vertical-align: top; }
+.receipt-preview .r-right { text-align:right; }
+.receipt-preview .r-title { font-weight:700; letter-spacing: 0.3px; }
+
+@media print {
+    body * { visibility: hidden !important; }
+    #receiptCard, #receiptCard * { visibility: visible !important; }
+    #receiptCard { position: absolute; left: 0; top: 0; width: 100%; }
+    #receiptCard .btn { display: none !important; }
+    #viewReceiptLink { display:none !important; }
+}
+</style>
+
+<script>
+(function() {
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    const todayIso = new Date().toISOString().slice(0, 10);
+    // Use the *active* role so cross-role access (pharmacist → receptionist mode) works correctly.
+    const userRole = '{{ (mmc_active_role|string)|lower }}'.trim();
+    const canCreateBills = (userRole === 'receptionist' || userRole === 'admin');
+
+    let selectedPatient = null;
+    let lastGenerated = null; // { sale_id, sale_number, totals, sections }
+    let patientCreditRows = [];
+    let creditPanelVisible = false;
+
+    const elPatientType = document.getElementById('patientType');
+    const elPatientSearch = document.getElementById('patientSearch');
+    const elPatientList = document.getElementById('patientList');
+    const elSelectedPatient = document.getElementById('selectedPatient');
+    const elPatientBadge = document.getElementById('patientBadge');
+    const elBillOptions = document.getElementById('billOptions');
+    const elGenerateBillBtn = document.getElementById('generateBillBtn');
+    const elToggleCreditSalesBtn = document.getElementById('toggleCreditSalesBtn');
+    const elSendCreditRequestBtn = document.getElementById('sendCreditRequestBtn');
+    const elBillStatus = document.getElementById('billStatus');
+    const elReceiptCard = document.getElementById('receiptCard');
+    const elReceiptPreview = document.getElementById('receiptPreview');
+    const elPrintBtn = document.getElementById('printBtn');
+    const elShareEmailBtn = document.getElementById('shareEmailBtn');
+    const elShareBtn = document.getElementById('shareBtn');
+    const elViewReceiptLink = document.getElementById('viewReceiptLink');
+    const elBillsTable = document.getElementById('billsTable');
+    const elRefreshBillsBtn = document.getElementById('refreshBillsBtn');
+
+    const elPaymentMethod = document.getElementById('paymentMethod');
+    const elAmountGiven = document.getElementById('amountGiven');
+    const elInsurancePolicyNumber = document.getElementById('insurancePolicyNumber');
+    const elCardReference = document.getElementById('cardReference');
+    const elPaypalReference = document.getElementById('paypalReference');
+    const elWardStayToggleWrap = document.getElementById('wardStayToggleWrap');
+    const elIncludeWardStay = document.getElementById('includeWardStay');
+    const elCreditWorkflowPanel = document.getElementById('creditWorkflowPanel');
+    const elCreditPledgedDate = document.getElementById('creditPledgedDate');
+    const elCreditPatientEmail = document.getElementById('creditPatientEmail');
+    const elCreditNotes = document.getElementById('creditNotes');
+    const elPatientCreditCard = document.getElementById('patientCreditCard');
+    const elPatientCreditRows = document.getElementById('patientCreditRows');
+    const elRefreshPatientCreditBtn = document.getElementById('refreshPatientCreditBtn');
+
+    const elCashFields = document.getElementById('cashFields');
+    const elInsuranceFields = document.getElementById('insuranceFields');
+    const elCardFields = document.getElementById('cardFields');
+    const elPaypalFields = document.getElementById('paypalFields');
+
+    function fmtMoney(n) {
+        const v = Number(n || 0);
+        return 'KSh ' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function safe(s) {
+        return (s === null || s === undefined) ? '' : String(s);
+    }
+
+    function esc(s) {
+        return safe(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function safeHref(url) {
+        const raw = safe(url).trim();
+        if (!raw) return '#';
+        // Same-origin only. Prefer relative paths.
+        if (raw.startsWith('/')) return raw;
+        try {
+            const u = new URL(raw, window.location.origin);
+            if (u.origin === window.location.origin) {
+                return u.pathname + u.search + u.hash;
+            }
+        } catch (e) {
+            // Ignore invalid URLs.
+        }
+        return '#';
+    }
+
+    function normalizeReceiptSourceUrl(saleId, receiptUrl) {
+        const id = Number(saleId || 0);
+        let href = safeHref(receiptUrl);
+        if (!href || href === '#') {
+            href = id ? `/receptionist/sale/${id}/receipt` : '';
+        }
+        if (!href) return '';
+        try {
+            const u = new URL(href, window.location.origin);
+            u.searchParams.set('embedded', '1');
+            return u.toString();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function loadScriptOnce(src) {
+        return new Promise((resolve, reject) => {
+            const existing = document.querySelector(`script[src="${src}"]`);
+            if (existing) {
+                if (existing.dataset.loaded === '1') {
+                    resolve();
+                } else {
+                    existing.addEventListener('load', () => resolve(), { once: true });
+                    existing.addEventListener('error', () => reject(new Error('Failed to load script')), { once: true });
+                }
+                return;
+            }
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.dataset.loaded = '0';
+            s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+            s.onerror = () => reject(new Error('Failed to load script'));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function ensureHtml2CanvasReady() {
+        if (window.html2canvas) return true;
+        try { await loadScriptOnce('/vendor/jsdelivr/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) {}
+        if (window.html2canvas) return true;
+        try { await loadScriptOnce('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'); } catch (e) {}
+        return !!window.html2canvas;
+    }
+
+    async function captureReceiptPngForSale(saleId, receiptUrl) {
+        const src = normalizeReceiptSourceUrl(saleId, receiptUrl);
+        if (!src) return '';
+        const ready = await ensureHtml2CanvasReady();
+        if (!ready) return '';
+
+        return await new Promise((resolve) => {
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.left = '-20000px';
+            iframe.style.top = '0';
+            iframe.style.width = '900px';
+            iframe.style.height = '1600px';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            iframe.setAttribute('aria-hidden', 'true');
+
+            const cleanup = () => {
+                try { iframe.remove(); } catch (e) {}
+            };
+
+            iframe.onload = async function() {
+                try {
+                    const doc = iframe.contentDocument;
+                    if (!doc) {
+                        cleanup();
+                        resolve('');
+                        return;
+                    }
+                    const root = doc.querySelector('[data-receipt-root]') || doc.querySelector('.receipt-container') || doc.body;
+                    if (!root) {
+                        cleanup();
+                        resolve('');
+                        return;
+                    }
+
+                    const hidden = [];
+                    root.querySelectorAll('.no-print').forEach((el) => {
+                        hidden.push({ el, display: el.style.display, visibility: el.style.visibility });
+                        el.style.visibility = 'hidden';
+                        el.style.display = 'none';
+                    });
+
+                    try {
+                        const canvas = await window.html2canvas(root, {
+                            scale: 2,
+                            backgroundColor: '#ffffff',
+                            useCORS: true,
+                            logging: false,
+                        });
+                        resolve(canvas.toDataURL('image/png'));
+                    } catch (e) {
+                        resolve('');
+                    } finally {
+                        hidden.forEach((h) => {
+                            h.el.style.display = h.display;
+                            h.el.style.visibility = h.visibility;
+                        });
+                        cleanup();
+                    }
+                } catch (e) {
+                    cleanup();
+                    resolve('');
+                }
+            };
+
+            iframe.onerror = function() {
+                cleanup();
+                resolve('');
+            };
+
+            iframe.src = src;
+            document.body.appendChild(iframe);
+        });
+    }
+
+    async function buildReceiptPdfBlobForSale(saleId, receiptUrl) {
+        const id = Number(saleId || 0);
+        if (!id) {
+            throw new Error('Sale ID is required.');
+        }
+        const receiptPng = await captureReceiptPngForSale(id, receiptUrl);
+        if (!receiptPng) {
+            throw new Error('Unable to capture rendered receipt for PDF.');
+        }
+
+        const res = await fetch(`/api/sales/${id}/receipt.pdf`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({ receipt_png: receiptPng })
+        });
+        if (!res.ok) {
+            let msg = `HTTP ${res.status}`;
+            try {
+                const data = await res.json();
+                if (data && data.error) msg = data.error;
+            } catch (e) {}
+            throw new Error(msg);
+        }
+        const blob = await res.blob();
+        if (!blob || !blob.size) {
+            throw new Error('Generated PDF is empty.');
+        }
+        return blob;
+    }
+
+    function openPdfBlobForPrint(blob, filenameHint) {
+        if (!blob || !blob.size) return false;
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!w) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${String(filenameHint || 'receipt').replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+            return false;
+        }
+        setTimeout(() => {
+            try { w.focus(); w.print(); } catch (e) {}
+        }, 900);
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+        return true;
+    }
+
+    async function fetchJson(url, options) {
+        const res = await fetch(url, options);
+        const ct = res.headers.get('content-type') || '';
+        const isJson = ct.includes('application/json');
+        const data = isJson ? await res.json() : await res.text();
+        if (!res.ok) {
+            const msg = (isJson && data && data.error) ? data.error : (res.status + ' ' + res.statusText);
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    function patientTypeOf(p) {
+        return (p && p.ip_number && String(p.ip_number).trim() !== '') ? 'inpatient' : 'outpatient';
+    }
+
+    function matchesType(p) {
+        const t = elPatientType.value;
+        if (t === 'all') return true;
+        return patientTypeOf(p) === t;
+    }
+
+    function renderPatients(patients) {
+        elPatientList.innerHTML = '';
+        if (!patients || !patients.length) {
+            elPatientList.innerHTML = '<div class="text-muted small">No patients found.</div>';
+            return;
+        }
+        patients.filter(matchesType).forEach(p => {
+            const type = patientTypeOf(p);
+            const badge = type === 'inpatient' ? 'badge-warning' : 'badge-success';
+            const num = p.ip_number || p.op_number || '';
+            const a = document.createElement('button');
+            a.type = 'button';
+            a.className = 'list-group-item list-group-item-action';
+            a.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="font-weight-bold">${esc(p.name)}</div>
+                        <div class="small text-muted">${esc(num)} · Age: ${esc(p.age || 'N/A')} · ${esc(p.gender || 'N/A')}</div>
+                    </div>
+                    <span class="badge ${badge}">${type === 'inpatient' ? 'IP' : 'OP'}</span>
+                </div>
+            `;
+            a.addEventListener('click', () => selectPatient(p.id));
+            elPatientList.appendChild(a);
+        });
+    }
+
+    let searchTimer = null;
+    async function loadPatients() {
+        const q = (elPatientSearch.value || '').trim();
+        const limit = q ? 50 : 200;
+        const url = `/api/patients?search=${encodeURIComponent(q)}&limit=${limit}`;
+        const patients = await fetchJson(url);
+        renderPatients(patients);
+    }
+
+    async function selectPatient(patientId) {
+        elSelectedPatient.innerHTML = '<div class="text-muted">Loading patient…</div>';
+        elReceiptCard.style.display = 'none';
+        lastGenerated = null;
+
+        const p = await fetchJson(`/api/patients/${patientId}`);
+        selectedPatient = p;
+
+        const type = patientTypeOf(p);
+        elPatientBadge.style.display = 'inline-block';
+        elPatientBadge.className = 'badge ' + (type === 'inpatient' ? 'badge-warning' : 'badge-success');
+        elPatientBadge.textContent = type === 'inpatient' ? 'INPATIENT' : 'OUTPATIENT';
+
+        const num = (p.ip_number && String(p.ip_number).trim() !== '') ? p.ip_number : p.op_number;
+        elSelectedPatient.innerHTML = `
+            <div class="border rounded p-2">
+                <div class="font-weight-bold">${esc(p.name)}</div>
+                <div class="small text-muted">${esc(num || '')}</div>
+                <div class="small">Age: ${esc(p.age || 'N/A')} · Sex: ${esc(p.gender || 'N/A')}</div>
+                <div class="small">Phone: ${esc(p.phone || 'N/A')}</div>
+            </div>
+        `;
+
+        // Ward stay toggle only for inpatients
+        if (type === 'inpatient') {
+            elWardStayToggleWrap.style.display = 'block';
+            elIncludeWardStay.checked = true;
+        } else {
+            elWardStayToggleWrap.style.display = 'none';
+            elIncludeWardStay.checked = false;
+        }
+
+        elBillOptions.style.display = 'block';
+        if (!canCreateBills) {
+            elGenerateBillBtn.disabled = true;
+            elGenerateBillBtn.title = 'Only Receptionist/Admin can create bills.';
+            elToggleCreditSalesBtn.disabled = true;
+            elToggleCreditSalesBtn.title = 'Only Receptionist/Admin can access credit sales.';
+            elSendCreditRequestBtn.disabled = true;
+            elSendCreditRequestBtn.title = 'Only Receptionist/Admin can submit credit requests.';
+        } else {
+            elGenerateBillBtn.disabled = false;
+            elGenerateBillBtn.title = '';
+            elToggleCreditSalesBtn.disabled = false;
+            elToggleCreditSalesBtn.title = '';
+            elSendCreditRequestBtn.disabled = false;
+            elSendCreditRequestBtn.title = '';
+        }
+
+        if (!elCreditPledgedDate.value) {
+            elCreditPledgedDate.value = todayIso;
+        }
+        if (creditPanelVisible) {
+            await loadPatientCreditRequests(p.id);
+        } else {
+            elPatientCreditCard.style.display = 'none';
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Credit entries hidden. Click Credit Sales to view.</td></tr>';
+        }
+    }
+
+    function setStatus(kind, msg) {
+        elBillStatus.style.display = 'block';
+        const cls = kind === 'error' ? 'alert-danger' : (kind === 'success' ? 'alert-success' : 'alert-info');
+        elBillStatus.className = 'alert ' + cls;
+        elBillStatus.textContent = msg;
+    }
+
+    function setCreditPanelVisible(showPanel) {
+        creditPanelVisible = !!showPanel;
+        if (elCreditWorkflowPanel) {
+            elCreditWorkflowPanel.style.display = creditPanelVisible ? 'block' : 'none';
+        }
+        if (elToggleCreditSalesBtn) {
+            elToggleCreditSalesBtn.classList.toggle('btn-warning', creditPanelVisible);
+            elToggleCreditSalesBtn.classList.toggle('btn-outline-warning', !creditPanelVisible);
+            elToggleCreditSalesBtn.innerHTML = creditPanelVisible
+                ? '<i class="fas fa-times-circle"></i> Hide Credit Sales'
+                : '<i class="fas fa-file-invoice-dollar"></i> Credit Sales';
+        }
+        if (!creditPanelVisible) {
+            elPatientCreditCard.style.display = 'none';
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Credit entries hidden. Click Credit Sales to view.</td></tr>';
+        } else if (selectedPatient && selectedPatient.id) {
+            loadPatientCreditRequests(selectedPatient.id);
+        }
+    }
+
+    function setPaymentMethod(method) {
+        elPaymentMethod.value = method;
+        document.querySelectorAll('.payment-btn').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-method') === method);
+        });
+        elCashFields.style.display = (method === 'cash') ? 'block' : 'none';
+        elInsuranceFields.style.display = (method === 'insurance') ? 'block' : 'none';
+        elCardFields.style.display = (method === 'card') ? 'block' : 'none';
+        elPaypalFields.style.display = (method === 'paypal') ? 'block' : 'none';
+    }
+
+    async function collectBillable(patientId) {
+        const type = patientTypeOf(selectedPatient);
+        const [services, labs, imaging, prescriptions, controlled] = await Promise.all([
+            fetchJson(`/api/patient/${patientId}/completed-services`),
+            fetchJson(`/api/patient/${patientId}/completed-labs`),
+            fetchJson(`/api/patient/${patientId}/completed-imaging`),
+            fetchJson(`/api/patient/${patientId}/prescriptions`),
+            fetchJson(`/api/patient/${patientId}/controlled-prescriptions`),
+        ]);
+
+        let wardPreview = null;
+        if (type === 'inpatient') {
+            try {
+                wardPreview = await fetchJson(`/api/patient/${patientId}/ward-stay-preview`);
+            } catch (e) {
+                wardPreview = null;
+            }
+        }
+
+        const rxItems = [];
+        (prescriptions || []).forEach(pr => {
+            (pr.items || []).forEach(it => rxItems.push(it));
+        });
+        const crxItems = [];
+        (controlled || []).forEach(pr => {
+            (pr.items || []).forEach(it => crxItems.push(it));
+        });
+
+        return { services, labs, imaging, rxItems, crxItems, wardPreview };
+    }
+
+    function creditStatusBadge(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'approved') return '<span class="badge badge-success">APPROVED</span>';
+        if (s === 'pending') return '<span class="badge badge-warning">PENDING</span>';
+        if (s === 'rejected') return '<span class="badge badge-secondary">REJECTED</span>';
+        return `<span class="badge badge-light">${esc(s || 'UNKNOWN')}</span>`;
+    }
+
+    function creditArrearsForRow(row) {
+        const total = Number(row && row.total_amount || 0);
+        const paid = Number(row && row.amount_paid || 0);
+        return Math.max(0, total - paid);
+    }
+
+    function renderPatientCreditRows() {
+        if (!creditPanelVisible) {
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Credit entries hidden. Click Credit Sales to view.</td></tr>';
+            return;
+        }
+        if (!selectedPatient) {
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Select a patient to load credit requests.</td></tr>';
+            return;
+        }
+
+        if (!patientCreditRows.length) {
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">No credit requests found for this patient.</td></tr>';
+            return;
+        }
+
+        elPatientCreditRows.innerHTML = patientCreditRows.map(row => {
+            const owed = creditArrearsForRow(row);
+            const canPay = String(row.status || '').toLowerCase() === 'approved' && owed > 0.005;
+            return `
+                <tr>
+                    <td>
+                        <strong>${esc(row.request_number || '')}</strong><br>
+                        <small class="text-muted">${esc((row.created_at || '').replace('T', ' ').slice(0, 16))}</small>
+                    </td>
+                    <td>${creditStatusBadge(row.status)}</td>
+                    <td>${esc(row.pledged_payment_date || '-')}</td>
+                    <td>${fmtMoney(row.total_amount || 0)}</td>
+                    <td>${fmtMoney(row.amount_paid || 0)}</td>
+                    <td><strong>${fmtMoney(owed)}</strong></td>
+                    <td>
+                        ${canPay ? `<button class="btn btn-sm btn-outline-primary" data-action="credit-pay" data-id="${esc(row.id)}">Record Payment</button>` : '<span class="text-muted">-</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function loadPatientCreditRequests(patientId) {
+        if (!creditPanelVisible) {
+            patientCreditRows = [];
+            elPatientCreditCard.style.display = 'none';
+            elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Credit entries hidden. Click Credit Sales to view.</td></tr>';
+            return;
+        }
+        if (!patientId) {
+            patientCreditRows = [];
+            renderPatientCreditRows();
+            return;
+        }
+
+        elPatientCreditCard.style.display = 'block';
+        elPatientCreditRows.innerHTML = '<tr><td colspan="7" class="text-muted">Loading credit requests...</td></tr>';
+
+        try {
+            const data = await fetchJson(`/api/credit-requests/patient/${patientId}?include_items=1&include_payments=1&limit=150`);
+            patientCreditRows = (data && Array.isArray(data.rows)) ? data.rows : [];
+            patientCreditRows.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+            renderPatientCreditRows();
+        } catch (e) {
+            patientCreditRows = [];
+            elPatientCreditRows.innerHTML = `<tr><td colspan="7" class="text-danger">Failed to load credit requests: ${esc(e.message || 'Unknown error')}</td></tr>`;
+        }
+    }
+
+    async function recordPatientCreditPayment(requestId) {
+        const row = patientCreditRows.find(r => Number(r.id) === Number(requestId));
+        if (!row) {
+            setStatus('error', 'Credit request not found.');
+            return;
+        }
+
+        const owed = creditArrearsForRow(row);
+        if (!(owed > 0)) {
+            setStatus('error', 'This credit request has no outstanding balance.');
+            return;
+        }
+
+        const rawAmount = window.prompt(`Outstanding balance: ${fmtMoney(owed)}\nEnter amount to record:`, owed.toFixed(2));
+        if (rawAmount === null) return;
+        const amount = Number(rawAmount);
+        if (!(amount > 0)) {
+            setStatus('error', 'Invalid payment amount.');
+            return;
+        }
+        if (amount > owed) {
+            setStatus('error', 'Amount exceeds outstanding balance.');
+            return;
+        }
+
+        const paymentDate = window.prompt('Payment date (YYYY-MM-DD):', todayIso) || todayIso;
+        const paymentMethod = (window.prompt('Payment method (cash/mpesa/card/bank/insurance/paypal/other):', 'cash') || 'cash').trim().toLowerCase();
+        const reference = (window.prompt('Reference (optional):', '') || '').trim();
+        const notes = (window.prompt('Notes (optional):', '') || '').trim();
+
+        try {
+            setStatus('info', `Recording payment for ${row.request_number}...`);
+            await fetchJson(`/api/credit-requests/${row.id}/payments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    payment_date: paymentDate,
+                    payment_method: paymentMethod,
+                    reference: reference,
+                    notes: notes,
+                }),
+            });
+            setStatus('success', 'Credit payment recorded successfully.');
+            await loadPatientCreditRequests(selectedPatient && selectedPatient.id);
+        } catch (e) {
+            setStatus('error', e.message || 'Failed to record credit payment.');
+        }
+    }
+
+    async function sendCreditRequest() {
+        if (!selectedPatient) {
+            setStatus('error', 'Select a patient first.');
+            return;
+        }
+        if (!creditPanelVisible) {
+            setStatus('error', 'Open Credit Sales first.');
+            return;
+        }
+        if (!canCreateBills) {
+            setStatus('error', 'Unauthorized: only Receptionist/Admin can create credit requests.');
+            return;
+        }
+
+        const pledgedDate = (elCreditPledgedDate.value || '').trim();
+        if (!pledgedDate) {
+            setStatus('error', 'Pledged payment date is required for credit requests.');
+            return;
+        }
+
+        setStatus('info', 'Collecting billable items for credit request...');
+        elSendCreditRequestBtn.disabled = true;
+
+        try {
+            const data = await collectBillable(selectedPatient.id);
+            const serviceIds = (data.services || []).map(r => r.service_id).filter(Boolean);
+            const labIds = (data.labs || []).map(r => r.lab_test_id).filter(Boolean);
+            const imagingIds = (data.imaging || []).map(r => r.imaging_test_id).filter(Boolean);
+            const rxItemIds = (data.rxItems || []).map(r => r.id).filter(Boolean);
+            const crxItemIds = (data.crxItems || []).map(r => r.id).filter(Boolean);
+
+            const inpatient = patientTypeOf(selectedPatient) === 'inpatient';
+            const includeWard = inpatient && elIncludeWardStay.checked && data.wardPreview && data.wardPreview.assigned && Number(data.wardPreview.amount || 0) > 0;
+
+            const total =
+                (data.services || []).reduce((a, r) => a + Number(r.price || r.service_price || 0), 0) +
+                (data.labs || []).reduce((a, r) => a + Number(r.price || 0), 0) +
+                (data.imaging || []).reduce((a, r) => a + Number(r.price || 0), 0) +
+                (data.rxItems || []).reduce((a, r) => a + Number(r.total_price || 0), 0) +
+                (data.crxItems || []).reduce((a, r) => a + Number(r.total_price || 0), 0) +
+                (includeWard ? Number(data.wardPreview.amount || 0) : 0);
+
+            if (total <= 0) {
+                setStatus('error', 'No billable items found to send for credit approval.');
+                return;
+            }
+
+            const payload = {
+                patient_id: selectedPatient.id,
+                services: serviceIds,
+                labs: labIds,
+                imaging_tests: imagingIds,
+                prescription_items: rxItemIds,
+                controlled_prescription_items: crxItemIds,
+                include_ward_stay: includeWard,
+                pledged_payment_date: pledgedDate,
+                patient_email: (elCreditPatientEmail.value || '').trim(),
+                notes: (elCreditNotes.value || '').trim(),
+            };
+
+            const response = await fetchJson('/receptionist/credit-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const requestNumber = response && response.request_number ? response.request_number : 'N/A';
+            setStatus('success', `Credit request sent to admin successfully. Request: ${requestNumber}`);
+            await loadPatientCreditRequests(selectedPatient.id);
+        } catch (e) {
+            setStatus('error', e.message || 'Failed to send credit request.');
+        } finally {
+            elSendCreditRequestBtn.disabled = !canCreateBills;
+        }
+    }
+
+    function buildReceiptPreview(meta) {
+        const p = selectedPatient;
+        const type = patientTypeOf(p);
+        const num = type === 'inpatient' ? p.ip_number : p.op_number;
+
+        const nowStr = new Date().toLocaleString();
+        const servedBy = '{{ current_user.username if current_user.is_authenticated else "" }}';
+
+        function sumRows(rows, getTotal) {
+            try {
+                return (rows || []).reduce((acc, r) => acc + Number(getTotal(r) || 0), 0);
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function sectionPlain(title, rows, renderLine, sectionTotal) {
+            if (!rows || rows.length === 0) return '';
+            const totalHtml = (sectionTotal !== null && sectionTotal !== undefined)
+                ? `<span><b>${fmtMoney(sectionTotal)}</b></span>`
+                : '';
+            return `
+                <div class="r-title" style="display:flex;justify-content:space-between;gap:10px;">
+                    <span>${title}</span>
+                    ${totalHtml}
+                </div>
+                <div class="r-small">
+                    ${rows.map(renderLine).join('')}
+                </div>
+                <hr>
+            `;
+        }
+
+        const servicesTotal = sumRows(meta.services, (r) => Number(r.price || r.service_price || 0));
+        const labsTotal = sumRows(meta.labs, (r) => Number(r.price || 0));
+        const imagingTotal = sumRows(meta.imaging, (r) => Number(r.price || 0));
+        const drugsTotal = sumRows(meta.rxItems, (r) => {
+            const qty = Number(r.quantity || 0);
+            const unit = Number(r.unit_price || 0);
+            return Number(r.total_price || (qty * unit));
+        });
+        const cdrugsTotal = sumRows(meta.crxItems, (r) => {
+            const qty = Number(r.quantity || 0);
+            const unit = Number(r.unit_price || 0);
+            return Number(r.total_price || (qty * unit));
+        });
+
+        const servicesHtml = sectionPlain('Services Done', meta.services, (r) => {
+            const price = Number(r.price || r.service_price || 0);
+            return `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${esc(r.service_name || 'Service')}</span><span>${fmtMoney(price)}</span></div>`;
+        }, servicesTotal);
+        const labsHtml = sectionPlain('Lab (Completed)', meta.labs, (r) => {
+            const price = Number(r.price || 0);
+            return `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${esc(r.name || 'Lab')}</span><span>${fmtMoney(price)}</span></div>`;
+        }, labsTotal);
+        const imagingHtml = sectionPlain('Imaging (Completed)', meta.imaging, (r) => {
+            const price = Number(r.price || 0);
+            return `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${esc(r.name || 'Imaging')}</span><span>${fmtMoney(price)}</span></div>`;
+        }, imagingTotal);
+        const drugsHtml = sectionPlain('Drugs Prescribed/Dispensed', meta.rxItems, (r) => {
+            const qty = Number(r.quantity || 0);
+            const unit = Number(r.unit_price || 0);
+            const total = Number(r.total_price || (qty * unit));
+            return `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${esc(r.drug_name || 'Drug')} <span class="r-muted">(${qty} x ${unit.toFixed(2)})</span></span><span>${fmtMoney(total)}</span></div>`;
+        }, drugsTotal);
+        const cdrugsHtml = sectionPlain('Controlled Drugs', meta.crxItems, (r) => {
+            const qty = Number(r.quantity || 0);
+            const unit = Number(r.unit_price || 0);
+            const total = Number(r.total_price || (qty * unit));
+            return `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${esc(r.drug_name || 'Controlled')} <span class="r-muted">(${qty} x ${unit.toFixed(2)})</span></span><span>${fmtMoney(total)}</span></div>`;
+        }, cdrugsTotal);
+
+        let wardHtml = '';
+        let wardTotal = 0;
+        if (type === 'inpatient' && meta.wardPreview && meta.wardPreview.assigned && elIncludeWardStay.checked) {
+            const w = meta.wardPreview;
+            const amount = Number(w.amount || 0);
+            wardTotal = amount;
+            wardHtml = `
+                <div class="r-title" style="display:flex;justify-content:space-between;gap:10px;">
+                    <span>Ward Stay</span>
+                    <span><b>${fmtMoney(amount)}</b></span>
+                </div>
+                <div class="r-small">
+                    <div style="display:flex;justify-content:space-between;gap:10px;">
+                        <span>${esc(w.ward_name)} - Bed ${esc(w.bed_number)}<br><span class="r-muted">${esc(w.start_date)} to ${esc(w.end_date)} (${esc(w.days)} day(s))</span></span>
+                        <span>${fmtMoney(amount)}</span>
+                    </div>
+                </div>
+                <hr>
+            `;
+        }
+
+        const total = Number(meta.total || 0);
+        const pmRaw = safe(elPaymentMethod.value);
+        const pm = pmRaw.toUpperCase();
+        const amountGiven = (pmRaw === 'cash' && (elAmountGiven.value || '').trim() !== '') ? Number(elAmountGiven.value) : null;
+        const balance = (amountGiven !== null && !Number.isNaN(amountGiven)) ? (Number(amountGiven) - total) : null;
+        const balanceLabel = (balance !== null && balance < 0) ? 'Balance Due' : 'Balance';
+
+        const stampHtml = `
+            <div class="r-center" style="margin-top:10px;">{{ generate_rubber_stamp(size=220) }}</div>
+        `;
+        return `
+            <div class="r-center">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" style="height:48px;">
+                <div class="r-title" style="margin-top:6px;">MAKOKHA MEDICAL CENTRE</div>
+                <div class="r-small r-muted">Receipt / Bill</div>
+            </div>
+            <hr>
+            <div class="r-small">
+                <div><b>Served by:</b> ${safe(servedBy || 'Reception')}</div>
+                <div><b>Time:</b> ${nowStr}</div>
+                ${lastGenerated && lastGenerated.sale_number ? `<div><b>Sale #:</b> ${safe(lastGenerated.sale_number)}</div>` : ''}
+            </div>
+            <hr>
+            <div class="r-small">
+                <div><b>Patient:</b> ${safe(p.name)}</div>
+                <div><b>Age/Sex:</b> ${safe(p.age || 'N/A')} / ${safe(p.gender || 'N/A')}</div>
+                <div><b>${type === 'inpatient' ? 'IP' : 'OP'} No:</b> ${safe(num || '')}</div>
+            </div>
+            <hr>
+            ${servicesHtml}
+            ${labsHtml}
+            ${imagingHtml}
+            ${drugsHtml}
+            ${cdrugsHtml}
+            ${wardHtml}
+            <div class="r-title">Summary</div>
+            <div class="r-small">
+                <div style="display:flex;justify-content:space-between;gap:10px;"><span>Total</span><span><b>${fmtMoney(total)}</b></span></div>
+            </div>
+            <hr>
+            <div class="r-title">Payment</div>
+            <div class="r-small">
+                <div style="display:flex;justify-content:space-between;gap:10px;"><span>Method</span><span>${pm}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:10px;"><span>Amount</span><span><b>${fmtMoney(total)}</b></span></div>
+                ${amountGiven !== null ? `<div style="display:flex;justify-content:space-between;gap:10px;"><span>Amount Given (Cash)</span><span>${fmtMoney(amountGiven)}</span></div>` : ''}
+                ${amountGiven !== null ? `<div style="display:flex;justify-content:space-between;gap:10px;"><span>${balanceLabel}</span><span>${fmtMoney(balance)}</span></div>` : ''}
+            </div>
+            ${stampHtml}
+        `;
+    }
+
+    async function openAndPrint(saleId, receiptUrl) {
+        const id = Number(saleId || 0);
+        if (!id) {
+            setStatus('error', 'Receipt URL is missing.');
+            return;
+        }
+        try {
+            const blob = await buildReceiptPdfBlobForSale(id, receiptUrl);
+            openPdfBlobForPrint(blob, `Receipt-${id}`);
+        } catch (e) {
+            const msg = (e && e.message) ? e.message : 'Failed to generate receipt PDF.';
+            setStatus('error', msg);
+        }
+    }
+
+    async function generateBill() {
+        if (!selectedPatient) {
+            setStatus('error', 'Select a patient first.');
+            return;
+        }
+        if (!canCreateBills) {
+            setStatus('error', 'Unauthorized: only Receptionist/Admin can create bills.');
+            return;
+        }
+
+        setStatus('info', 'Collecting completed items…');
+        elGenerateBillBtn.disabled = true;
+
+        try {
+            const data = await collectBillable(selectedPatient.id);
+
+            const serviceIds = (data.services || []).map(r => r.service_id).filter(Boolean);
+            const labIds = (data.labs || []).map(r => r.lab_test_id).filter(Boolean);
+            const imagingIds = (data.imaging || []).map(r => r.imaging_test_id).filter(Boolean);
+            const rxItemIds = (data.rxItems || []).map(r => r.id).filter(Boolean);
+            const crxItemIds = (data.crxItems || []).map(r => r.id).filter(Boolean);
+
+            const inpatient = patientTypeOf(selectedPatient) === 'inpatient';
+            const includeWard = inpatient && elIncludeWardStay.checked && data.wardPreview && data.wardPreview.assigned && Number(data.wardPreview.amount || 0) > 0;
+
+            const total =
+                (data.services || []).reduce((a, r) => a + Number(r.price || r.service_price || 0), 0) +
+                (data.labs || []).reduce((a, r) => a + Number(r.price || 0), 0) +
+                (data.imaging || []).reduce((a, r) => a + Number(r.price || 0), 0) +
+                (data.rxItems || []).reduce((a, r) => a + Number(r.total_price || 0), 0) +
+                (data.crxItems || []).reduce((a, r) => a + Number(r.total_price || 0), 0) +
+                (includeWard ? Number(data.wardPreview.amount || 0) : 0);
+
+            if (total <= 0) {
+                setStatus('error', 'No billable items found for this patient.');
+                elGenerateBillBtn.disabled = false;
+                return;
+            }
+
+            setStatus('info', 'Creating bill…');
+
+            const paymentMethod = elPaymentMethod.value;
+            const payload = {
+                patient_id: selectedPatient.id,
+                services: serviceIds,
+                labs: labIds,
+                imaging_tests: imagingIds,
+                prescription_items: rxItemIds,
+                controlled_prescription_items: crxItemIds,
+                include_ward_stay: includeWard,
+                payment_method: paymentMethod,
+            };
+            if (paymentMethod === 'cash') {
+                const amt = (elAmountGiven.value || '').trim();
+                if (amt) payload.amount_given = Number(amt);
+            }
+            if (paymentMethod === 'insurance') {
+                payload.insurance_policy_number = (elInsurancePolicyNumber.value || '').trim();
+            }
+            if (paymentMethod === 'card') {
+                payload.card_reference = (elCardReference.value || '').trim();
+            }
+            if (paymentMethod === 'paypal') {
+                payload.paypal_reference = (elPaypalReference.value || '').trim();
+            }
+
+            const created = await fetchJson('{{ url_for('create_bill') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify(payload)
+            });
+
+            lastGenerated = {
+                sale_id: created.sale_id,
+                sale_number: created.sale_number,
+                services: data.services,
+                labs: data.labs,
+                imaging: data.imaging,
+                rxItems: data.rxItems,
+                crxItems: data.crxItems,
+                wardPreview: data.wardPreview,
+                total: Number((created.total_amount ?? created['total_amount']) ?? total),
+                receipt_url: created.receipt_url || `/receptionist/sale/${created.sale_id}/receipt`,
+                pdf_url: created.pdf_url || `/api/sales/${created.sale_id}/receipt.pdf`,
+            };
+
+            elReceiptCard.style.display = 'block';
+            elReceiptPreview.innerHTML = buildReceiptPreview(lastGenerated);
+            elViewReceiptLink.style.display = 'inline-flex';
+            elViewReceiptLink.href = safeHref(lastGenerated.receipt_url);
+
+            setStatus('success', 'Bill created successfully.');
+            await loadBills();
+        } catch (e) {
+            console.error(e);
+            setStatus('error', e.message || 'Failed to generate bill');
+        } finally {
+            elGenerateBillBtn.disabled = !canCreateBills;
+        }
+    }
+
+    async function loadBills() {
+        try {
+            const pt = (elPatientType && elPatientType.value) ? String(elPatientType.value) : 'all';
+            const rows = await fetchJson(`/api/receptionist/bills?limit=60&scope=patient_bills&patient_type=${encodeURIComponent(pt)}`);
+            elBillsTable.innerHTML = '';
+            if (!rows || rows.length === 0) {
+                elBillsTable.innerHTML = '<tr><td colspan="7" class="text-muted">No bills yet.</td></tr>';
+                return;
+            }
+            rows.forEach(r => {
+                const p = r.patient || {};
+                const num = (p.ip_number && String(p.ip_number).trim() !== '') ? p.ip_number : (p.op_number || '');
+                const created = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+                const tr = document.createElement('tr');
+                const receiptHref = safeHref(r.receipt_url);
+                const pdfHref = safeHref(r.pdf_url);
+                tr.innerHTML = `
+                    <td>${esc(r.sale_number || r.sale_id)}</td>
+                    <td>${esc(p.name || '')}</td>
+                    <td>${esc(num)}</td>
+                    <td>${fmtMoney(r.total_amount || 0)}</td>
+                    <td>${esc(String((r.payment_method || '')).toUpperCase())}</td>
+                    <td>${esc(created)}</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener noreferrer" href="${esc(receiptHref)}">View</a>
+                        <button class="btn btn-sm btn-outline-secondary" data-action="print" data-pdf="${esc(pdfHref)}">Print</button>
+                        <button class="btn btn-sm btn-primary" data-action="email-share" ${canCreateBills ? '' : 'disabled'}><i class="fas fa-envelope"></i> Email</button>
+                        <button class="btn btn-sm btn-success" data-action="share" data-pdf="${esc(pdfHref)}" ${canCreateBills ? '' : 'disabled'}><i class="fab fa-whatsapp"></i> Send WhatsApp</button>
+                    </td>
+                `;
+                tr.querySelector('[data-action="print"]').addEventListener('click', () => openAndPrint(r.sale_id, r.receipt_url));
+                const emailShareBtn = tr.querySelector('[data-action="email-share"]');
+                emailShareBtn.addEventListener('click', () => shareViaEmailCloud(r.sale_id, r.receipt_url));
+                const shareBtn = tr.querySelector('[data-action="share"]');
+                shareBtn.addEventListener('click', () => shareViaWhatsAppCloud(r.sale_id, r.receipt_url));
+                elBillsTable.appendChild(tr);
+            });
+        } catch (e) {
+            elBillsTable.innerHTML = `<tr><td colspan="7" class="text-danger">Failed to load bills: ${esc(e.message)}</td></tr>`;
+        }
+    }
+
+    async function sharePdfFromUrl(pdfUrl, saleNumber) {
+        const href = safeHref(pdfUrl);
+        if (!href || href === '#') {
+            setStatus('error', 'Invalid PDF URL');
+            return;
+        }
+        try {
+            const res = await fetch(href);
+            if (!res.ok) throw new Error('Failed to fetch PDF');
+            const blob = await res.blob();
+            const file = new File([blob], `Receipt-${saleNumber || 'bill'}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: 'Receipt PDF',
+                    text: 'Makokha Medical Centre receipt',
+                    files: [file]
+                });
+                return;
+            }
+
+            // Fallback: download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Receipt-${saleNumber || 'bill'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setStatus('info', 'PDF downloaded. You can attach it in WhatsApp.');
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        } catch (e) {
+            setStatus('error', e.message || 'Failed to share PDF');
+        }
+    }
+
+    async function shareViaWhatsAppCloud(saleId, receiptUrl) {
+        if (!saleId) return;
+        const input = window.prompt('Enter WhatsApp number\n(e.g. 0712xxxxxx or +2547xxxxxxx)');
+        if (input === null) return;
+        const to = String(input || '').trim();
+        if (!to) {
+            setStatus('error', 'Phone number is required.');
+            return;
+        }
+
+        try {
+            setStatus('info', 'Sending receipt to WhatsApp…');
+            const receiptPng = await captureReceiptPngForSale(saleId, receiptUrl);
+            if (!receiptPng) {
+                setStatus('error', 'Unable to capture rendered receipt for sharing.');
+                return;
+            }
+            const resp = await fetchJson(`/api/sales/${saleId}/share-whatsapp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ to, receipt_png: receiptPng })
+            });
+
+            const sentTo = resp && resp.to ? resp.to : '';
+            setStatus('success', `Sent to WhatsApp${sentTo ? ' (' + sentTo + ')' : ''}.`);
+            return resp;
+        } catch (e) {
+            console.error(e);
+            const msg = (e && e.message) ? e.message : 'Failed to send via WhatsApp';
+            setStatus('error', msg);
+        }
+    }
+
+    async function shareViaEmailCloud(saleId, receiptUrl) {
+        if (!saleId) return;
+        const input = window.prompt('Enter recipient email\n(e.g. patient@example.com)');
+        if (input === null) return;
+        const to = String(input || '').trim();
+        if (!to) {
+            setStatus('error', 'Email address is required.');
+            return;
+        }
+
+        try {
+            setStatus('info', 'Sending receipt to email…');
+            const receiptPng = await captureReceiptPngForSale(saleId, receiptUrl);
+            if (!receiptPng) {
+                setStatus('error', 'Unable to capture rendered receipt for sharing.');
+                return;
+            }
+            const resp = await fetchJson(`/api/sales/${saleId}/share-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({ to, receipt_png: receiptPng })
+            });
+
+            const sentTo = resp && resp.to ? resp.to : '';
+            setStatus('success', `Receipt emailed${sentTo ? ' (' + sentTo + ')' : ''}.`);
+            return resp;
+        } catch (e) {
+            console.error(e);
+            const msg = (e && e.message) ? e.message : 'Failed to send via email';
+            setStatus('error', msg);
+        }
+    }
+
+    // Events
+    document.querySelectorAll('.payment-btn').forEach(btn => {
+        btn.addEventListener('click', () => setPaymentMethod(btn.getAttribute('data-method')));
+    });
+    setPaymentMethod('cash');
+
+    elPatientType.addEventListener('change', () => {
+        loadPatients().catch(console.error);
+        loadBills().catch(console.error);
+    });
+    elPatientSearch.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => loadPatients().catch(console.error), 250);
+    });
+    elGenerateBillBtn.addEventListener('click', () => generateBill());
+    elToggleCreditSalesBtn.addEventListener('click', () => setCreditPanelVisible(!creditPanelVisible));
+    elSendCreditRequestBtn.addEventListener('click', () => sendCreditRequest());
+    elRefreshPatientCreditBtn.addEventListener('click', () => {
+        if (!selectedPatient || !selectedPatient.id) {
+            setStatus('error', 'Select a patient first.');
+            return;
+        }
+        loadPatientCreditRequests(selectedPatient.id);
+    });
+    elPatientCreditRows.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action="credit-pay"]');
+        if (!btn) return;
+        const requestId = Number(btn.getAttribute('data-id'));
+        if (!requestId) return;
+        recordPatientCreditPayment(requestId);
+    });
+    elPrintBtn.addEventListener('click', () => {
+        if (!lastGenerated || !lastGenerated.sale_id) {
+            setStatus('error', 'Generate a bill first.');
+            return;
+        }
+        openAndPrint(lastGenerated.sale_id, lastGenerated.receipt_url);
+    });
+    elShareBtn.addEventListener('click', () => {
+        if (!lastGenerated || !lastGenerated.sale_id) {
+            setStatus('error', 'Generate a bill first.');
+            return;
+        }
+        shareViaWhatsAppCloud(lastGenerated.sale_id, lastGenerated.receipt_url);
+    });
+    elShareEmailBtn.addEventListener('click', () => {
+        if (!lastGenerated || !lastGenerated.sale_id) {
+            setStatus('error', 'Generate a bill first.');
+            return;
+        }
+        shareViaEmailCloud(lastGenerated.sale_id, lastGenerated.receipt_url);
+    });
+    elRefreshBillsBtn.addEventListener('click', () => loadBills());
+
+    // Init
+    elCreditPledgedDate.value = todayIso;
+    setCreditPanelVisible(false);
+    loadPatients().catch(err => {
+        elPatientList.innerHTML = `<div class="text-danger small">Failed to load patients: ${safe(err.message)}</div>`;
+    });
+    loadBills();
+})();
+</script>
+
+{% if false %} {# Legacy billing UI kept for reference; disabled to avoid Jinja block mismatches #}
+<div class="content">
+            <h2>Billing Management</h2>
+            
+            <div class="billing-container">
+                <div class="billing-search">
+                    <div class="search-box">
+                        <input type="text" id="patient-search" placeholder="Search patient by name or ID...">
+                        <button class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                    </div>
+                    <div class="search-results" id="search-results">
+                        <!-- Search results will appear here -->
+                    </div>
+                </div>
+                
+                <div class="billing-form">
+                    <h3><i class="fas fa-file-invoice"></i> New Bill</h3>
+                    <form id="billing-form" method="POST" action="{{ url_for('create_bill') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="form-group">
+                            <label for="patient-id">Patient</label>
+                            <select id="patient-id" name="patient_id" class="form-control" required>
+                                <option value="">Select Patient</option>
+                                {% for patient in patients %}
+                                <option value="{{ patient.id }}">
+                                    {{ decrypt_data(patient.name) }} ({{ patient.op_number or patient.ip_number }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Services <small class="text-muted">(Auto-populated from patient records)</small></label>
+                            <div class="service-list" id="service-list">
+                                <div class="alert alert-info">
+                                    Select a patient to view completed services
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Lab Tests <small class="text-muted">(Auto-populated - Completed tests only)</small></label>
+                            <div class="lab-list" id="lab-list">
+
+function clearAutoHiddenInputs(name) {
+    document.querySelectorAll(`input[type="hidden"][data-auto-hidden="1"][data-auto-name="${name}"]`).forEach(el => el.remove());
+}
+
+function addAutoHiddenInput(name, value) {
+    const form = document.getElementById('billing-form');
+    if (!form) return;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    input.setAttribute('data-auto-hidden', '1');
+    input.setAttribute('data-auto-name', name);
+    form.appendChild(input);
+}
+
+function resetAutoCheckboxes(name) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+        cb.checked = false;
+        cb.disabled = true;
+    });
+    clearAutoHiddenInputs(name);
+}
+
+function loadPatientInsurance(patientId) {
+    const hint = document.getElementById('insurance-active-hint');
+    hint.style.display = 'none';
+    hint.textContent = '';
+
+    // Default: insurance not selectable until we confirm verified policy
+    try {
+        const insBtn = document.getElementById('insurancePaymentBtn');
+        if (insBtn) {
+            insBtn.disabled = true;
+            insBtn.title = 'Insurance requires verification';
+        }
+    } catch (e) { /* ignore */ }
+
+    fetch(`/api/patient/${patientId}/insurance`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.success) return;
+            const policy = data.policy;
+            if (!policy) {
+                // Clear only if empty to avoid overriding receptionist manual entry
+                const input = document.getElementById('insurance-policy-number-billing');
+                if (input && !input.value) input.value = '';
+
+                // No policy -> keep insurance disabled
+                try {
+                    const insBtn = document.getElementById('insurancePaymentBtn');
+                    if (insBtn) {
+                        insBtn.disabled = true;
+                        insBtn.title = 'No active insurance policy for this patient';
+                    }
+                } catch (e) { /* ignore */ }
+                return;
+            }
+
+            const providerName = policy.provider_name || 'Insurance';
+            const pn = policy.policy_number || '';
+            const mn = policy.member_number || '';
+
+            const input = document.getElementById('insurance-policy-number-billing');
+            if (input && !input.value && pn) input.value = pn;
+
+            const status = policy.verification_status ? String(policy.verification_status) : '';
+            const verifiedAt = policy.verified_at ? String(policy.verified_at) : '';
+            const coversIp = (policy.covers_inpatient === false) ? 'No' : 'Yes';
+
+            const isVerified = String(status || '').toLowerCase() === 'verified';
+
+            hint.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                    <div>
+                        <strong>Active:</strong> ${providerName}<br>
+                        <span class="small text-muted">Policy: ${pn || '—'} | Member: ${mn || '—'} | Covers IP: ${coversIp}</span>
+                        ${status ? `<div class="small text-muted">Status: ${status}${verifiedAt ? ` (${verifiedAt})` : ''}</div>` : ''}
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="verifyInsuranceBtn">Verify Insurance</button>
+                    </div>
+                </div>
+            `;
+            hint.style.display = 'block';
+
+            // Enable Insurance payment only if verified
+            try {
+                const insBtn = document.getElementById('insurancePaymentBtn');
+                if (insBtn) {
+                    insBtn.disabled = !isVerified;
+                    insBtn.title = isVerified ? 'Insurance verified' : 'Insurance not verified';
+                }
+            } catch (e) { /* ignore */ }
+
+            // Wire verify
+            const btn = document.getElementById('verifyInsuranceBtn');
+            if (btn) {
+                if (isVerified) {
+                    btn.disabled = true;
+                    btn.textContent = 'Verified';
+                }
+                btn.addEventListener('click', function() {
+                    btn.disabled = true;
+                    btn.textContent = 'Verifying...';
+                    fetch(`/api/patient/${patientId}/insurance/verify`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(r => r.json())
+                    .then(resp => {
+                        if (resp && resp.success) {
+                            loadPatientInsurance(patientId);
+                        } else {
+                            alert(resp?.error || 'Failed to verify insurance');
+                        }
+                    })
+                    .catch(() => alert('Failed to verify insurance'))
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.textContent = 'Verify Insurance';
+                    });
+                });
+            }
+        })
+        .catch(() => {
+            // ignore
+        });
+}
+
+// Load prescriptions when patient is selected - AUTO-POPULATE ONLY DISPENSED
+function loadPatientPrescriptions(patientId) {
+    Promise.all([
+        fetch(`/api/patient/${patientId}/prescriptions`).then(r => (r.ok ? r.json() : [])),
+        fetch(`/api/patient/${patientId}/controlled-prescriptions`).then(r => (r.ok ? r.json() : [])),
+    ])
+        .then(([regularData, controlledData]) => {
+            const container = document.getElementById('prescription-list');
+            container.innerHTML = '';
+            clearAutoHiddenInputs('prescription_items');
+            clearAutoHiddenInputs('controlled_prescription_items');
+
+            const sections = [];
+            if (Array.isArray(regularData) && regularData.length) {
+                sections.push({ title: 'Prescriptions', data: regularData, inputName: 'prescription_items' });
+            }
+            if (Array.isArray(controlledData) && controlledData.length) {
+                sections.push({ title: 'Prescriptions', data: controlledData, inputName: 'controlled_prescription_items' });
+            }
+
+            if (sections.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">No prescriptions found for this patient</div>';
+                document.getElementById('billing-form').dispatchEvent(new Event('change'));
+                return;
+            }
+
+            let foundDispensed = false;
+
+            sections.forEach(section => {
+                (section.data || []).forEach(prescription => {
+                    const items = (prescription && Array.isArray(prescription.items)) ? prescription.items : [];
+                    const dispensedItems = items.filter(item => item && (item.status === 'dispensed' || item.dispensed === true));
+
+                    if (dispensedItems.length === 0) return;
+                    foundDispensed = true;
+
+                    const prescriptionElement = document.createElement('div');
+                    prescriptionElement.className = 'prescription-item';
+                    prescriptionElement.innerHTML = `
+                        <h4>Prescription #${prescription.id}</h4>
+                        <div class="prescription-items">
+                            ${dispensedItems.map(item => {
+                                const qty = Number(item.quantity || 0);
+                                const unit = Number(item.unit_price || 0);
+                                addAutoHiddenInput(section.inputName, item.id);
+                                return `
+                                    <div class="prescription-line">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                        <span>
+                                            ${item.drug_name || 'Drug'} (${item.drug_number || ''}) -
+                                            ${qty} x KSH ${unit.toFixed(2)} =
+                                            KSH ${(qty * unit).toFixed(2)}
+                                            <span class="badge badge-success">Dispensed</span>
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                    container.appendChild(prescriptionElement);
+                });
+            });
+
+            if (!foundDispensed) {
+                container.innerHTML = '<div class="alert alert-info">No dispensed prescriptions found for this patient</div>';
+            }
+
+            document.getElementById('billing-form').dispatchEvent(new Event('change'));
+        })
+        .catch(() => {
+            const container = document.getElementById('prescription-list');
+            container.innerHTML = '<div class="alert alert-warning">Failed to load prescriptions</div>';
+        });
+}
+
+// Load completed services (unbilled) and auto-add them - NO CHECKBOXES
+function loadCompletedServices(patientId) {
+    clearAutoHiddenInputs('services');
+    
+    const container = document.getElementById('service-list');
+    container.innerHTML = '<div class="alert alert-info">Loading services...</div>';
+
+    fetch(`/api/patient/${patientId}/completed-services`)
+        .then(response => {
+            if (!response.ok) return [];
+            return response.json();
+        })
+        .then(data => {
+            container.innerHTML = '';
+            
+            if (Array.isArray(data) && data.length > 0) {
+                const serviceList = document.createElement('div');
+                serviceList.className = 'service-items-list';
+                
+                data.forEach(row => {
+                    const sid = row && (row.service_id || row.id);
+                    const serviceName = row.service_name || row.name || 'Unknown Service';
+                    const servicePrice = row.price || 0;
+                    
+                    if (!sid) return;
+                    
+                    // Auto-add hidden input
+                    addAutoHiddenInput('services', sid);
+                    
+                    // Display as text with icon
+                    const serviceItem = document.createElement('div');
+                    serviceItem.className = 'service-display-item';
+                    serviceItem.innerHTML = `
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>
+                            ${serviceName} - KSH ${servicePrice.toFixed(2)}
+                            <span class="badge badge-info">Completed</span>
+                        </span>
+                    `;
+                    serviceList.appendChild(serviceItem);
+                });
+                
+                container.appendChild(serviceList);
+            } else {
+                container.innerHTML = '<div class="alert alert-info">No completed services found for this patient</div>';
+            }
+
+            document.getElementById('billing-form').dispatchEvent(new Event('change'));
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-warning">Failed to load services</div>';
+        });
+}
+
+
+function loadCompletedLabs(patientId) {
+    clearAutoHiddenInputs('lab_tests');
+    
+    const container = document.getElementById('lab-list');
+    container.innerHTML = '<div class="alert alert-info">Loading lab tests...</div>';
+
+    fetch(`/api/patient/${patientId}/completed-labs`)
+        .then(response => {
+            if (!response.ok) return [];
+            return response.json();
+        })
+        .then(data => {
+            container.innerHTML = '';
+            
+            if (Array.isArray(data) && data.length > 0) {
+                const labList = document.createElement('div');
+                labList.className = 'lab-items-list';
+                
+                data.forEach(row => {
+                    const lid = row && (row.lab_test_id || row.id);
+                    const labName = row.test_name || row.name || 'Unknown Test';
+                    const labPrice = row.price || 0;
+                    
+                    if (!lid) return;
+                    
+                    // Auto-add hidden input
+                    addAutoHiddenInput('lab_tests', lid);
+                    
+                    // Display as text with icon
+                    const labItem = document.createElement('div');
+                    labItem.className = 'lab-display-item';
+                    labItem.innerHTML = `
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>
+                            ${labName} - KSH ${labPrice.toFixed(2)}
+                            <span class="badge badge-success">Complete</span>
+                        </span>
+                    `;
+                    labList.appendChild(labItem);
+                });
+                
+                container.appendChild(labList);
+            } else {
+                container.innerHTML = '<div class="alert alert-info">No completed lab tests found for this patient</div>';
+            }
+
+            document.getElementById('billing-form').dispatchEvent(new Event('change'));
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-warning">Failed to load lab tests</div>';
+        });
+}
+
+function loadCompletedImaging(patientId) {
+    clearAutoHiddenInputs('imaging_tests');
+    
+    const container = document.getElementById('imaging-list');
+    container.innerHTML = '<div class="alert alert-info">Loading imaging tests...</div>';
+
+    fetch(`/api/patient/${patientId}/completed-imaging`)
+        .then(response => {
+            if (!response.ok) return [];
+            return response.json();
+        })
+        .then(data => {
+            container.innerHTML = '';
+            
+            if (Array.isArray(data) && data.length > 0) {
+                const imagingList = document.createElement('div');
+                imagingList.className = 'imaging-items-list';
+                
+                data.forEach(row => {
+                    const iid = row && (row.imaging_test_id || row.id);
+                    const imagingName = row.test_name || row.name || 'Unknown Imaging';
+                    const imagingPrice = row.price || 0;
+                    
+                    if (!iid) return;
+                    
+                    // Auto-add hidden input
+                    addAutoHiddenInput('imaging_tests', iid);
+                    
+                    // Display as text with icon
+                    const imagingItem = document.createElement('div');
+                    imagingItem.className = 'imaging-display-item';
+                    imagingItem.innerHTML = `
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>
+                            ${imagingName} - KSH ${imagingPrice.toFixed(2)}
+                            <span class="badge badge-primary">Done</span>
+                        </span>
+                    `;
+                    imagingList.appendChild(imagingItem);
+                });
+                
+                container.appendChild(imagingList);
+            } else {
+                container.innerHTML = '<div class="alert alert-info">No completed imaging tests found for this patient</div>';
+            }
+
+            document.getElementById('billing-form').dispatchEvent(new Event('change'));
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-warning">Failed to load imaging tests</div>';
+        });
+}
+
+function loadPatientWardStay(patientId) {
+    const container = document.getElementById('ward-stay-container');
+    container.className = 'alert alert-info';
+    container.textContent = 'Loading ward stay charges...';
+    clearAutoHiddenInputs('include_ward_stay');
+
+    fetch(`/api/patient/${patientId}/ward-stay-preview`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.error) {
+                container.className = 'alert alert-danger';
+                container.textContent = data.error;
+                return;
+            }
+            if (!data || !data.assigned) {
+                container.className = 'alert alert-info';
+                container.textContent = 'No occupied bed assigned for this patient.';
+                document.getElementById('billing-form').dispatchEvent(new Event('change'));
+                return;
+            }
+
+            const amount = Number(data.amount || 0);
+            const days = Number(data.days || 0);
+            const rate = Number(data.daily_rate || 0);
+
+            if (amount <= 0 || days <= 0 || rate <= 0) {
+                container.className = 'alert alert-warning';
+                container.innerHTML = `Ward stay detected (${data.ward_name} - Bed ${data.bed_number}), but daily rate is 0 or nothing is due.`;
+                document.getElementById('billing-form').dispatchEvent(new Event('change'));
+                return;
+            }
+
+            container.className = 'ward-stay-display';
+            container.innerHTML = `
+                <div class="ward-display-item">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <span>
+                        ${data.ward_name} - Bed ${data.bed_number}: ${days} day(s) x KSH ${rate.toFixed(2)} = KSH ${amount.toFixed(2)}
+                        <br><small class="text-muted">(${data.start_date} to ${data.end_date})</small>
+                        <span class="badge badge-warning">Ward Stay</span>
+                    </span>
+                </div>
+            `;
+            container.setAttribute('data-amount', amount.toFixed(2));
+            clearAutoHiddenInputs('include_ward_stay');
+            addAutoHiddenInput('include_ward_stay', '1');
+            document.getElementById('billing-form').dispatchEvent(new Event('change'));
+        })
+        .catch(() => {
+            container.className = 'alert alert-danger';
+            container.textContent = 'Failed to load ward stay charges.';
+        });
+}
+
+// Calculate totals when items are selected - UPDATED FOR AUTO-POPULATED ITEMS
+document.getElementById('billing-form').addEventListener('change', function() {
+    let servicesTotal = 0;
+    let labsTotal = 0;
+    let imagingTotal = 0;
+    let medsTotal = 0;
+    let wardTotal = 0;
+    
+    // Calculate services total from hidden inputs
+    document.querySelectorAll('input[type="hidden"][data-auto-name="services"]').forEach(input => {
+        const serviceItem = document.querySelector(`.service-display-item`);
+        if (serviceItem) {
+            const priceMatch = serviceItem.textContent.match(/KSH\s*([\d.]+)/);
+            if (priceMatch) servicesTotal += parseFloat(priceMatch[1]);
+        }
+    });
+    
+    // Better approach: parse from displayed items
+    document.querySelectorAll('.service-display-item').forEach(item => {
+        const priceMatch = item.textContent.match(/KSH\s*([\d.]+)/);
+        if (priceMatch) servicesTotal += parseFloat(priceMatch[1]);
+    });
+    
+    // Calculate lab tests total from displayed items
+    document.querySelectorAll('.lab-display-item').forEach(item => {
+        const priceMatch = item.textContent.match(/KSH\s*([\d.]+)/);
+        if (priceMatch) labsTotal += parseFloat(priceMatch[1]);
+    });
+
+    // Calculate imaging tests total from displayed items
+    document.querySelectorAll('.imaging-display-item').forEach(item => {
+        const priceMatch = item.textContent.match(/KSH\s*([\d.]+)/);
+        if (priceMatch) imagingTotal += parseFloat(priceMatch[1]);
+    });
+    
+    // Calculate medications total from displayed prescription lines
+    document.querySelectorAll('.prescription-line').forEach(line => {
+        const priceMatch = line.textContent.match(/=\s*KSH\s*([\d.]+)/);
+        if (priceMatch) medsTotal += parseFloat(priceMatch[1]);
+    });
+
+    // Calculate ward stay total from container data attribute
+    const wardContainer = document.getElementById('ward-stay-container');
+    if (wardContainer && wardContainer.hasAttribute('data-amount')) {
+        const amt = parseFloat(wardContainer.getAttribute('data-amount') || '0');
+        if (!Number.isNaN(amt)) wardTotal += amt;
+    }
+    
+    // Update the summary
+    document.getElementById('services-total').textContent = `KSH ${servicesTotal.toFixed(2)}`;
+    document.getElementById('labs-total').textContent = `KSH ${labsTotal.toFixed(2)}`;
+    document.getElementById('imaging-total').textContent = `KSH ${imagingTotal.toFixed(2)}`;
+    document.getElementById('meds-total').textContent = `KSH ${medsTotal.toFixed(2)}`;
+    document.getElementById('ward-total').textContent = `KSH ${wardTotal.toFixed(2)}`;
+    
+    const totalAmount = servicesTotal + labsTotal + imagingTotal + medsTotal + wardTotal;
+    document.getElementById('total-amount').textContent = `KSH ${totalAmount.toFixed(2)}`;
+});
+</script>
+
+<style>
+/* Payment Method Button Styles - Updated to match pharmacist design */
+.payment-method-section {
+    margin: 20px 0;
+    padding: 20px;
+    background: #ffffff;
+    border: 2px solid #e3e6ea;
+    border-radius: 10px;
+}
+
+.payment-title {
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #333;
+    font-size: 16px;
+}
+
+.payment-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: space-around;
+    flex-wrap: wrap;
+}
+
+.payment-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 20px 15px;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.payment-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+.payment-btn.active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-color: #0056b3;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.payment-btn.active .payment-icon {
+    color: white;
+}
+
+.payment-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 24px;
+    transition: all 0.3s ease;
+}
+
+.mpesa-icon {
+    background: #00a651;
+    color: white;
+}
+
+.mpesa-icon img {
+    height: 30px;
+    width: auto;
+    object-fit: contain;
+}
+
+.payment-btn.active[data-method="mpesa"] {
+    background: linear-gradient(135deg, #00a651 0%, #007a3d 100%);
+    border-color: #007a3d;
+}
+
+.cash-icon {
+    background: #28a745;
+    color: white;
+}
+
+.payment-btn.active[data-method="cash"] {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border-color: #1e7e34;
+}
+
+.insurance-icon {
+    background: #17a2b8;
+    color: white;
+}
+
+.payment-btn.active[data-method="insurance"] {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+    border-color: #117a8b;
+}
+
+.card-icon {
+    background: #6f42c1;
+    color: white;
+}
+
+.payment-btn.active[data-method="card"] {
+    background: linear-gradient(135deg, #6f42c1 0%, #4e2a8e 100%);
+    border-color: #4e2a8e;
+}
+
+.paypal-icon {
+    background: #003087;
+    color: white;
+}
+
+.payment-btn.active[data-method="paypal"] {
+    background: linear-gradient(135deg, #003087 0%, #001c64 100%);
+    border-color: #001c64;
+}
+
+.payment-btn span {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* Tablet responsive - bigger icons */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .payment-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+    }
+    
+    .mpesa-icon img {
+        height: 36px;
+    }
+    
+    .payment-btn span {
+        font-size: 15px;
+    }
+}
+
+/* Desktop responsive - biggest icons */
+@media (min-width: 1025px) {
+    .payment-icon {
+        width: 70px;
+        height: 70px;
+        font-size: 32px;
+    }
+    
+    .mpesa-icon img {
+        height: 40px;
+    }
+    
+    .payment-btn {
+        padding: 25px 20px;
+    }
+    
+    .payment-btn span {
+        font-size: 16px;
+    }
+}
+
+/* Auto-populated item display styles */
+.service-items-list,
+.lab-items-list,
+.imaging-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.service-display-item,
+.lab-display-item,
+.imaging-display-item,
+.ward-display-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: white;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.service-display-item:hover,
+.lab-display-item:hover,
+.imaging-display-item:hover,
+.ward-display-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+}
+
+.service-display-item i,
+.lab-display-item i,
+.imaging-display-item i,
+.ward-display-item i {
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.service-display-item span,
+.lab-display-item span,
+.imaging-display-item span,
+.ward-display-item span {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.service-display-item .badge,
+.lab-display-item .badge,
+.imaging-display-item .badge,
+.ward-display-item .badge {
+    margin-left: 8px;
+    font-size: 11px;
+    padding: 3px 8px;
+}
+
+.ward-stay-display {
+    padding: 0;
+    margin: 0;
+}
+
+.prescription-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    background: white;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.prescription-line:hover {
+    border-color: #28a745;
+    box-shadow: 0 2px 4px rgba(40,167,69,0.1);
+}
+
+.prescription-line i {
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+    .payment-buttons {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 10px;
+    }
+    
+    .payment-btn {
+        flex-shrink: 0;
+        min-width: 100px;
+        padding: 15px 10px;
+    }
+    
+    .payment-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .mpesa-icon img {
+        height: 24px;
+    }
+    
+    .payment-btn span {
+        font-size: 12px;
+    }
+}
+</style>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="mb-0">Patient Details</h2>
+                <div>
+                    <a class="btn btn-secondary" href="{{ url_for('receptionist_patients') }}"><i class="fas fa-arrow-left"></i> Back</a>
+                    {% if patient.status == 'active' %}
+                    <form method="POST" action="{{ url_for('receptionist_patient_details', patient_id=patient.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="complete_treatment">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Mark patient treatment as completed?');">
+                            <i class="fas fa-check-circle"></i> Complete Treatment
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('receptionist_patient_details', patient_id=patient.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="readmit_patient">
+                        <button type="submit" class="btn btn-warning" onclick="return confirm('Readmit this patient?');">
+                            <i class="fas fa-redo"></i> Readmit Patient
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a class="btn btn-primary" href="{{ url_for('receptionist_billing') }}?patient_id={{ patient.id }}"><i class="fas fa-file-invoice"></i> Create Bill</a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ patient.decrypted_name }}</p>
+                            <p><strong>OP/IP:</strong> {{ patient.op_number or patient.ip_number or '-' }}</p>
+                            <p><strong>Gender:</strong> {{ patient.gender or '-' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Age:</strong> {{ patient.age or '-' }}</p>
+                            <p><strong>Status:</strong> {{ patient.status or '-' }}</p>
+                            <p><strong>Created:</strong> {{ patient.created_at.strftime('%Y-%m-%d %H:%M') if patient.created_at else '-' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><i class="fas fa-vials"></i> Lab Tests</div>
+                        <div class="card-body">
+                            {% if patient_labs and patient_labs|length > 0 %}
+                                <ul class="list-group">
+                                    {% for lab in patient_labs %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>{{ lab.test.name if lab.test else 'Lab Test' }}</span>
+                                            <span>{{ "%.2f"|format(lab.test.price) if lab.test and lab.test.price is not none else '' }}</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="alert alert-info mb-0">No lab tests recorded.</div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer text-end"><strong>Total:</strong> {{ "%.2f"|format(lab_total or 0) }}</div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header"><i class="fas fa-pills"></i> Prescriptions</div>
+                        <div class="card-body">
+                            {% if prescriptions and prescriptions|length > 0 %}
+                                <ul class="list-group">
+                                    {% for p in prescriptions %}
+                                        <li class="list-group-item">
+                                            <div class="d-flex justify-content-between">
+                                                <strong>Prescription #{{ p.id }}</strong>
+                                                <span class="badge bg-secondary">{{ p.status }}</span>
+                                            </div>
+                                            {% if p.items and p.items|length > 0 %}
+                                                <ul class="mt-2">
+                                                    {% for item in p.items %}
+                                                        <li>
+                                                            {{ item.drug.name if item.drug else (item.drug_name or 'Medication') }}
+                                                            {% if item.quantity %} x{{ item.quantity }}{% endif %}
+                                                            {% if item.status %} ({{ item.status }}){% endif %}
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="alert alert-info mb-0">No prescriptions found.</div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer text-end"><strong>Estimated Meds Total:</strong> {{ "%.2f"|format(prescription_total or 0) }}</div>
+                    </div>
+                </div>
+            </div>
+
+</div>
+{% endblock %}

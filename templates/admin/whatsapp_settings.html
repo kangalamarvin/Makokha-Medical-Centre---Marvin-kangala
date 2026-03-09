@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp Settings{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 980px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">WhatsApp Cloud API Settings</h3>
+  </div>
+
+  <div class="alert alert-info">
+    Store your Meta WhatsApp Cloud API credentials here (saved under <code>instance/whatsapp_settings.json</code>, token encrypted).
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin_whatsapp_settings') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-row">
+          <div class="form-group col-md-5">
+            <label>Phone Number ID</label>
+            <input class="form-control" name="phone_number_id" value="{{ settings.phone_number_id if settings else '' }}" placeholder="e.g. 1234567890" required>
+            <small class="text-muted">From Meta Developer dashboard → WhatsApp → API Setup.</small>
+          </div>
+          <div class="form-group col-md-3">
+            <label>API Version</label>
+            <input class="form-control" name="api_version" value="{{ settings.api_version if settings else 'v19.0' }}" placeholder="v19.0">
+          </div>
+          <div class="form-group col-md-4">
+            <label>Access Token</label>
+            <input class="form-control" name="token" value="" placeholder="Paste token to set/update">
+            {% if masked_token %}
+              <small class="text-muted">Currently stored: <code>{{ masked_token }}</code> (leave blank to keep).</small>
+            {% else %}
+              <small class="text-muted">Token is stored encrypted.</small>
+            {% endif %}
+          </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save Settings</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="mb-3">Test Send</h5>
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>Send To</label>
+          <input class="form-control" id="waTestTo" placeholder="0712xxxxxx or +2547xxxxxxx">
+        </div>
+        <div class="form-group col-md-6">
+          <label>Message</label>
+          <input class="form-control" id="waTestText" placeholder="Makokha Medical Centre: test message" value="Makokha Medical Centre: WhatsApp configuration test OK.">
+        </div>
+        <div class="form-group col-md-2 d-flex align-items-end">
+          <button class="btn btn-success w-100" type="button" id="waTestBtn">Send Test</button>
+        </div>
+      </div>
+      <div id="waTestStatus" class="small text-muted"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const btn = document.getElementById('waTestBtn');
+  const elTo = document.getElementById('waTestTo');
+  const elText = document.getElementById('waTestText');
+  const elStatus = document.getElementById('waTestStatus');
+  const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  async function fetchJson(url, options){
+    const res = await fetch(url, options);
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+    if(!res.ok){
+      const msg = (data && data.error) ? data.error : (res.status + ' ' + res.statusText);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function setStatus(msg, isError){
+    elStatus.textContent = msg || '';
+    elStatus.className = 'small ' + (isError ? 'text-danger' : 'text-muted');
+  }
+
+  btn?.addEventListener('click', async function(){
+    const to = (elTo.value || '').trim();
+    const text = (elText.value || '').trim();
+    if(!to){ setStatus('Enter a phone number.', true); return; }
+
+    btn.disabled = true;
+    setStatus('Sending…');
+    try{
+      const resp = await fetchJson('{{ url_for('admin_whatsapp_settings_test') }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ to, text })
+      });
+      setStatus('Sent to ' + (resp.to || '') + '.');
+    } catch(e){
+      setStatus(e.message || 'Failed to send test', true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Admin UI Customization{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-palette2 me-2"></i>UI Customization</h2>
+            <p class="text-muted mb-0">Set table styles for all users and pharmacist card/button styles for pharmacy views.</p>
+        </div>
+    </div>
+
+    <form method="POST" id="adminUiCustomizationForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="mb-1">Table Themes</h5>
+                        <small class="text-muted">Pick one style applied to tables system-wide.</small>
+                    </div>
+                    <button type="submit" name="action" value="reset_table" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Table Defaults
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for theme in table_theme_options %}
+                    <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+                        <label class="mmc-theme-choice" data-theme-kind="table" data-theme-id="{{ theme }}">
+                            <input class="form-check-input" type="radio" name="table_theme" value="{{ theme }}" {% if ui_customization.table_theme == theme %}checked{% endif %}>
+                            <div class="mmc-theme-name">{{ theme.replace('table-', '').replace('-', ' ')|title }}</div>
+                            <div class="mmc-table-preview">
+                                <div class="mmc-table-head">
+                                    <span>Drug</span><span>Price</span><span>Stock</span>
+                                </div>
+                                <div class="mmc-table-row">
+                                    <span>Amox</span><span>Ksh 120</span><span>42</span>
+                                </div>
+                                <div class="mmc-table-row mmc-alt">
+                                    <span>Panadol</span><span>Ksh 80</span><span>17</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="mb-1">Pharmacist Card Themes</h5>
+                        <small class="text-muted">Visual style used for pharmacist drug cards.</small>
+                    </div>
+                    <button type="submit" name="action" value="reset_cards" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Card Defaults
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for theme in pharmacist_card_theme_options %}
+                    <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+                        <label class="mmc-theme-choice" data-theme-kind="card" data-theme-id="{{ theme }}">
+                            <input class="form-check-input" type="radio" name="pharmacist_card_theme" value="{{ theme }}" {% if ui_customization.pharmacist_card_theme == theme %}checked{% endif %}>
+                            <div class="mmc-theme-name">{{ theme.replace('card-', '').replace('-', ' ')|title }}</div>
+                            <div class="mmc-card-preview">
+                                <div class="mmc-card-title">Ceftriaxone</div>
+                                <div class="mmc-card-id">ID: DRG-1021</div>
+                                <div class="mmc-card-meta">IP Ksh 250.00</div>
+                                <div class="mmc-card-text">Stock: 22 units</div>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-1">Pharmacist Button Themes</h5>
+                <small class="text-muted">Button color style used on pharmacist drug cards.</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for theme in pharmacist_button_theme_options %}
+                    <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+                        <label class="mmc-theme-choice" data-theme-kind="button" data-theme-id="{{ theme }}">
+                            <input class="form-check-input" type="radio" name="pharmacist_button_theme" value="{{ theme }}" {% if ui_customization.pharmacist_button_theme == theme %}checked{% endif %}>
+                            <div class="mmc-theme-name">{{ theme.replace('btn-', '').replace('-', ' ')|title }}</div>
+                            <div class="mmc-button-preview">
+                                <button type="button" class="btn btn-sm mmc-btn-preview-add">Add</button>
+                                <button type="button" class="btn btn-sm mmc-btn-preview-info">Info</button>
+                                <button type="button" class="btn btn-sm mmc-btn-preview-rx">Rx</button>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="small text-muted" id="uiThemeSelectionSummary"></div>
+            <button type="submit" name="action" value="save" class="btn btn-primary">
+                <i class="bi bi-check2-circle me-1"></i>Save and Apply
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.mmc-theme-choice {
+    display: block;
+    border: 1px solid #d0d7e8;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.mmc-theme-choice:hover {
+    border-color: #6ea8fe;
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.08);
+}
+
+.mmc-theme-choice:has(input:checked) {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+
+.mmc-theme-choice input[type="radio"] {
+    margin-bottom: 8px;
+}
+
+.mmc-theme-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1f2937;
+}
+
+.mmc-table-preview {
+    border: var(--mmc-prev-table-outer, 1px) solid var(--mmc-prev-table-border, #dbe7ff);
+    border-radius: var(--mmc-prev-table-radius, 8px);
+    overflow: hidden;
+}
+
+.mmc-table-head,
+.mmc-table-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    font-size: 0.78rem;
+    line-height: 1.1;
+}
+
+.mmc-table-head {
+    background: var(--mmc-prev-table-header-bg, #0d6efd);
+    color: var(--mmc-prev-table-header-color, #fff);
+    font-weight: 600;
+}
+
+.mmc-table-row {
+    background: var(--mmc-prev-row-bg, #fff);
+    color: var(--mmc-prev-table-text, #1f2937);
+}
+
+.mmc-table-row.mmc-alt {
+    background: var(--mmc-prev-row-alt-bg, #f8fbff);
+}
+
+.mmc-table-head span,
+.mmc-table-row span {
+    padding: 7px 8px;
+    border-top: var(--mmc-prev-table-inner-h, 1px) solid var(--mmc-prev-table-border, #dbe7ff);
+    border-bottom: var(--mmc-prev-table-inner-h, 1px) solid var(--mmc-prev-table-border, #dbe7ff);
+    border-left: var(--mmc-prev-table-inner-v, 1px) solid var(--mmc-prev-table-border, #dbe7ff);
+    border-right: var(--mmc-prev-table-inner-v, 1px) solid var(--mmc-prev-table-border, #dbe7ff);
+}
+
+.mmc-table-head span:first-child,
+.mmc-table-row span:first-child {
+    border-left-width: 0;
+}
+
+.mmc-table-head span:last-child,
+.mmc-table-row span:last-child {
+    border-right-width: 0;
+}
+
+.mmc-card-preview {
+    border: 1px solid var(--mmc-prev-card-border, #dbe4ff);
+    border-radius: 8px;
+    background: var(--mmc-prev-card-bg, #fff);
+    box-shadow: var(--mmc-prev-card-shadow, 0 8px 16px rgba(30, 64, 175, 0.08)), var(--mmc-prev-card-glow, 0 0 0 rgba(0,0,0,0));
+    padding: 10px;
+}
+
+.mmc-card-title {
+    font-weight: 700;
+    color: var(--mmc-prev-card-title, #0f172a);
+    text-decoration: var(--mmc-prev-card-name-decoration, none);
+    text-underline-offset: 2px;
+}
+
+.mmc-card-id {
+    color: var(--mmc-prev-card-text, #475569);
+    font-size: 0.74rem;
+    border-bottom: var(--mmc-prev-card-id-rule, 0px) solid var(--mmc-prev-card-border, #dbe4ff);
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+}
+
+.mmc-card-meta {
+    color: var(--mmc-prev-card-price, #0d6efd);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.mmc-card-text {
+    color: var(--mmc-prev-card-text, #475569);
+    font-size: 0.78rem;
+}
+
+.mmc-button-preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mmc-btn-preview-add {
+    background: var(--mmc-prev-btn-add-bg, #0d6efd);
+    border-color: var(--mmc-prev-btn-add-bg, #0d6efd);
+    color: var(--mmc-prev-btn-add-text, #fff);
+}
+
+.mmc-btn-preview-add:hover {
+    background: var(--mmc-prev-btn-add-hover, #0b5ed7);
+    border-color: var(--mmc-prev-btn-add-hover, #0b5ed7);
+    color: var(--mmc-prev-btn-add-text, #fff);
+}
+
+.mmc-btn-preview-info {
+    background: var(--mmc-prev-btn-info-bg, #0ea5e9);
+    border-color: var(--mmc-prev-btn-info-bg, #0ea5e9);
+    color: var(--mmc-prev-btn-info-text, #fff);
+}
+
+.mmc-btn-preview-info:hover {
+    background: var(--mmc-prev-btn-info-hover, #0284c7);
+    border-color: var(--mmc-prev-btn-info-hover, #0284c7);
+    color: var(--mmc-prev-btn-info-text, #fff);
+}
+
+.mmc-btn-preview-rx {
+    background: var(--mmc-prev-btn-rx-bg, #f97316);
+    border-color: var(--mmc-prev-btn-rx-bg, #f97316);
+    color: var(--mmc-prev-btn-rx-text, #fff);
+}
+
+.mmc-btn-preview-rx:hover {
+    background: var(--mmc-prev-btn-rx-hover, #ea580c);
+    border-color: var(--mmc-prev-btn-rx-hover, #ea580c);
+    color: var(--mmc-prev-btn-rx-text, #fff);
+}
+</style>
+
+<script>
+(function () {
+    function init() {
+        const engine = window.MMC_UI_THEME_ENGINE;
+        if (!engine) {
+            window.setTimeout(init, 100);
+            return;
+        }
+
+        function pickChecked(name) {
+            const el = document.querySelector(`input[name="${name}"]:checked`);
+            return el ? el.value : '';
+        }
+
+        function paintOptionCards() {
+            document.querySelectorAll('.mmc-theme-choice[data-theme-kind="table"]').forEach((el) => {
+                const id = el.getAttribute('data-theme-id');
+                const p = engine.computeTablePalette(id);
+                el.style.setProperty('--mmc-prev-table-header-bg', p.headerBg);
+                el.style.setProperty('--mmc-prev-table-header-color', p.headerColor);
+                el.style.setProperty('--mmc-prev-table-border', p.border);
+                el.style.setProperty('--mmc-prev-row-bg', p.rowBg);
+                el.style.setProperty('--mmc-prev-row-alt-bg', p.rowAltBg);
+                el.style.setProperty('--mmc-prev-table-text', p.text);
+                el.style.setProperty('--mmc-prev-table-radius', p.radius);
+                el.style.setProperty('--mmc-prev-table-outer', p.outerBorderWidth);
+                el.style.setProperty('--mmc-prev-table-inner-h', p.innerHBorderWidth);
+                el.style.setProperty('--mmc-prev-table-inner-v', p.innerVBorderWidth);
+            });
+
+            document.querySelectorAll('.mmc-theme-choice[data-theme-kind="card"]').forEach((el) => {
+                const id = el.getAttribute('data-theme-id');
+                const p = engine.computeCardPalette(id);
+                el.style.setProperty('--mmc-prev-card-bg', p.bg);
+                el.style.setProperty('--mmc-prev-card-border', p.border);
+                el.style.setProperty('--mmc-prev-card-shadow', p.shadow);
+                el.style.setProperty('--mmc-prev-card-title', p.title);
+                el.style.setProperty('--mmc-prev-card-text', p.text);
+                el.style.setProperty('--mmc-prev-card-price', p.price);
+                el.style.setProperty('--mmc-prev-card-glow', p.glow);
+                el.style.setProperty('--mmc-prev-card-name-decoration', p.nameDecoration);
+                el.style.setProperty('--mmc-prev-card-id-rule', p.idRuleWidth);
+            });
+
+            document.querySelectorAll('.mmc-theme-choice[data-theme-kind="button"]').forEach((el) => {
+                const id = el.getAttribute('data-theme-id');
+                const p = engine.computeButtonPalette(id);
+                el.style.setProperty('--mmc-prev-btn-add-bg', p.addBg);
+                el.style.setProperty('--mmc-prev-btn-add-hover', p.addHover);
+                el.style.setProperty('--mmc-prev-btn-add-text', p.addText);
+                el.style.setProperty('--mmc-prev-btn-info-bg', p.infoBg);
+                el.style.setProperty('--mmc-prev-btn-info-hover', p.infoHover);
+                el.style.setProperty('--mmc-prev-btn-info-text', p.infoText);
+                el.style.setProperty('--mmc-prev-btn-rx-bg', p.rxBg);
+                el.style.setProperty('--mmc-prev-btn-rx-hover', p.rxHover);
+                el.style.setProperty('--mmc-prev-btn-rx-text', p.rxText);
+            });
+        }
+
+        function refreshLivePreview() {
+            const payload = {
+                table_theme: pickChecked('table_theme'),
+                pharmacist_card_theme: pickChecked('pharmacist_card_theme'),
+                pharmacist_button_theme: pickChecked('pharmacist_button_theme'),
+            };
+            window.applyMmcUiThemes(payload);
+
+            const summary = document.getElementById('uiThemeSelectionSummary');
+            if (summary) {
+                summary.textContent =
+                    `Selected: ${payload.table_theme}, ${payload.pharmacist_card_theme}, ${payload.pharmacist_button_theme}`;
+            }
+        }
+
+        document.querySelectorAll('#adminUiCustomizationForm input[type="radio"]').forEach((el) => {
+            el.addEventListener('change', refreshLivePreview);
+        });
+
+        paintOptionCards();
+        refreshLivePreview();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+{% endblock %}

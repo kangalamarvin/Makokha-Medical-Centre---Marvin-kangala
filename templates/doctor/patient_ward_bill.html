@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Ward Bill for {{ bill_summary.context.patient_name or 'Patient' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">Ward Stay Bill</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ url_for('doctor_dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('doctor_patient_details', patient_id=patient_id) }}">Patient Details</a></li>
+        <li class="breadcrumb-item active">Ward Bill</li>
+    </ol>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-invoice-dollar me-1"></i>
+            Bill Summary for Patient #{{ patient_id }}
+        </div>
+        <div class="card-body">
+            {% if bill_summary %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Patient:</strong> {{ bill_summary.context.patient_name or 'N/A' }}</p>
+                    <p><strong>Ward:</strong> {{ bill_summary.context.ward_name }}</p>
+                    <p><strong>Bed:</strong> {{ bill_summary.context.bed_number }}</p>
+                    <p><strong>Daily Rate:</strong> {{ "%.2f"|format(bill_summary.context.daily_rate) }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Admission Date:</strong> {{ bill_summary.context.start_date.strftime('%d-%b-%Y') }}</p>
+                    <p><strong>Current Bill As Of:</strong> {{ bill_summary.context.end_date.strftime('%d-%b-%Y') }}</p>
+                    <p><strong>Total Days of Stay:</strong> {{ bill_summary.total_stay_days }}</p>
+                    <p><strong>Total Stay Amount:</strong> <strong>{{ "%.2f"|format(bill_summary.total_stay_amount) }}</strong></p>
+                </div>
+            </div>
+            <hr>
+            <h4>Billing Details</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Billed Portion</h5>
+                    <p><strong>Billed Days:</strong> {{ bill_summary.billed_days }}</p>
+                    <p><strong>Billed Amount:</strong> {{ "%.2f"|format(bill_summary.billed_amount) }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Unbilled Portion</h5>
+                    {% if unbilled_summary %}
+                        <p><strong>Unbilled Days:</strong> {{ unbilled_summary.days }}</p>
+                        <p><strong>Unbilled Amount:</strong> <span class="text-danger">{{ "%.2f"|format(unbilled_summary.amount) }}</span></p>
+                        <p><strong>Period:</strong> {{ unbilled_summary.from }} to {{ unbilled_summary.to }}</p>
+                        <form action="{{ url_for('update_patient_ward_bill', patient_id=patient_id) }}" method="POST" class="mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-1"></i>
+                                Add Unbilled Charges to Patient's Bill
+                            </button>
+                        </form>
+                    {% else %}
+                        <p class="text-success">All charges are up to date.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <p>No billing information available for this patient's ward stay.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-history me-1"></i>
+            Charge History
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Date From</th>
+                        <th>Date To</th>
+                        <th>Days</th>
+                        <th>Daily Rate</th>
+                        <th>Amount</th>
+                        <th>Billed On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if bill_summary and bill_summary.charges %}
+                        {% for charge in bill_summary.charges %}
+                        <tr>
+                            <td>{{ charge.charge_start_date.strftime('%d-%b-%Y') }}</td>
+                            <td>{{ charge.charge_end_date.strftime('%d-%b-%Y') }}</td>
+                            <td>{{ charge.days }}</td>
+                            <td>{{ "%.2f"|format(charge.daily_rate) }}</td>
+                            <td>{{ "%.2f"|format(charge.amount) }}</td>
+                            <td>{{ charge.created_at.strftime('%d-%b-%Y %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No charge history found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

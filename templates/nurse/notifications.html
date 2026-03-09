@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <h2><i class="fas fa-bell"></i> Nurse Notifications</h2>
+    </div>
+
+    <!-- Pending Notifications -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            <strong><i class="fas fa-clock"></i> Pending Patient Admissions ({{ pending_count }})</strong>
+        </div>
+        <div class="card-body">
+            {% if pending_notifications %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Time Notified</th>
+                            <th>Patient</th>
+                            <th>Age/Gender</th>
+                            <th>Ward</th>
+                            <th>Bed</th>
+                            <th>Doctor</th>
+                            <th>Time Elapsed</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notif in pending_notifications %}
+                        <tr>
+                            <td>{{ notif.notified_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <strong>{{ notif.patient.name }}</strong><br>
+                                <small>IP: {{ notif.patient.ip_number }}</small>
+                            </td>
+                            <td>{{ notif.patient.age }} / {{ notif.patient.gender }}</td>
+                            <td>{{ notif.ward.name }}</td>
+                            <td>{{ notif.bed.bed_number }}</td>
+                            <td>{{ notif.doctor.username }}</td>
+                            <td>
+                                <span class="badge badge-{% if notif.elapsed_minutes < 5 %}success{% elif notif.elapsed_minutes < 10 %}warning{% else %}danger{% endif %}">
+                                    {{ notif.elapsed_minutes }} min
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('nurse_patient_details', patient_id=notif.patient_id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-user-check"></i> Receive Patient
+                                </a>
+                                <form method="POST" action="{{ url_for('nurse_complete_notification', notification_id=notif.id) }}" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check"></i> Mark Complete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-4">No pending admissions</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Completed Notifications -->
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <strong><i class="fas fa-check-circle"></i> Completed Notifications</strong>
+        </div>
+        <div class="card-body">
+            {% if completed_notifications %}
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Notified</th>
+                            <th>Completed</th>
+                            <th>Patient</th>
+                            <th>Ward</th>
+                            <th>Bed</th>
+                            <th>Doctor</th>
+                            <th>Response Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notif in completed_notifications %}
+                        <tr>
+                            <td>{{ notif.notified_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ notif.completed_at.strftime('%Y-%m-%d %H:%M') if notif.completed_at else '-' }}</td>
+                            <td>{{ notif.patient.name }}</td>
+                            <td>{{ notif.ward.name }}</td>
+                            <td>{{ notif.bed.bed_number }}</td>
+                            <td>{{ notif.doctor.username }}</td>
+                            <td>
+                                {% if notif.completed_at %}
+                                <span class="badge badge-info">
+                                    {{ ((notif.completed_at - notif.notified_at).total_seconds() / 60) | int }} min
+                                </span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-4">No completed notifications</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+</style>
+{% endblock %}

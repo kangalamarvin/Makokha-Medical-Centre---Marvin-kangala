@@ -1,0 +1,217 @@
+{# Simple receipt template for modal display. #}
+
+{% set _ctrl_simple_source_url = url_for('pharmacist_controlled_sale_receipt', sale_id=sale.id) %}
+{% if amount_given is defined and amount_given is not none %}
+    {% set _ctrl_simple_source_url = _ctrl_simple_source_url ~ '?amount_given=' ~ (amount_given|string) %}
+    {% if change is defined and change is not none %}
+        {% set _ctrl_simple_source_url = _ctrl_simple_source_url ~ '&change=' ~ (change|string) %}
+    {% endif %}
+{% elif change is defined and change is not none %}
+    {% set _ctrl_simple_source_url = _ctrl_simple_source_url ~ '?change=' ~ (change|string) %}
+{% endif %}
+<div id="print-area" data-receipt-root="1" data-receipt-source-url="{{ _ctrl_simple_source_url }}">
+
+<style>
+/* Keep receipt tables on default styling regardless of dashboard table themes */
+#print-area .table,
+#print-area .table th,
+#print-area .table td {
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+#print-area .table thead th {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+#print-area .table tbody tr:nth-child(even),
+#print-area .table tbody tr:hover {
+    background: transparent !important;
+}
+
+#print-area .mmc-stamp-front {
+    margin-left: auto !important;
+    text-align: right !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+
+#print-area .mmc-stamp-front svg {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+</style>
+
+<div class="no-print text-end mb-2">
+    <button type="button" class="btn btn-sm btn-primary" id="printControlledSimpleReceiptBtn">Print Receipt</button>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="saveControlledSimpleReceiptPdfBtn">Save PDF</button>
+    {% set email_share_endpoint = url_for('api_controlled_sale_share_email', sale_id=sale.id) %}
+    {% set email_fallback_pdf = url_for('api_controlled_sale_receipt_pdf', sale_id=sale.id) %}
+    {% set email_button_class = 'btn btn-sm btn-primary' %}
+    {% include 'components/email_share_button.html' %}
+    {% set whatsapp_share_endpoint = url_for('api_controlled_sale_share_whatsapp', sale_id=sale.id) %}
+    {% set whatsapp_fallback_pdf = url_for('api_controlled_sale_receipt_pdf', sale_id=sale.id) %}
+    {% set whatsapp_default_phone = '' %}
+    {% set whatsapp_button_class = 'btn btn-sm btn-success' %}
+    {% include 'components/whatsapp_share_button.html' %}
+</div>
+
+<div class="text-center mb-3">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" style="height: 48px;" class="mb-2">
+    <div>makokhamedicalcentre2025@gmail.com</div>
+    <div class="small">+254 741256531 / +254 713580997</div>
+    <div class="text-muted small">CONTROLLED DRUGS RECEIPT</div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-6">
+        <div><small><span class="fw-semibold">Receipt No:</span> {{ sale.sale_number }}</small></div>
+        <div><small><span class="fw-semibold">Date/Time:</span> {% if sale.created_at %}{{ sale.created_at|eat_time('%d/%m/%Y %H:%M EAT') }}{% endif %}</small></div>
+        <div><small><span class="fw-semibold">Pharmacist:</span> {{ sale.pharmacist_name or (sale.user.username if sale.user else '') }}</small></div>
+    </div>
+    <div class="col-6">
+        <div><small><span class="fw-semibold">Name:</span> {{ sale.customer_name }}</small></div>
+        <div><small><span class="fw-semibold">Phone:</span> {{ sale.customer_phone }}</small></div>
+        <div><small><span class="fw-semibold">Sex:</span> {{ sale.customer_gender[0] if sale.customer_gender else '' }}</small></div>
+        {% if sale.customer_age %}<div><small><span class="fw-semibold">Age:</span> {{ sale.customer_age }}</small></div>{% endif %}
+        {% if sale.destination %}<div><small><span class="fw-semibold">Destination:</span> {{ sale.destination }}</small></div>{% endif %}
+        {% if sale.diagnosis %}<div><small><span class="fw-semibold">Dx:</span> {{ sale.diagnosis }}</small></div>{% endif %}
+    </div>
+</div>
+
+<hr>
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 35%;">Drug</th>
+                <th class="text-center" style="width: 15%;">Qty</th>
+                <th class="text-end" style="width: 20%;">Unit</th>
+                <th class="text-end" style="width: 30%;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in sale.items %}
+            <tr>
+                <td>
+                    <div class="fw-semibold small">{{ item.controlled_drug_name }}</div>
+                    {% if item.controlled_drug_specification %}
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ item.controlled_drug_specification }}</div>
+                    {% endif %}
+                </td>
+                <td class="text-center">{{ item.quantity }}</td>
+                <td class="text-end">Ksh {{ '%.2f'|format(item.unit_price) }}</td>
+                <td class="text-end fw-semibold">Ksh {{ '%.2f'|format(item.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="fw-semibold border-top">
+                <td colspan="3" class="text-end">TOTAL:</td>
+                <td class="text-end">Ksh {{ '%.2f'|format(sale.total_amount) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="mt-2">
+    <div class="fw-semibold mb-1">Payment Summary</div>
+    <table class="table table-sm table-bordered mb-0">
+        <tbody>
+            <tr>
+                <th>Total</th>
+                <td class="text-end"><strong>Ksh {{ '%.2f'|format(sale.total_amount or 0) }}</strong></td>
+            </tr>
+            <tr>
+                <th>Payment Method</th>
+                <td class="text-end">{{ (sale.payment_method or 'cash')|upper }}</td>
+            </tr>
+            <tr>
+                <th>Amount</th>
+                <td class="text-end"><strong>Ksh {{ '%.2f'|format(sale.total_amount or 0) }}</strong></td>
+            </tr>
+            {% if (sale.payment_method or 'cash') == 'cash' %}
+            <tr>
+                <th>Amount Given (Cash)</th>
+                <td class="text-end">
+                    {% if amount_given is defined and amount_given is not none %}
+                        Ksh {{ '%.2f'|format(amount_given) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+            </tr>
+            {% set _bal = (change if (change is defined and change is not none) else (((amount_given or 0) - (sale.total_amount or 0)) if (amount_given is defined and amount_given is not none) else none)) %}
+            <tr>
+                <th>{{ 'Change' if (_bal is not none and _bal >= 0) else 'Balance Due' if (_bal is not none and _bal < 0) else 'Change' }}</th>
+                <td class="text-end">
+                    {% if _bal is not none %}
+                        Ksh {{ '%.2f'|format(_bal) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if sale.prescription_image_path %}
+<hr>
+<div class="text-center">
+    <div class="fw-semibold mb-2">Prescription Sheet</div>
+    <img src="/{{ sale.prescription_image_path }}" alt="Prescription" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px;">
+</div>
+{% endif %}
+
+<hr>
+
+<div class="signature-section" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap;margin-bottom:16px;">
+    <div class="mmc-signature-back" style="position:relative;z-index:1;flex:0 0 45%;min-width:220px;">
+        {% include 'components/signature_pad.html' %}
+    </div>
+    <div class="mmc-stamp-front" style="position:relative;z-index:2;flex:0 0 45%;min-width:180px;margin-left:auto;text-align:right;display:flex;justify-content:flex-end;">
+        {{ generate_rubber_stamp() }}
+    </div>
+</div>
+
+<div class="text-center mb-2">
+    {{ render_receipt_verification_qr('controlled_sale', sale.id, sale.sale_number) }}
+</div>
+
+<div class="text-center text-muted small">
+    <p class="mb-1">Thank you for your purchase.</p>
+    <p class="mb-0">Goods sold are not returnable without original receipt.</p>
+</div>
+</div>
+
+<script>
+document.getElementById('printControlledSimpleReceiptBtn')?.addEventListener('click', async function() {
+    const exporter = window.MMC_RECEIPT_EXPORT;
+    if (!exporter || typeof exporter.printPdf !== 'function') {
+        alert('Receipt PDF exporter is not available on this page.');
+        return;
+    }
+    const ok = await exporter.printPdf();
+    if (!ok) {
+        alert('Unable to open generated receipt PDF for print.');
+    }
+});
+
+document.getElementById('saveControlledSimpleReceiptPdfBtn')?.addEventListener('click', async function() {
+    const exporter = window.MMC_RECEIPT_EXPORT;
+    if (!exporter || typeof exporter.downloadPdf !== 'function') {
+        alert('Receipt PDF exporter is not available on this page.');
+        return;
+    }
+    const ref = {{ (sale.sale_number or ('controlled-' ~ sale.id))|tojson }};
+    const ok = await exporter.downloadPdf(ref);
+    if (!ok) {
+        alert('Unable to save receipt PDF.');
+    }
+});
+</script>
+

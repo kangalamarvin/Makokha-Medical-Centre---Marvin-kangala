@@ -1,0 +1,61 @@
+<!-- Digital Signature Component -->
+<style>
+    .signature-container {
+        display: inline-block;
+        position: relative;
+        margin: 20px 0;
+    }
+    
+    .signature-script {
+        font-family: 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
+        font-size: 42px;
+        color: #1a1a1a;
+        font-style: italic;
+        transform: rotate(-3deg);
+        display: inline-block;
+        padding: 0 20px;
+        position: relative;
+        line-height: 1;
+    }
+    
+    .signature-script::before {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 10px;
+        right: 10px;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #1a1a1a 20%, #1a1a1a 80%, transparent);
+        opacity: 0.4;
+    }
+    
+    .signature-title {
+        text-align: center;
+        font-size: 11px;
+        color: #2c3e50;
+        margin-top: 5px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .signature-date {
+        text-align: center;
+        font-size: 9px;
+        color: #7f8c8d;
+        margin-top: 2px;
+    }
+    
+    @media print {
+        .signature-script {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+    }
+</style>
+
+<div class="signature-container">
+    <div class="signature-script">{{ signer_name or "Dr. J. Makokha" }}</div>
+    <div class="signature-title">{{ signer_title or "Medical Director" }}</div>
+    <div class="signature-date">Signed: {{ signature_date }}</div>
+</div>

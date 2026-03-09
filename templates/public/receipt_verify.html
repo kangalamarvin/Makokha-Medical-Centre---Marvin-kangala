@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt Verification</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 520px;
+      margin: 36px auto;
+      padding: 0 14px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
+    }
+    .status {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .ok { color: #166534; }
+    .bad { color: #991b1b; }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 6px 0;
+      font-size: 14px;
+    }
+    .meta-key {
+      color: #4b5563;
+    }
+    .meta-val {
+      font-weight: 600;
+      text-align: right;
+    }
+    .note {
+      font-size: 13px;
+      color: #4b5563;
+      margin-top: 12px;
+      border-top: 1px dashed #d1d5db;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2 style="margin:0 0 10px 0;">Receipt Verification</h2>
+      <div class="status {{ 'ok' if valid else 'bad' }}">
+        {{ 'Valid Receipt' if valid else 'Verification Failed' }}
+      </div>
+      <div style="font-size:14px; margin-bottom:8px;">{{ status_message }}</div>
+
+      <div class="meta-row">
+        <div class="meta-key">Type</div>
+        <div class="meta-val">{{ kind_label }}</div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-key">Reference</div>
+        <div class="meta-val">{{ reference or 'N/A' }}</div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-key">Amount</div>
+        <div class="meta-val">
+          {% if amount is not none %}
+            KSh {{ '%.2f'|format(amount) }}
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-key">Issued At</div>
+        <div class="meta-val">
+          {% if issued_at %}
+            {{ issued_at|eat_time('%Y-%m-%d %H:%M EAT') }}
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="note">
+        If this status is invalid but you expected a valid receipt, contact Makokha Medical Centre with the printed receipt details.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

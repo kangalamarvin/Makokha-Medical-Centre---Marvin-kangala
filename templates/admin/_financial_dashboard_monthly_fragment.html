@@ -1,0 +1,826 @@
+<!-- Monthly Financial Dashboard Fragment (for AJAX loading) -->
+
+<style>
+    .financial-dashboard-container {
+        font-size: 9px;
+    }
+    
+    .financial-dashboard-container * {
+        font-size: 9px !important;
+    }
+    
+    .financial-dashboard-container .card {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    }
+    
+    .financial-dashboard-container .chart-container {
+        position: relative;
+        width: 100%;
+        height: auto;
+    }
+    
+    .financial-dashboard-container canvas {
+        max-height: 300px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .financial-dashboard-container .row > div {
+            margin-bottom: 15px;
+        }
+    }
+</style>
+
+<div class="financial-dashboard-container">
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-left-primary h-100">
+            <div class="card-body">
+                <div class="text-primary font-weight-bold text-uppercase mb-1">Monthly Revenue</div>
+                <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.total_revenue) }}</div>
+                <small class="text-muted">
+                    {% if metrics.start_date %}
+                        {{ metrics.start_date.strftime('%B %Y') }}
+                    {% endif %}
+                </small>
+                <div class="mt-2">
+                    {% if metrics.revenue_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-success"></i> {{ "{:.1f}%".format(metrics.revenue_change_pct) }} vs last month
+                    {% else %}
+                        <i class="fas fa-arrow-down text-danger"></i> {{ "{:.1f}%".format(metrics.revenue_change_pct) }} vs last month
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-success h-100">
+            <div class="card-body">
+                <div class="text-success font-weight-bold text-uppercase mb-1">Monthly Expenses</div>
+                <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.total_expense) }}</div>
+                <small class="text-muted">Operating Costs</small>
+                <div class="mt-2">
+                    {% if metrics.expense_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-danger"></i> {{ "{:.1f}%".format(metrics.expense_change_pct) }} vs last month
+                    {% else %}
+                        <i class="fas fa-arrow-down text-success"></i> {{ "{:.1f}%".format(abs(metrics.expense_change_pct)) }} vs last month
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-info h-100">
+            <div class="card-body">
+                <div class="text-info font-weight-bold text-uppercase mb-1">Monthly Net Profit</div>
+                <div class="h3 mb-0">KES {{ "{:,.0f}".format(metrics.net_profit) }}</div>
+                <small class="text-muted">Revenue - Expenses</small>
+                <div class="mt-2">
+                    {% if metrics.profit_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-success"></i> {{ "{:.1f}%".format(metrics.profit_change_pct) }} vs last month
+                    {% else %}
+                        <i class="fas fa-arrow-down text-danger"></i> {{ "{:.1f}%".format(abs(metrics.profit_change_pct)) }} vs last month
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-warning h-100">
+            <div class="card-body">
+                <div class="text-warning font-weight-bold text-uppercase mb-1">Profit Margin</div>
+                <div class="h3 mb-0">{{ "{:.1f}%".format(metrics.profit_margin if metrics.profit_margin else 0) }}</div>
+                <small class="text-muted">Net / Revenue Ratio</small>
+                <div class="mt-2">
+                    {% if metrics.profit_margin >= 20 %}
+                        <span class="badge badge-success">Healthy</span>
+                    {% elif metrics.profit_margin >= 10 %}
+                        <span class="badge badge-warning">Fair</span>
+                    {% else %}
+                        <span class="badge badge-danger">Poor</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Multi-Month Range Report -->
+{% if is_range and monthly_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Monthly Report: {{ date_range_label }} ({{ num_months }} months)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-striped">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-right">Revenue</th>
+                                <th class="text-right">Expenses</th>
+                                <th class="text-right">Profit</th>
+                                <th class="text-right">Margin %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for month in monthly_data %}
+                            <tr>
+                                <td><strong>{{ month.month_name }} {{ month.year }}</strong></td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(month.revenue) }}</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(month.expense) }}</td>
+                                <td class="text-right font-weight-bold {% if month.profit >= 0 %}text-success{% else %}text-danger{% endif %}">KES {{ "{:,.0f}".format(month.profit) }}</td>
+                                <td class="text-right">{{ "{:.1f}%".format(month.margin) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Professional Financial Analysis Charts -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white py-3">
+                <h6 class="mb-0 font-weight-bold">📊 Revenue vs Expenses Analysis</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px; margin-bottom: 20px;">
+                    <canvas id="monthly-revenue-vs-expense-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breakdown Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h6 class="mb-0 font-weight-bold">💰 Revenue Breakdown by Source</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px; margin-bottom: 20px;">
+                    <canvas id="revenue-breakdown-pie-chart"></canvas>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th class="text-right">Amount</th>
+                                <th class="text-right">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set sources = [
+                                ('Pharmacy', metrics.revenue_breakdown.pharmacy),
+                                ('Lab Tests', metrics.revenue_breakdown.lab),
+                                ('Imaging', metrics.revenue_breakdown.imaging),
+                                ('Consultation', metrics.revenue_breakdown.consultation),
+                                ('Insurance', metrics.revenue_breakdown.insurance),
+                                ('Other', metrics.revenue_breakdown.other)
+                            ] %}
+                            {% for name, amount in sources %}
+                                {% if amount > 0 %}
+                                    <tr>
+                                        <td>{{ name }}</td>
+                                        <td class="text-right font-weight-bold">KES {{ "{:,.0f}".format(amount) }}</td>
+                                        <td class="text-right">{{ "{:.1f}%".format((amount / metrics.total_revenue * 100) if metrics.total_revenue > 0 else 0) }}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white py-3">
+                <h6 class="mb-0 font-weight-bold">📉 Expenses Breakdown by Category</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px; margin-bottom: 20px;">
+                    <canvas id="expense-breakdown-pie-chart"></canvas>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-right">Amount</th>
+                                <th class="text-right">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set categories = [
+                                ('Payroll', metrics.expense_breakdown.payroll),
+                                ('Pharmacy', metrics.expense_breakdown.pharmacy),
+                                ('Equipment', metrics.expense_breakdown.equipment),
+                                ('Utilities', metrics.expense_breakdown.utilities),
+                                ('Debt Service', metrics.expense_breakdown.debt),
+                                ('Other', metrics.expense_breakdown.other)
+                            ] %}
+                            {% for name, amount in categories %}
+                                {% if amount > 0 %}
+                                    <tr>
+                                        <td>{{ name }}</td>
+                                        <td class="text-right font-weight-bold">KES {{ "{:,.0f}".format(amount) }}</td>
+                                        <td class="text-right">{{ "{:.1f}%".format((amount / metrics.total_expense * 100) if metrics.total_expense > 0 else 0) }}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Weekly Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Week</th>
+                                <th class="text-right">Revenue</th>
+                                <th class="text-right">Expenses</th>
+                                <th class="text-right">Net Profit</th>
+                                <th class="text-right">Margin %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if weekly_breakdown %}
+                                {% for week in weekly_breakdown %}
+                                    <tr>
+                                        <td><strong>Week of {{ week.start_date.strftime('%b %d') }}</strong></td>
+                                        <td class="text-right">KES {{ "{:,.0f}".format(week.revenue) }}</td>
+                                        <td class="text-right">KES {{ "{:,.0f}".format(week.expense) }}</td>
+                                        <td class="text-right font-weight-bold {% if week.profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            KES {{ "{:,.0f}".format(week.profit) }}
+                                        </td>
+                                        <td class="text-right">{{ "{:.1f}%".format(week.margin if week.margin else 0) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No data available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white py-3">
+                <h6 class="mb-0 font-weight-bold">💳 Cash Flow by Payment Method</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px; margin-bottom: 20px;">
+                    <canvas id="cashflow-method-chart"></canvas>
+                </div>
+                {% if cashflow_breakdown %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Payment Method</th>
+                                    <th class="text-right">Inflow</th>
+                                    <th class="text-right">Outflow</th>
+                                    <th class="text-right">Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for method, data in cashflow_breakdown.items() if method != 'total' %}
+                                    <tr>
+                                        <td class="text-capitalize">{{ method }}</td>
+                                        <td class="text-right font-weight-bold text-success">KES {{ "{:,.0f}".format(data.inflow if data.inflow else 0) }}</td>
+                                        <td class="text-right font-weight-bold text-danger">KES {{ "{:,.0f}".format(data.outflow if data.outflow else 0) }}</td>
+                                        <td class="text-right font-weight-bold {% if (data.net if data.net else 0) >= 0 %}text-success{% else %}text-danger{% endif %}">KES {{ "{:,.0f}".format(data.net if data.net else 0) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No cash flow data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning text-white py-3">
+                <h6 class="mb-0 font-weight-bold">⚠️ Outstanding Amounts</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-3">
+                        <div class="alert alert-info mb-0">
+                            <small class="text-muted">Debtor Balances</small><br>
+                            <h5 class="mb-0">KES {{ "{:,.0f}".format(metrics.outstanding_debtor if metrics.outstanding_debtor else 0) }}</h5>
+                            <small class="text-muted">{{ metrics.outstanding_debtor_count if metrics.outstanding_debtor_count else 0 }} debtors</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="alert alert-warning mb-0">
+                            <small class="text-muted">Insurance Claims</small><br>
+                            <h5 class="mb-0">KES {{ "{:,.0f}".format(metrics.outstanding_insurance if metrics.outstanding_insurance else 0) }}</h5>
+                            <small class="text-muted">{{ metrics.outstanding_insurance_count if metrics.outstanding_insurance_count else 0 }} claims</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="outstanding-bar-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">Budget vs Actual</h6>
+            </div>
+            <div class="card-body">
+                {% if budget_data %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-right">Budget</th>
+                                    <th class="text-right">Actual</th>
+                                    <th class="text-right">Variance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in budget_data %}
+                                    <tr>
+                                        <td>{{ item.category }}</td>
+                                        <td class="text-right">KES {{ "{:,.0f}".format(item.budget) }}</td>
+                                        <td class="text-right">KES {{ "{:,.0f}".format(item.actual) }}</td>
+                                        <td class="text-right font-weight-bold {% if item.variance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            {{ "{:.1f}%".format(item.variance) }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No budget data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h6 class="mb-0">Patient Metrics</h6>
+            </div>
+            <div class="card-body">
+                {% if metrics.patient_metrics and metrics.patient_metrics.total_patients %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6 class="text-muted">Total Patients</h6>
+                            <h4 class="text-primary">{{ metrics.patient_metrics.total_patients }}</h4>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">New Patients</h6>
+                            <h4 class="text-success">{{ metrics.patient_metrics.new_patients }}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6 class="text-muted">Return Patients</h6>
+                            <h4 class="text-info">{{ metrics.patient_metrics.returning_patients }}</h4>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">Avg Revenue/Patient</h6>
+                            <h4 class="text-warning">KES {{ "{:,.0f}".format(metrics.patient_metrics.avg_revenue_per_patient) }}</h4>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                    <p class="text-muted">Patient metrics not available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    // Initialize monthly charts
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeMonthlyCharts();
+    });
+    
+    function initializeMonthlyCharts() {
+        // Initialize Revenue vs Expenses Chart
+        const revenueVsExpenseCtx = document.getElementById('monthly-revenue-vs-expense-chart');
+        if (revenueVsExpenseCtx) {
+            initRevenueVsExpenseChart(revenueVsExpenseCtx);
+        }
+        
+        // Initialize Revenue Breakdown Pie Chart
+        const revenueBreakdownCtx = document.getElementById('revenue-breakdown-pie-chart');
+        if (revenueBreakdownCtx) {
+            initRevenueBreakdownChart(revenueBreakdownCtx);
+        }
+        
+        // Initialize Expense Breakdown Pie Chart
+        const expenseBreakdownCtx = document.getElementById('expense-breakdown-pie-chart');
+        if (expenseBreakdownCtx) {
+            initExpenseBreakdownChart(expenseBreakdownCtx);
+        }
+        
+        // Initialize Cash Flow Chart
+        const cashFlowCtx = document.getElementById('cashflow-method-chart');
+        if (cashFlowCtx) {
+            initCashFlowChart(cashFlowCtx);
+        }
+        
+        // Initialize Outstanding Bar Chart
+        const outstandingCtx = document.getElementById('outstanding-bar-chart');
+        if (outstandingCtx) {
+            initOutstandingChart(outstandingCtx);
+        }
+    }
+    
+    function initRevenueVsExpenseChart(ctx) {
+        {% if is_range and monthly_data %}
+            const monthlyChartData = {{ monthly_data|tojson|safe }};
+            const labels = monthlyChartData.map(m => m.month_name.substring(0, 3) + ' ' + m.year);
+            const revenues = monthlyChartData.map(m => parseFloat(m.revenue) || 0);
+            const expenses = monthlyChartData.map(m => parseFloat(m.expense) || 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: revenues,
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenses,
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: { font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': KES ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'KES ' + (value/1000).toFixed(0) + 'K';
+                                },
+                                font: { size: 9 }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 9 }
+                            }
+                        }
+                    }
+                }
+            });
+        {% else %}
+            // Single month mode - comparison with previous month
+            const revenue = parseFloat('{{ metrics.total_revenue|default(0) }}') || 0;
+            const expenses = parseFloat('{{ metrics.total_expense|default(0) }}') || 0;
+            const prevRevenue = parseFloat('{{ previous_metrics.total_revenue|default(0) }}') || 0;
+            const prevExpenses = parseFloat('{{ previous_metrics.total_expense|default(0) }}') || 0;
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['This Month', 'Previous Month'],
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: [revenue, prevRevenue],
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expenses',
+                            data: [expenses, prevExpenses],
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: { font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': KES ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'KES ' + (value/1000).toFixed(0) + 'K';
+                                },
+                                font: { size: 9 }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 9 }
+                            }
+                        }
+                    }
+                }
+            });
+        {% endif %}
+    }
+    
+    function initRevenueBreakdownChart(ctx) {
+        const sources = [
+            { name: 'Pharmacy', value: parseFloat('{{ metrics.revenue_breakdown.pharmacy|default(0) }}') || 0 },
+            { name: 'Lab', value: parseFloat('{{ metrics.revenue_breakdown.lab|default(0) }}') || 0 },
+            { name: 'Imaging', value: parseFloat('{{ metrics.revenue_breakdown.imaging|default(0) }}') || 0 },
+            { name: 'Consultation', value: parseFloat('{{ metrics.revenue_breakdown.consultation|default(0) }}') || 0 },
+            { name: 'Insurance', value: parseFloat('{{ metrics.revenue_breakdown.insurance|default(0) }}') || 0 },
+            { name: 'Other', value: parseFloat('{{ metrics.revenue_breakdown.other|default(0) }}') || 0 }
+        ];
+        
+        const filtered = sources.filter(s => s.value > 0);
+        const colors = ['#28a745', '#007bff', '#17a2b8', '#ffc107', '#6f42c1', '#e83e8c'];
+        
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: filtered.map(s => s.name),
+                datasets: [{
+                    data: filtered.map(s => s.value),
+                    backgroundColor: colors.slice(0, filtered.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { font: { size: 9 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': KES ' + context.parsed.toLocaleString() + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function initExpenseBreakdownChart(ctx) {
+        const categories = [
+            { name: 'Payroll', value: parseFloat('{{ metrics.expense_breakdown.payroll|default(0) }}') || 0 },
+            { name: 'Pharmacy', value: parseFloat('{{ metrics.expense_breakdown.pharmacy|default(0) }}') || 0 },
+            { name: 'Equipment', value: parseFloat('{{ metrics.expense_breakdown.equipment|default(0) }}') || 0 },
+            { name: 'Utilities', value: parseFloat('{{ metrics.expense_breakdown.utilities|default(0) }}') || 0 },
+            { name: 'Debt', value: parseFloat('{{ metrics.expense_breakdown.debt|default(0) }}') || 0 },
+            { name: 'Other', value: parseFloat('{{ metrics.expense_breakdown.other|default(0) }}') || 0 }
+        ];
+        
+        const filtered = categories.filter(c => c.value > 0);
+        const colors = ['#dc3545', '#fd7e14', '#ff6b6b', '#ee5a6f', '#f1556c', '#d32f2f'];
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: filtered.map(c => c.name),
+                datasets: [{
+                    data: filtered.map(c => c.value),
+                    backgroundColor: colors.slice(0, filtered.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { font: { size: 9 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': KES ' + context.parsed.toLocaleString() + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function initCashFlowChart(ctx) {
+        const cashflow = {
+            cash: { in: parseFloat('{{ metrics.cash_in|default(0) }}') || 0, out: parseFloat('{{ metrics.cash_out|default(0) }}') || 0 },
+            mpesa: { in: parseFloat('{{ metrics.mpesa_in|default(0) }}') || 0, out: parseFloat('{{ metrics.mpesa_out|default(0) }}') || 0 },
+            card: { in: parseFloat('{{ metrics.card_in|default(0) }}') || 0, out: parseFloat('{{ metrics.card_out|default(0) }}') || 0 },
+            bank: { in: parseFloat('{{ metrics.bank_in|default(0) }}') || 0, out: parseFloat('{{ metrics.bank_out|default(0) }}') || 0 }
+        };
+        
+        const methods = Object.keys(cashflow);
+        const inflows = methods.map(m => cashflow[m]['in']);
+        const outflows = methods.map(m => cashflow[m]['out']);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: methods.map(m => m.charAt(0).toUpperCase() + m.slice(1)),
+                datasets: [
+                    {
+                        label: 'Inflow',
+                        data: inflows,
+                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Outflow',
+                        data: outflows,
+                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: { font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': KES ' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'KES ' + (value/1000).toFixed(0) + 'K';
+                            },
+                            font: { size: 9 }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { size: 9 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function initOutstandingChart(ctx) {
+        const outstanding = [
+            parseFloat('{{ metrics.outstanding_debtor|default(0) }}') || 0,
+            parseFloat('{{ metrics.outstanding_insurance|default(0) }}') || 0
+        ];
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Debtor Balances', 'Insurance Claims'],
+                datasets: [{
+                    label: 'Outstanding Amount (KES)',
+                    data: outstanding,
+                    backgroundColor: ['rgba(255, 193, 7, 0.8)', 'rgba(244, 67, 54, 0.8)'],
+                    borderColor: ['rgba(255, 193, 7, 1)', 'rgba(244, 67, 54, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: { font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'KES ' + context.parsed.x.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'KES ' + (value/1000).toFixed(0) + 'K';
+                            },
+                            font: { size: 9 }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: { size: 9 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</div> <!-- End of financial-dashboard-container -->

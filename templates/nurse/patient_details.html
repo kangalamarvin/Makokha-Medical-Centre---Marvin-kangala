@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h2><i class="fas fa-user-injured"></i> Patient Details</h2>
+        <a href="{{ url_for('nurse_patients') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Patients
+        </a>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <strong><i class="fas fa-id-card"></i> Patient Information</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ patient.name }}</p>
+                    <p><strong>Age:</strong> {{ patient.age }} years</p>
+                    <p><strong>Gender:</strong> {{ patient.gender }}</p>
+                    <p><strong>Phone:</strong> {{ patient.phone }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>IP Number:</strong> <span class="badge badge-info">{{ patient.ip_number }}</span></p>
+                    <p><strong>OP Number:</strong> {{ patient.op_number }}</p>
+                    {% if patient.bed_assignment %}
+                    <p><strong>Ward:</strong> {{ patient.bed_assignment.ward.name }}</p>
+                    <p><strong>Bed:</strong> {{ patient.bed_assignment.bed.bed_number }}</p>
+                    <p><strong>Admission Date:</strong> {{ patient.bed_assignment.assigned_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <button class="btn btn-primary btn-block" onclick="showVitalsModal()">
+                        <i class="fas fa-heartbeat"></i> Record Vitals
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success btn-block" onclick="showMedicationModal()">
+                        <i class="fas fa-pills"></i> Give Medication
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-info btn-block" onclick="showReportModal()">
+                        <i class="fas fa-file-medical"></i> Add Nursing Report
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-warning btn-block" onclick="notifyDoctor()">
+                        <i class="fas fa-bell"></i> Notify Doctor
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Vitals -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-chart-line"></i> Latest Vital Signs</strong>
+        </div>
+        <div class="card-body">
+            {% if latest_vitals %}
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <div class="vital-card">
+                        <i class="fas fa-thermometer-half fa-2x text-danger"></i>
+                        <h4>{{ latest_vitals.temperature if latest_vitals.temperature else '-' }}</h4>
+                        <p class="text-muted">Temperature (°C)</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="vital-card">
+                        <i class="fas fa-heartbeat fa-2x text-primary"></i>
+                        <h4>{{ latest_vitals.pulse_rate if latest_vitals.pulse_rate else '-' }}</h4>
+                        <p class="text-muted">Pulse (bpm)</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="vital-card">
+                        <i class="fas fa-compress-arrows-alt fa-2x text-success"></i>
+                        <h4>
+                            {% if latest_vitals.blood_pressure_systolic %}
+                            {{ latest_vitals.blood_pressure_systolic }}/{{ latest_vitals.blood_pressure_diastolic }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted">Blood Pressure</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="vital-card">
+                        <i class="fas fa-lungs fa-2x text-info"></i>
+                        <h4>{{ latest_vitals.oxygen_saturation if latest_vitals.oxygen_saturation else '-' }}%</h4>
+                        <p class="text-muted">O2 Saturation</p>
+                    </div>
+                </div>
+            </div>
+            <small class="text-muted">Last updated: {{ latest_vitals.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            {% else %}
+            <p class="text-muted">No vital signs recorded yet</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Nursing Reports -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-notes-medical"></i> Nursing Reports</strong>
+        </div>
+        <div class="card-body">
+            {% if nursing_reports %}
+            <div class="timeline">
+                {% for report in nursing_reports %}
+                <div class="timeline-item">
+                    <div class="timeline-badge {% if report.urgent %}bg-danger{% else %}bg-info{% endif %}">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h6>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }} 
+                            {% if report.urgent %}<span class="badge badge-danger ml-2">URGENT</span>{% endif %}
+                        </h6>
+                        <p><strong>Type:</strong> {{ report.report_type }}</p>
+                        {% if report.observations %}
+                        <p><strong>Observations:</strong> {{ report.observations }}</p>
+                        {% endif %}
+                        {% if report.symptoms %}
+                        <p><strong>Symptoms:</strong> {{ report.symptoms }}</p>
+                        {% endif %}
+                        {% if report.care_provided %}
+                        <p><strong>Care Provided:</strong> {{ report.care_provided }}</p>
+                        {% endif %}
+                        <small class="text-muted">By: {{ report.nurse.username }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No nursing reports yet</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lab Results -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-flask"></i> Lab Tests</strong>
+        </div>
+        <div class="card-body">
+            {% if lab_requests %}
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Requested</th>
+                            <th>Test</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                            <th>Recorded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in lab_requests %}
+                        <tr>
+                            <td>{{ req.created_at|eat_time('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ req.test.name if req.test else 'N/A' }}</td>
+                            <td>
+                                <span class="badge badge-{% if req.status == 'completed' %}success{% elif req.status == 'cancelled' %}secondary{% else %}warning{% endif %}">
+                                    {{ req.status|title }}
+                                </span>
+                            </td>
+                            <td style="white-space: pre-wrap; max-width: 420px;">
+                                {% if req.status == 'completed' %}
+                                    {{ req.result or '-' }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.status == 'completed' and req.performed_at %}
+                                    {{ req.performed_at|eat_time('%Y-%m-%d %H:%M') }}
+                                    {% if req.performer %}<div class="text-muted small">by {{ req.performer.username }}</div>{% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No lab tests for this patient yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Medication Administration History -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong><i class="fas fa-pills"></i> Medication Administration Record</strong>
+        </div>
+        <div class="card-body">
+            {% if medications %}
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Medication</th>
+                            <th>Dosage</th>
+                            <th>Route</th>
+                            <th>Status</th>
+                            <th>Nurse</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for med in medications %}
+                        <tr>
+                            <td>{{ med.administered_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ med.medication_name }}</td>
+                            <td>{{ med.dosage }}</td>
+                            <td>{{ med.route }}</td>
+                            <td>
+                                <span class="badge badge-{% if med.status == 'administered' %}success{% elif med.status == 'refused' %}danger{% else %}warning{% endif %}">
+                                    {{ med.status }}
+                                </span>
+                            </td>
+                            <td>{{ med.nurse.username }}</td>
+                            <td>{{ med.notes if med.notes else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No medications administered yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Vitals Modal -->
+<div class="modal fade" id="vitalsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-heartbeat"></i> Record Vital Signs</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form method="POST" action="{{ url_for('nurse_add_vitals', patient_id=patient.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Temperature (°C)</label>
+                                <input type="number" step="0.1" name="temperature" class="form-control" placeholder="36.5">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Blood Sugar (mg/dL)</label>
+                                <input type="number" step="0.1" name="blood_sugar" class="form-control" placeholder="100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>BP Systolic</label>
+                                <input type="number" name="blood_pressure_systolic" class="form-control" placeholder="120">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>BP Diastolic</label>
+                                <input type="number" name="blood_pressure_diastolic" class="form-control" placeholder="80">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Pulse Rate (bpm)</label>
+                                <input type="number" name="pulse_rate" class="form-control" placeholder="72">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Respiratory Rate</label>
+                                <input type="number" name="respiratory_rate" class="form-control" placeholder="16">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>O2 Saturation (%)</label>
+                                <input type="number" name="oxygen_saturation" class="form-control" placeholder="98">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Observations</label>
+                        <textarea name="observations" class="form-control" rows="3" placeholder="Patient appears alert and comfortable..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Pain Level (0-10)</label>
+                        <input type="number" name="pain_level" min="0" max="10" class="form-control" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="urgent" value="1"> Mark as Urgent
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Vitals</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Medication Modal -->
+<div class="modal fade" id="medicationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pills"></i> Administer Medication</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form method="POST" action="{{ url_for('nurse_administer_medication', patient_id=patient.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Medication Name *</label>
+                        <input type="text" name="medication_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Dosage *</label>
+                        <input type="text" name="dosage" class="form-control" placeholder="500mg" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Route</label>
+                        <select name="route" class="form-control">
+                            <option value="oral">Oral</option>
+                            <option value="IV">IV</option>
+                            <option value="IM">IM</option>
+                            <option value="SC">Subcutaneous</option>
+                            <option value="topical">Topical</option>
+                            <option value="inhaled">Inhaled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <input type="text" name="frequency" class="form-control" placeholder="Twice daily">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" class="form-control">
+                            <option value="administered">Administered</option>
+                            <option value="refused">Patient Refused</option>
+                            <option value="delayed">Delayed</option>
+                            <option value="missed">Missed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Record Administration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Nursing Report Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-medical"></i> Add Nursing Report</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form method="POST" action="{{ url_for('nurse_add_report', patient_id=patient.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Report Type</label>
+                        <select name="report_type" class="form-control">
+                            <option value="general">General</option>
+                            <option value="admission">Admission</option>
+                            <option value="incident">Incident</option>
+                            <option value="discharge">Discharge Preparation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Observations *</label>
+                        <textarea name="observations" class="form-control" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Symptoms</label>
+                        <textarea name="symptoms" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Care Provided</label>
+                        <textarea name="care_provided" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Consciousness Level</label>
+                        <select name="consciousness_level" class="form-control">
+                            <option value="alert">Alert</option>
+                            <option value="drowsy">Drowsy</option>
+                            <option value="confused">Confused</option>
+                            <option value="unconscious">Unconscious</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Recommendations</label>
+                        <textarea name="recommendations" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="urgent" value="1"> Mark as Urgent
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="doctor_notified" value="1"> Doctor Notified
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">Save Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showVitalsModal() {
+    $('#vitalsModal').modal('show');
+}
+
+function showMedicationModal() {
+    $('#medicationModal').modal('show');
+}
+
+function showReportModal() {
+    $('#reportModal').modal('show');
+}
+
+function notifyDoctor() {
+    if (confirm('Notify doctor about this patient?')) {
+        // Implementation for doctor notification
+        alert('Doctor notification feature will be implemented');
+    }
+}
+</script>
+
+<style>
+.vital-card {
+    text-align: center;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.vital-card h4 {
+    margin: 10px 0;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 30px;
+}
+
+.timeline-badge {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.timeline-content {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #007bff;
+}
+
+.page-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Set New Password</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('auth.reset_with_token', token=token) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_value }}">
+                        {{ form.hidden_tag() }}  {# CSRF Token #}
+                        <div class="form-group">
+                            <label for="password">New Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm_password">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Update Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

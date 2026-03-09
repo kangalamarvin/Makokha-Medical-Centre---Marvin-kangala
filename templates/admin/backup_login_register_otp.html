@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Register Backup Access - Step 2 - {{ config['APP_NAME'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-key"></i> Register Backup Access
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Step Indicator -->
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center">
+                            <div class="step-circle completed">✓</div>
+                            <small class="text-muted">Email</small>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="step-circle active">2</div>
+                            <small class="text-primary"><strong>OTP</strong></small>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="step-circle">3</div>
+                            <small class="text-muted">Password</small>
+                        </div>
+                    </div>
+
+                    <h5 class="mb-3">Step 2: Verify Your Email</h5>
+                    <p class="text-muted">We sent a 6-digit code to <strong>{{ email }}</strong></p>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert">
+                                        <span>&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="form-group">
+                            <label for="otp_code">
+                                <strong>One-Time Password (OTP)</strong>
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control form-control-lg text-center" 
+                                id="otp_code" 
+                                name="otp_code"
+                                placeholder="000000" 
+                                maxlength="6"
+                                pattern="[0-9]{6}"
+                                required
+                                autofocus
+                                inputmode="numeric"
+                            >
+                            <small class="form-text text-muted">
+                                Enter the 6-digit code from your email. Code expires in 10 minutes.
+                            </small>
+                            <div class="invalid-feedback">
+                                Please enter a valid 6-digit OTP code.
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-clock"></i> 
+                            <strong>OTP expires in 10 minutes.</strong> If code is expired, go back and request a new one.
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg btn-block">
+                            <i class="fas fa-arrow-right"></i> Verify & Continue
+                        </button>
+
+                        <a href="{{ url_for('backup_login_register_email') }}" class="btn btn-secondary btn-block mt-2">
+                            <i class="fas fa-arrow-left"></i> Back to Email
+                        </a>
+                    </form>
+
+                    <hr>
+                    <small class="text-muted d-block text-center">
+                        Didn't receive the code? Check your spam folder or request a new one.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .step-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 20px;
+        margin: 0 auto 10px;
+        border: 2px solid #ddd;
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+
+    .step-circle.active {
+        background-color: #0069d9;
+        color: white;
+        border-color: #0069d9;
+    }
+
+    .step-circle.completed {
+        background-color: #28a745;
+        color: white;
+        border-color: #28a745;
+        font-size: 24px;
+    }
+
+    #otp_code {
+        letter-spacing: 10px;
+        font-size: 28px;
+        font-weight: bold;
+        font-family: monospace;
+    }
+</style>
+
+<script>
+    // Auto-format OTP input to 6 digits only
+    document.getElementById('otp_code').addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+    });
+
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}

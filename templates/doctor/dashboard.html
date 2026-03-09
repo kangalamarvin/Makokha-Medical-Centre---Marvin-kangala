@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="mb-0"><i class="fas fa-user-md"></i> Doctor Dashboard</h2>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-warning" href="{{ url_for('admin_credit_control') }}">
+                    <i class="fas fa-file-invoice-dollar"></i> Credit Accounts
+                </a>
+                <a class="btn btn-outline-primary" href="{{ url_for('labtech_dashboard') }}">
+                    <i class="fas fa-flask"></i> Open Lab
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Active Patients</h5>
+                            <h2 class="mb-0">{{ active_patients_count }}</h2>
+                        </div>
+                        <i class="fas fa-procedures fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Today's Patients</h5>
+                            <h2 class="mb-0">{{ today_patients }}</h2>
+                        </div>
+                        <i class="fas fa-calendar-day fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Completed Cases</h5>
+                            <h2 class="mb-0">{{ completed_patients_count }}</h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if diagnosis_stats %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Diagnosis Analytics</strong>
+                {% if diagnosis_stats.window_days %}<span class="text-muted">(last {{ diagnosis_stats.window_days }} days)</span>{% endif %}
+            </div>
+            {% if diagnosis_stats.generated_at %}<small class="text-muted">Updated: {{ diagnosis_stats.generated_at }}</small>{% endif %}
+        </div>
+        <div class="card-body">
+            {% if diagnosis_stats.error %}
+                <div class="alert alert-warning mb-0">{{ diagnosis_stats.error }}</div>
+            {% else %}
+
+            {% if diagnosis_stats.charts %}
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="mb-2">Top diseases (Pie)</h6>
+                        <canvas id="dxPie" height="180"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="border rounded p-2">
+                        <h6 class="mb-2">Top diseases by gender (Bar)</h6>
+                        <canvas id="dxGenderBar" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="border rounded p-2">
+                        <h6 class="mb-2">Top diseases trend (Line, last 30 days)</h6>
+                        <canvas id="dxTrendLine" height="110"></canvas>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if diagnosis_stats.outbreak_alerts and diagnosis_stats.outbreak_alerts|length > 0 %}
+                <div class="alert alert-danger">
+                    <strong>Possible outbreak alert (based on diagnosis trends):</strong>
+                    <ul class="mb-0">
+                        {% for a in diagnosis_stats.outbreak_alerts %}
+                            <li>{{ a.disease }}: {{ a.count_7d }} cases (expected ~{{ a.expected_7d }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h6 class="mb-2">Male: Top 10 diagnoses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.gender_top['Male'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <h6 class="mb-2">Female: Top 10 diagnoses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.gender_top['Female'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <h6 class="mb-2">Children: Top 10 diagnoses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.age_top['Children'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <h6 class="mb-2">Adults: Top 10 diagnoses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.age_top['Adults'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <h6 class="mb-2">Geriatrics: Top 10 diagnoses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.age_top['Geriatrics'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <h6 class="mb-2">Top 10 most diagnosed diseases (all categories)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr><th>#</th><th>Disease</th><th class="text-end">Count</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in diagnosis_stats.overall_top %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            {{ row.name }}
+                                            {% if row.endemic %}<span class="badge bg-warning text-dark ms-1">Endemic</span>{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ row.count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" class="text-muted">No data</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <small class="text-muted">
+                Notes: “Endemic” tagging and outbreak alerts are heuristic (keyword-based) and should be clinically validated.
+            </small>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+                    
+<!-- JavaScript -->
+{% if diagnosis_stats and (not diagnosis_stats.error) and diagnosis_stats.charts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+{% endif %}
+<script>
+// Initialize DataTables
+$(document).ready(function() {
+    if ($('#activePatientsTable').length) {
+        $('#activePatientsTable').DataTable({
+            responsive: true,
+            order: [[4, 'desc']]
+        });
+    }
+    if ($('#completedPatientsTable').length) {
+        $('#completedPatientsTable').DataTable({
+            responsive: true,
+            order: [[4, 'desc']]
+        });
+    }
+});
+
+// Charts (safe guards)
+{% if diagnosis_stats and (not diagnosis_stats.error) and diagnosis_stats.charts %}
+(function() {
+    if (typeof Chart === 'undefined') return;
+
+    const charts = {{ diagnosis_stats.charts|tojson }};
+
+    // Pie
+    const pieEl = document.getElementById('dxPie');
+    if (pieEl && charts.pie) {
+        new Chart(pieEl.getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: charts.pie.labels || [],
+                datasets: [{
+                    data: charts.pie.values || [],
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    // Gender bar
+    const barEl = document.getElementById('dxGenderBar');
+    if (barEl && charts.bar_gender) {
+        new Chart(barEl.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: charts.bar_gender.labels || [],
+                datasets: [
+                    { label: 'Male', data: charts.bar_gender.male || [] },
+                    { label: 'Female', data: charts.bar_gender.female || [] },
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    // Trend line
+    const lineEl = document.getElementById('dxTrendLine');
+    if (lineEl && charts.line_trend) {
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c'];
+        const datasets = (charts.line_trend.series || []).map((s, idx) => ({
+            label: s.name,
+            data: s.values || [],
+            borderColor: colors[idx % colors.length],
+            backgroundColor: colors[idx % colors.length],
+            tension: 0.25,
+        }));
+
+        new Chart(lineEl.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: charts.line_trend.labels || [],
+                datasets
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+})();
+{% endif %}
+</script>
+{% endblock %}

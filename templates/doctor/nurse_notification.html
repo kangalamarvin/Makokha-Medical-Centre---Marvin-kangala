@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-user-nurse"></i> Nurse Notification - Admission Complete
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- Success Message -->
+                        <div class="alert alert-success text-center">
+                            <h4><i class="fas fa-check-circle"></i> Patient Successfully Admitted!</h4>
+                            <p class="mb-0">IP Number: <strong>{{ patient.ip_number }}</strong></p>
+                        </div>
+
+                        <!-- Patient Information -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-user"></i> Patient Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Name:</strong> {{ patient.decrypted_name }}</p>
+                                        <p><strong>Age:</strong> {{ patient.age }} years</p>
+                                        <p><strong>Gender:</strong> {{ patient.gender }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>OP Number:</strong> {{ patient.op_number }}</p>
+                                        <p><strong>IP Number:</strong> <span class="badge badge-primary">{{ patient.ip_number }}</span></p>
+                                        <p><strong>Phone:</strong> {{ patient.decrypted_phone or 'Not provided' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ward/Bed Assignment -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-bed"></i> Ward & Bed Assignment</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="info-box">
+                                            <i class="fas fa-building fa-2x text-primary"></i>
+                                            <div>
+                                                <small class="text-muted">Ward</small>
+                                                <h5 class="mb-0">{{ notification.ward.name }}</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="info-box">
+                                            <i class="fas fa-bed fa-2x text-success"></i>
+                                            <div>
+                                                <small class="text-muted">Bed Number</small>
+                                                <h5 class="mb-0">{{ notification.bed.bed_number }}</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="info-box">
+                                            <i class="fas fa-money-bill-wave fa-2x text-warning"></i>
+                                            <div>
+                                                <small class="text-muted">Daily Rate</small>
+                                                <h5 class="mb-0">KSH {{ "%.2f"|format(notification.ward.daily_rate) }}</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nurse Pickup Notification -->
+                        <div class="card mb-4 border-warning">
+                            <div class="card-header bg-warning text-white">
+                                <h5 class="mb-0"><i class="fas fa-bell"></i> Waiting for Nurse Pickup</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <p class="lead">The nurse in charge of <strong>{{ notification.ward.name }}</strong> has been notified.</p>
+                                
+                                <div class="timer-display my-4">
+                                    <div class="timer-circle">
+                                        <h1 id="timer" class="display-3 mb-0">5:00</h1>
+                                        <p class="text-muted">Time Remaining</p>
+                                    </div>
+                                </div>
+
+                                <p class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    The nurse should arrive within 5 minutes to complete the admission process.
+                                </p>
+
+                                <button class="btn btn-success btn-lg mt-3" id="completeAdmissionBtn" onclick="completeAdmission()">
+                                    <i class="fas fa-check"></i> Nurse Arrived - Complete Admission
+                                </button>
+
+                                <p class="text-muted mt-3 small">
+                                    This page will automatically redirect after 5 minutes or when you click the button above.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="text-center">
+                            <a href="{{ url_for('doctor_patient_details', patient_id=patient.id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-folder-open"></i> View Patient Record
+                            </a>
+                            <a href="{{ url_for('doctor_patients') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-list"></i> Back to Patients List
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let timeRemaining = 300; // 5 minutes in seconds
+let timerInterval;
+const notificationId = {{ notification.id }};
+const patientId = {{ patient.id }};
+
+function updateTimer() {
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+    const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    document.getElementById('timer').textContent = display;
+    
+    // Change color as time runs out
+    const timerElement = document.getElementById('timer');
+    if (timeRemaining <= 60) {
+        timerElement.style.color = '#dc3545'; // red
+    } else if (timeRemaining <= 120) {
+        timerElement.style.color = '#ffc107'; // yellow
+    } else {
+        timerElement.style.color = '#28a745'; // green
+    }
+    
+    if (timeRemaining <= 0) {
+        clearInterval(timerInterval);
+        autoRedirect();
+    }
+    
+    timeRemaining--;
+}
+
+function autoRedirect() {
+    window.location.href = `/doctor/patient/${patientId}`;
+}
+
+function completeAdmission() {
+    if (!confirm('Confirm that the nurse has arrived and received the patient?')) {
+        return;
+    }
+    
+    const btn = document.getElementById('completeAdmissionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Completing...';
+    
+    fetch(`/doctor/patient/${patientId}/complete-admission/${notificationId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            clearInterval(timerInterval);
+            if (typeof window.showAlert === 'function') {
+                window.showAlert('Admission completed successfully!', 'success');
+            } else {
+                alert('Admission completed successfully!');
+            }
+            window.location.href = data.redirect;
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Nurse Arrived - Complete Admission';
+            alert('Error: ' + (data.error || 'Failed to complete admission'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Nurse Arrived - Complete Admission';
+        alert('Network error. Please try again.');
+        console.error('Error:', error);
+    });
+}
+
+// Start timer on page load
+document.addEventListener('DOMContentLoaded', function() {
+    timerInterval = setInterval(updateTimer, 1000);
+    updateTimer(); // Initial call
+});
+</script>
+
+<style>
+.info-box {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    height: 100%;
+}
+
+.info-box i {
+    flex-shrink: 0;
+}
+
+.info-box div {
+    flex: 1;
+}
+
+.timer-circle {
+    display: inline-block;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 50%;
+    border: 5px solid #28a745;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+}
+
+.timer-display {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}

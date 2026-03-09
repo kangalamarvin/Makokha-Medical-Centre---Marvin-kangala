@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Debtor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{{ action }} Debtor</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Debtor Details</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for(request.endpoint, debtor_id=debtor.id if debtor else None) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ debtor.name if debtor else '' }}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="contact" class="form-label">Contact</label>
+                            <input type="text" class="form-control" id="contact" name="contact" value="{{ debtor.contact if debtor else '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ debtor.email if debtor else '' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="total_debt" class="form-label">Total Debt</label>
+                            <input type="number" step="0.01" class="form-control" id="total_debt" name="total_debt" value="{{ debtor.Total_debt if debtor else '' }}" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="next_payment_date" class="form-label">Next Payment Date</label>
+                    <input type="date" class="form-control" id="next_payment_date" name="next_payment_date" value="{{ debtor.next_payment_date.strftime('%Y-%m-%d') if debtor and debtor.next_payment_date else '' }}">
+                </div>
+                <button type="submit" class="btn btn-primary">{{ action }} Debtor</button>
+                <a href="{{ url_for('debtors_list') }}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

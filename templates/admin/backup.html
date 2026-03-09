@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="content">
+    <div class="page-header">
+        <h2><i class="fas fa-database"></i> Backup Management</h2>
+        <div class="page-actions">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBackupModal">
+                <i class="fas fa-plus"></i> Create New Backup
+            </button>
+            <a href="{{ url_for('disaster_recovery') }}" class="btn btn-info">
+                <i class="fas fa-fire-extinguisher"></i> Disaster Recovery
+            </a>
+        </div>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Restore status popup area (filled by JS polling) -->
+    <div id="restoreStatusAlerts" aria-live="polite"></div>
+
+    <!-- Backup Access Status -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-success" role="alert">
+                <h5 class="alert-heading"><i class="fas fa-unlock"></i> Backup Access Active</h5>
+                <p class="mb-2">
+                    Hospital Backup Email: <strong>{{ backup_user_email }}</strong>
+                </p>
+                <form method="GET" action="{{ url_for('backup_logout') }}" style="display:inline;">
+                    <button type="submit" class="btn btn-warning btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Logout from Backup
+                    </button>
+                </form>
+                {% if current_user and current_user.id == 1 %}
+                    <a href="{{ url_for('backup_manage_users') }}" class="btn btn-info btn-sm">
+                        <i class="fas fa-users-cog"></i> Manage Backup Users
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if current_user and current_user.id == 1 and restricted_attempts %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-warning" role="alert">
+                <h6 class="mb-2"><i class="fas fa-exclamation-triangle"></i> Restricted Backup Login Attempts</h6>
+                <div class="small">
+                    {% for a in restricted_attempts %}
+                        <div class="d-flex justify-content-between border-bottom py-1">
+                            <div>
+                                <strong>{{ (a.changes.email if a.changes is mapping and a.changes.email is defined else (a.description or '')) }}</strong>
+                                <span class="text-muted">(Attempted by Admin ID: {{ (a.changes.attempted_by_admin_id if a.changes is mapping and a.changes.attempted_by_admin_id is defined else '-') }})</span>
+                            </div>
+                            <div class="text-muted">{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '' }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-history"></i> Backup History
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="backupTable">
+                            <thead>
+                                <tr>
+                                    <th>Backup ID</th>
+                                    <th>Date/Time</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for backup in backups %}
+                                <tr data-backup-id="{{ backup.id }}" data-status="{{ backup.status }}">
+                                    <td>{{ backup.backup_id }}</td>
+                                    <td data-order="{{ backup.timestamp.isoformat() }}">{{ backup.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ 'primary' if backup.backup_type == 'manual' else 'info' }}">
+                                            {{ backup.backup_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if backup.size_bytes %}
+                                            {{ (backup.size_bytes / (1024 * 1024))|round(2) }} MB
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set badge_cls = 'success' if backup.status == 'completed' else 'warning' if backup.status == 'in_progress' else 'danger' %}
+                                        <span class="badge bg-{{ badge_cls }} backup-status-badge" role="button" tabindex="0" aria-label="Backup status">
+                                            {{ backup.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div>{{ (backup.display_notes if backup.display_notes is defined else backup.notes)|default('-', true)|truncate(30) }}</div>
+                                        {% if backup.exec_stats is defined and backup.exec_stats %}
+                                            <div class="small text-muted">
+                                                Tables: {{ backup.exec_stats.tables_backed_up|default('-', true) }}/{{ backup.exec_stats.tables_total|default('-', true) }}
+                                                &middot; Failed: {{ backup.exec_stats.tables_failed|default('-', true) }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if backup.status == 'completed' %}
+                                            <form method="POST" action="{{ url_for('backup_management') }}" style="display: inline;">
+                                                {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="download_backup">
+                                                <input type="hidden" name="backup_id" value="{{ backup.id }}">
+                                                <button type="submit" class="btn btn-sm btn-success" title="Download">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('backup_management') }}" style="display: inline;">
+                                                {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="restore_backup">
+                                                <input type="hidden" name="backup_id" value="{{ backup.id }}">
+                                                <button type="submit" class="btn btn-sm btn-warning" title="Restore" onclick="return confirm('Are you sure you want to restore this backup? This will overwrite current data.')">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <form method="POST" action="{{ url_for('backup_management') }}" style="display: inline;">
+                                            {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                            <input type="hidden" name="action" value="delete_backup">
+                                            <input type="hidden" name="backup_id" value="{{ backup.id }}">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this backup?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-info-circle"></i> Backup Configuration
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Storage Location
+                            <span class="badge badge-secondary">
+                                {% if storage_label is defined %}
+                                    {{ storage_label }}
+                                {% elif backup_config is defined %}
+                                    {% if s3_client %}
+                                        S3: {{ backup_config.get('s3_bucket', '-') }}
+                                    {% else %}
+                                        Local: {{ backup_config.get('local_storage_path', '-') }}
+                                    {% endif %}
+                                {% else %}
+                                    Unknown
+                                {% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Tables Included
+                            <span class="badge badge-primary">
+                                {% if backup_config is defined and backup_config.get('tables_to_backup') %}
+                                    {{ backup_config['tables_to_backup']|length }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Next Scheduled Backup
+                            <span class="badge bg-success">Daily at 2:00 AM</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-white">
+                    <i class="fas fa-exclamation-triangle"></i> Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-column">
+                        <form method="POST" action="{{ url_for('backup_management') }}" class="mb-2">
+                            {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                            <input type="hidden" name="action" value="create_backup">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus-circle"></i> Create Immediate Backup
+                            </button>
+                        </form>
+                        
+                        <button class="btn btn-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#verifyBackupModal">
+                            <i class="fas fa-check-circle"></i> Verify Latest Backup
+                        </button>
+                        
+                        <a href="{{ url_for('disaster_recovery') }}" class="btn btn-danger w-100">
+                            <i class="fas fa-fire"></i> Disaster Recovery Plans
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Backup Modal -->
+<div class="modal fade" id="createBackupModal" tabindex="-1" aria-labelledby="createBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createBackupModalLabel">Create New Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('backup_management') }}">
+                {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                <input type="hidden" name="action" value="create_backup">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="backupNotes">Backup Notes</label>
+                        <textarea class="form-control" id="backupNotes" name="notes" rows="3" placeholder="Optional description of this backup"></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> This will create a backup of all configured tables. The process may take several minutes.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Backup</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Verify Backup Modal -->
+<div class="modal fade" id="verifyBackupModal" tabindex="-1" aria-labelledby="verifyBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="verifyBackupModalLabel">Verify Latest Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="verificationResults" role="status" aria-live="polite">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p class="mt-2">Verifying latest backup...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Backup Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="statusModalBody">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vendor scripts (jQuery is provided by base.html; keep DataTables only) -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    function showRestoreAlert(kind, message) {
+        const cls = (kind === 'success') ? 'alert-success' : 'alert-danger';
+        const $alert = $('<div>', { class: 'alert ' + cls + ' alert-dismissible fade show', role: 'alert' });
+        $alert.text(String(message || ''));
+        $alert.append(
+            $('<button>', {
+                type: 'button',
+                class: 'btn-close',
+                'data-bs-dismiss': 'alert',
+                'aria-label': 'Close'
+            })
+        );
+        $('#restoreStatusAlerts').empty().append($alert);
+    }
+
+    // Track restore submits so we can poll completion and show popup.
+    $(document).on('submit', 'form', function() {
+        try {
+            const $f = $(this);
+            const action = $f.find('input[name="action"]').val();
+            if (action !== 'restore_backup') return;
+            const bid = $f.find('input[name="backup_id"]').val();
+            if (!bid) return;
+            localStorage.setItem('pending_restore_backup_id', String(bid));
+        } catch (e) {
+            // best-effort
+        }
+    });
+
+    function pollRestoreStatusOnce(backupId) {
+        return $.get('/admin/backup/status/' + backupId)
+            .done(function(data) {
+                const restore = data && data.restore;
+                if (!restore || !restore.status) return;
+
+                if (restore.status === 'completed') {
+                    showRestoreAlert('success', restore.message || 'Restore completed successfully.');
+                    localStorage.removeItem('pending_restore_backup_id');
+                    setTimeout(function(){ location.reload(); }, 800);
+                } else if (restore.status === 'failed') {
+                    showRestoreAlert('danger', restore.message || 'Restore failed.');
+                    localStorage.removeItem('pending_restore_backup_id');
+                }
+            });
+    }
+
+    // On page load, if a restore was started in this browser tab/session, poll until completion.
+    (function startRestorePolling() {
+        const pending = localStorage.getItem('pending_restore_backup_id');
+        if (!pending) return;
+
+        // Poll quickly for completion, but don’t hammer server.
+        let attempts = 0;
+        const maxAttempts = 120; // ~4 minutes at 2s interval
+        const timer = setInterval(function() {
+            attempts += 1;
+            pollRestoreStatusOnce(pending);
+            if (attempts >= maxAttempts) {
+                clearInterval(timer);
+            }
+        }, 2000);
+
+        // Also fire immediately.
+        pollRestoreStatusOnce(pending);
+    })();
+
+    function renderVerification(latest) {
+        const ok = latest.status === 'completed';
+        const $card = $('<div>', { class: 'card mb-3' });
+        const $hdr = $('<div>', { class: 'card-header text-white ' + (ok ? 'bg-success' : 'bg-danger') }).text('Backup Verification Results');
+        const $body = $('<div>', { class: 'card-body' });
+        $body.append($('<h5>', { class: 'card-title' }).text('Backup ID: ' + String(latest.backup_id || '')));
+        const $tbl = $('<table>', { class: 'table table-sm' });
+        $tbl.append($('<tr>').append($('<th>').text('Timestamp:'), $('<td>').text(new Date(latest.timestamp).toLocaleString())));
+        $tbl.append($('<tr>').append($('<th>').text('Type:'), $('<td>').text(String(latest.type || ''))));
+        $tbl.append($('<tr>').append($('<th>').text('Status:'), $('<td>').append($('<span>', { class: 'badge ' + (ok ? 'badge-success' : 'badge-danger') }).text(String(latest.status || '')))));
+        $tbl.append($('<tr>').append($('<th>').text('Size:'), $('<td>').text(latest.size_mb ? (latest.size_mb + ' MB') : 'N/A')));
+        $tbl.append($('<tr>').append($('<th>').text('Initiated By:'), $('<td>').text(String(latest.user || ''))));
+        $body.append($tbl);
+        $body.append($('<div>', { class: 'alert ' + (ok ? 'alert-success' : 'alert-danger') })
+            .append($('<i>', { class: 'fas ' + (ok ? 'fa-check-circle' : 'fa-exclamation-triangle') }))
+            .append(document.createTextNode(' ' + (ok ? 'Backup verified successfully' : 'Backup verification failed'))));
+        $card.append($hdr).append($body);
+        $('#verificationResults').empty().append($card);
+    }
+
+    // Load verification results when modal is shown, with robust response handling
+    const verifyModalEl = document.getElementById('verifyBackupModal');
+    if (verifyModalEl) verifyModalEl.addEventListener('show.bs.modal', function() {
+        $('#verificationResults').html(
+            '<div class="text-center py-4">' +
+            '  <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>' +
+            '  <p class="mt-2">Verifying latest backup...</p>' +
+            '</div>'
+        );
+        $.get("{{ url_for('backup_logs') }}", function(res) {
+            const data = (res && res.success === true && Array.isArray(res.data)) ? res.data
+                       : (Array.isArray(res) ? res : []);
+            if (data.length) {
+                renderVerification(data[0]);
+            } else {
+                $('#verificationResults').html(
+                    '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> No backup records found</div>'
+                );
+            }
+        }).fail(function(xhr) {
+            const msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load backup verification data';
+            const $alert = $('<div>', { class: 'alert alert-danger' })
+                .append($('<i>', { class: 'fas fa-times-circle' }))
+                .append(document.createTextNode(' ' + String(msg || '')));
+            $('#verificationResults').empty().append($alert);
+        });
+    });
+    
+    // Poll only in-progress rows
+    function checkInProgressBackups() {
+        $('#backupTable tbody tr').each(function() {
+            const $tr = $(this);
+            if ($tr.data('status') !== 'in_progress') return;
+            const backupId = $tr.data('backup-id');
+            if (!backupId) return;
+            $.get('/admin/backup/status/' + backupId, function(data) {
+                if (data && data.status && data.status !== 'in_progress') {
+                    // Ideally update just this row; simplest is to refresh
+                    location.reload();
+                }
+            });
+        });
+    }
+    setInterval(checkInProgressBackups, 10000);
+    
+    // Show status modal for in-progress backups (uses safe text insertion)
+    $(document).on('click', '.backup-status-badge', function() {
+        const $tr = $(this).closest('tr');
+        const backupId = $tr.data('backup-id');
+        if (!backupId) return;
+        $.get('/admin/backup/status/' + backupId, function(data) {
+            const ok = data && data.status === 'completed';
+            const $wrap = $('<div>');
+            $wrap.append($('<h5>').text('Backup ID: ' + String(data.id || backupId)));
+            $wrap.append(
+                $('<p>').append(
+                    document.createTextNode('Status: '),
+                    $('<span>', { class: 'badge bg-' + (ok ? 'success' : 'warning') })
+                        .text(String((data.status || '').replace('_', ' ')))
+                )
+            );
+            if (data && data.timestamp) {
+                $wrap.append($('<p>').text('Started: ' + new Date(data.timestamp).toLocaleString()));
+            }
+            const sizeText = (data && data.size_bytes) ? ((data.size_bytes / (1024 * 1024)).toFixed(2) + ' MB') : 'Calculating...';
+            $wrap.append($('<p>').text('Size: ' + sizeText));
+            $wrap.append($('<p>').text('Notes: ' + String(data && data.notes ? data.notes : 'None')));
+            if (data && data.stats) {
+                const s = data.stats;
+                if (typeof s.tables_backed_up !== 'undefined' || typeof s.tables_total !== 'undefined') {
+                    $wrap.append($('<p>').text('Tables: ' + String(s.tables_backed_up ?? '-') + '/' + String(s.tables_total ?? '-') + ' (Failed: ' + String(s.tables_failed ?? '-') + ')'));
+                }
+            }
+            $('#statusModalBody').empty().append($wrap);
+            const el = document.getElementById('statusModal');
+            if (el && window.bootstrap && window.bootstrap.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(el).show();
+            }
+        });
+    });
+});
+</script>
+
+<style>
+    .badge {
+        font-size: 0.85em;
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+    .card-header {
+        font-weight: 600;
+    }
+    .table td, .table th {
+        vertical-align: middle;
+    }
+    .btn-sm {
+        min-width: 30px;
+    }
+    #backupTable tbody tr {
+        cursor: pointer;
+    }
+    #backupTable tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+</style>
+{% endblock %}

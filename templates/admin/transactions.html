@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Add this to the head section of all your base templates -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+/* Transactions table enhancements */
+#transactionsTable {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.transactions-table-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  border: 3px solid #333;
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+#transactionsTable thead th {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  white-space: nowrap;
+}
+#transactionsTable tbody tr:nth-child(odd) {
+  background-color: #f8fbff;
+}
+#transactionsTable tbody tr:nth-child(even) {
+  background-color: #ffffff;
+}
+#transactionsTable tbody tr:hover {
+  background-color: #eaf2ff;
+}
+#transactionsTable td.amount {
+  font-weight: 600;
+  color: #0b5ed7;
+  white-space: nowrap;
+}
+
+#transactionsTable th,
+#transactionsTable td {
+  white-space: nowrap;
+  border-right: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+}
+
+#transactionsTable th:last-child,
+#transactionsTable td:last-child {
+  border-right: none;
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+  .transactions-table-container {
+    max-height: 72vh;
+  }
+
+  .transaction-actions .btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    line-height: 1;
+  }
+}
+.page-actions .form-control { min-width: 160px; }
+</style>
+
+<div class="content">
+  <div class="page-header">
+    <h2><i class="fas fa-exchange-alt"></i> Transaction Reports</h2>
+    <div class="page-actions">
+      <div class="form-inline">
+        <div class="form-group mr-2">
+          <label for="start_date" class="mr-2">From:</label>
+          <input type="date" class="form-control" id="start_date">
+        </div>
+        <div class="form-group mr-2">
+          <label for="end_date" class="mr-2">To:</label>
+          <input type="date" class="form-control" id="end_date">
+        </div>
+        <div class="form-group mr-2">
+          <label for="type_filter" class="mr-2">Type:</label>
+          <select id="type_filter" class="form-control">
+            <option value="">All</option>
+            <option value="sale">Sale</option>
+            <option value="refund">Refund</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <button id="filterTransactions" class="btn btn-primary">
+          <i class="fas fa-filter"></i> Filter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container transactions-table-container">
+    <table class="data-table" id="transactionsTable">
+      <thead>
+        <tr>
+          <th>Transaction ID</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>User (Role)</th>
+          <th>Reference</th>
+          <th>Time</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for transaction in transactions %}
+        <tr>
+          <td>{{ transaction.transaction_number }}</td>
+          <td>
+            <span class="badge 
+              {% if transaction.transaction_type == 'sale' %}badge-success
+              {% elif transaction.transaction_type == 'refund' %}badge-danger
+              {% elif transaction.transaction_type == 'expense' %}badge-warning
+              {% else %}badge-info{% endif %}">
+              {{ transaction.transaction_type|title }}
+            </span>
+          </td>
+          <td class="text-right amount">Ksh {{ "{:,.2f}".format(transaction.amount) }}</td>
+          <td>
+            {{ transaction.user.username }}
+            <span class="text-muted">({{ transaction.user.role }})</span>
+          </td>
+          <td>
+            {% if transaction.transaction_type == 'sale' %}
+              Sale #{{ transaction.reference_id }}
+            {% elif transaction.transaction_type == 'expense' %}
+              Expense #{{ transaction.reference_id }}
+            {% else %}
+              {{ transaction.notes|truncate(20) }}
+            {% endif %}
+          </td>
+          <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>
+            <div class="transaction-actions">
+              <button class="btn btn-sm btn-view" data-id="{{ transaction.id }}" aria-label="View transaction {{ transaction.transaction_number }}">
+                <i class="fas fa-eye"></i>
+              </button>
+              <a class="btn btn-sm btn-info" href="{{ url_for('admin_transaction_receipt', transaction_id=transaction.id, reprint=1) }}" target="_blank" aria-label="View receipt for {{ transaction.transaction_number }}">
+                <i class="fas fa-receipt"></i>
+              </a>
+              {% if transaction.transaction_type in ['expense', 'refund'] %}
+              <button class="btn btn-sm btn-edit" data-id="{{ transaction.id }}" aria-label="Edit transaction {{ transaction.transaction_number }}">
+                <i class="fas fa-edit"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- View Transaction Modal -->
+<div class="modal fade" id="viewTransactionModal" tabindex="-1" role="dialog" aria-labelledby="viewTransactionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewTransactionModalLabel">Transaction Details</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Transaction Information</h5>
+            <table class="table table-bordered">
+              <tr>
+                <th>Transaction ID</th>
+                <td id="view_transaction_id"></td>
+              </tr>
+              <tr>
+                <th>Type</th>
+                <td id="view_transaction_type"></td>
+              </tr>
+              <tr>
+                <th>Amount</th>
+                <td id="view_amount"></td>
+              </tr>
+              <tr>
+                <th>Date & Time</th>
+                <td id="view_created_at"></td>
+              </tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <h5>User Information</h5>
+            <table class="table table-bordered">
+              <tr>
+                <th>Processed By</th>
+                <td id="view_user_name"></td>
+              </tr>
+              <tr>
+                <th>User Role</th>
+                <td id="view_user_role"></td>
+              </tr>
+            </table>
+
+            <h5>Reference Information</h5>
+            <table class="table table-bordered">
+              <tr>
+                <th>Reference Type</th>
+                <td id="view_reference_type"></td>
+              </tr>
+              <tr>
+                <th>Reference ID</th>
+                <td id="view_reference_id"></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <h5>Notes</h5>
+          <div class="card">
+            <div class="card-body">
+              <p id="view_notes" class="card-text"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function () {
+  // Currency formatter (Ksh)
+  function formatKsh(value) {
+    const num = Number(value) || 0;
+    return 'Ksh ' + new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+  }
+
+
+  // Transaction type filter (by displayed text in Type column)
+  $('#type_filter').on('change', function () {
+    const v = $(this).val();
+    if (v) {
+      const display = v.charAt(0).toUpperCase() + v.slice(1);
+      table.column(1).search('^' + display + '$', true, false).draw();
+    } else {
+      table.column(1).search('').draw();
+    }
+  });
+
+  // Filter transactions by date
+  $('#filterTransactions').click(function () {
+    const startDate = $('#start_date').val();
+    const endDate = $('#end_date').val();
+
+    if (startDate || endDate) {
+      table.draw();
+    } else {
+      alert('Please select at least one date');
+    }
+  });
+
+  // View transaction details
+  $('.btn-view').click(function () {
+    const transactionId = $(this).data('id');
+    $.get(`/admin/transactions/${transactionId}`, function (data) {
+      $('#view_transaction_id').text(data.transaction_number);
+      (function renderTypeBadge() {
+        const raw = String((data && data.transaction_type) || '').toLowerCase();
+        const badgeClass = raw === 'sale' ? 'badge-success'
+          : raw === 'refund' ? 'badge-danger'
+          : raw === 'expense' ? 'badge-warning'
+          : 'badge-info';
+        const label = raw ? (raw.charAt(0).toUpperCase() + raw.slice(1)) : 'Unknown';
+        const $badge = $('<span>', { class: `badge ${badgeClass}` }).text(label);
+        $('#view_transaction_type').empty().append($badge);
+      })();
+      $('#view_amount').text(formatKsh(data.amount));
+      $('#view_created_at').text(new Date(data.created_at).toLocaleString());
+      $('#view_user_name').text(data.user.username);
+      $('#view_user_role').text(data.user.role);
+      $('#view_reference_type').text(data.reference_type || 'N/A');
+      $('#view_reference_id').text(data.reference_id || 'N/A');
+      $('#view_notes').text(data.notes || 'No notes available');
+
+      $('#viewTransactionModal').modal('show');
+    });
+  });
+
+  // Custom filtering function for date range
+  $.fn.dataTable.ext.search.push(
+    function (settings, data, dataIndex) {
+      const startDate = $('#start_date').val();
+      const endDate = $('#end_date').val();
+
+      if (!startDate && !endDate) {
+        return true;
+      }
+
+      const rowDate = new Date(data[5]).setHours(0, 0, 0, 0);
+      const minDate = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+      const maxDate = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+      if (minDate && maxDate) {
+        return rowDate >= minDate && rowDate <= maxDate;
+      } else if (minDate) {
+        return rowDate >= minDate;
+      } else if (maxDate) {
+        return rowDate <= maxDate;
+      }
+      return true;
+    }
+  );
+});
+</script>
+{% endblock %}

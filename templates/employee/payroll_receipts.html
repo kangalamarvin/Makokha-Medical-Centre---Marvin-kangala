@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ _sr }}/vendor/cdnjs/ajax/libs/font-awesome/6.4.0/css/all.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';">
+<link rel="stylesheet" href="{{ _sr }}/vendor/jsdelivr/npm/datatables.net-bs5@1.13.6/css/dataTables.bootstrap5.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.6/css/dataTables.bootstrap5.min.css';">
+
+<div class="employee-payroll-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1><i class="fas fa-file-invoice-dollar"></i> My Payment Receipts</h1>
+            <p>View and track your payroll payments and receipts</p>
+        </div>
+    </div>
+
+    {# Flash Messages (embed only; base.html already renders flashes) #}
+    {% if is_embed %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-auto-close" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% endif %}
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-money-bill-wave"></i></div>
+            <div class="card-content">
+                <h4>Total Paid</h4>
+                <div class="card-amount">Ksh {{ "%.2f"|format(employee.salary * receipts|length if receipts else 0) }}</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-file-alt"></i></div>
+            <div class="card-content">
+                <h4>Receipts</h4>
+                <div class="card-amount">{{ receipts|length }}</div>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-calendar"></i></div>
+            <div class="card-content">
+                <h4>Last Payment</h4>
+                <div class="card-amount">
+                    {% if receipts %}
+                        {{ receipts[0].payment_date.strftime('%d %b %Y') }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipts Table -->
+    <div class="receipts-section">
+        <div class="section-header">
+            <h2>Payment History</h2>
+            <p>All your payroll payment receipts</p>
+        </div>
+
+        {% if receipts %}
+            <div class="table-responsive">
+                <table class="table table-hover modern-table">
+                    <thead class="table-header">
+                        <tr>
+                            <th>Receipt #</th>
+                            <th>Payment Date</th>
+                            <th>Amount Paid</th>
+                            <th>Salary</th>
+                            <th>Previous Arrears</th>
+                            <th>Remaining Arrears</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for receipt in receipts %}
+                            <tr class="receipt-row">
+                                <td>
+                                    <span class="receipt-number-badge">{{ receipt.receipt_number }}</span>
+                                </td>
+                                <td>
+                                    <i class="fas fa-calendar-alt"></i>
+                                    {{ receipt.payment_date.strftime('%d %b %Y') }}
+                                </td>
+                                <td class="amount-cell">
+                                    <span class="badge bg-success">Ksh {{ "%.2f"|format(receipt.amount) }}</span>
+                                </td>
+                                <td>Ksh {{ "%.2f"|format(receipt.salary) }}</td>
+                                <td>
+                                    {% if receipt.previous_amount_paid == 0 %}
+                                        <span class="badge bg-info">New</span>
+                                    {% else %}
+                                        Ksh {{ "%.2f"|format(receipt.previous_amount_paid) }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if receipt.arrears > 0 %}
+                                        <span class="badge bg-danger">Ksh {{ "%.2f"|format(receipt.arrears) }}</span>
+                                    {% elif receipt.arrears < 0 %}
+                                        <span class="badge bg-warning">Overpaid: Ksh {{ "%.2f"|format(abs(receipt.arrears)) }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Fully Paid</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        <a href="{{ url_for('view_payroll_receipt', receipt_id=receipt.id) }}" 
+                                           class="btn btn-sm btn-primary" title="View Details">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="{{ url_for('download_payroll_receipt_employee', receipt_id=receipt.id) }}" 
+                                           class="btn btn-sm btn-success" title="Download PDF">
+                                            <i class="fas fa-download"></i> PDF
+                                        </a>
+                                        <a href="{{ url_for('api_payroll_receipt_pdf', receipt_id=receipt.id) }}" 
+                                           class="btn btn-sm btn-info" title="Print Receipt" target="_blank" rel="noopener noreferrer">
+                                            <i class="fas fa-print"></i> Print
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>No Payment Receipts Yet</h3>
+                <p>Your payment receipts will appear here once payments are recorded</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #667eea;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.employee-payroll-container {
+    padding: 30px 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+.page-header {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: var(--box-shadow);
+    border-left: 5px solid var(--primary);
+}
+
+.header-content h1 {
+    margin: 0;
+    color: var(--dark);
+    font-size: 32px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-content h1 i {
+    color: var(--primary);
+}
+
+.header-content p {
+    margin: 10px 0 0 0;
+    color: var(--secondary);
+    font-size: 16px;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--box-shadow);
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.card-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    margin-right: 15px;
+    background: linear-gradient(135deg, var(--primary), #764ba2);
+}
+
+.card-content h4 {
+    margin: 0;
+    color: var(--secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.card-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-top: 5px;
+}
+
+.receipts-section {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--box-shadow);
+}
+
+.section-header {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.section-header h2 {
+    margin: 0;
+    color: var(--dark);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.section-header p {
+    margin: 5px 0 0 0;
+    color: var(--secondary);
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.table-header th {
+    color: white;
+    padding: 15px;
+    font-weight: 600;
+    text-align: left;
+    border: none;
+}
+
+.table-header th.text-center {
+    text-align: center;
+}
+
+.modern-table tbody tr {
+    border-bottom: 1px solid var(--gray-300);
+    transition: var(--transition);
+}
+
+.modern-table tbody tr:hover {
+    background-color: var(--gray-100);
+    box-shadow: inset 0 0 10px rgba(102, 126, 234, 0.1);
+}
+
+.modern-table td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.receipt-number-badge {
+    background: linear-gradient(135deg, var(--primary), #764ba2);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.amount-cell {
+    font-weight: 600;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border: none;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+    color: white;
+}
+
+.btn-success {
+    background: var(--success);
+    border: none;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+    color: white;
+}
+
+.btn-info {
+    background: var(--info);
+    border: none;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #138496;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: var(--gray-400);
+    margin-bottom: 20px;
+    display: block;
+}
+
+.empty-state h3 {
+    color: var(--dark);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--secondary);
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.bg-success {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+}
+
+.bg-danger {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+}
+
+.bg-warning {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.bg-info {
+    background-color: #d1ecf1 !important;
+    color: #0c5460 !important;
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .page-header {
+        padding: 20px;
+    }
+
+    .header-content h1 {
+        font-size: 24px;
+    }
+
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .receipts-section {
+        padding: 20px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-sm {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+}
+
+@media print {
+    body {
+        background: white;
+    }
+
+    .employee-payroll-container {
+        background: white;
+        padding: 0;
+    }
+
+    .action-buttons {
+        display: none;
+    }
+}
+</style>
+
+{% endblock %}

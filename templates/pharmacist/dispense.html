@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+            
+<div class="dispense-container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Prescription Dispensing</h4>
+        </div>
+        
+        <div class="card-body">
+            <div class="prescription-search mb-4">
+                <div class="form-group">
+                    <label for="prescriptionSearch" class="font-weight-bold">Search Prescription</label>
+                    <div class="input-group">
+                        <input type="text" id="prescriptionSearch" class="form-control form-control-lg" 
+                               placeholder="Enter prescription ID or patient name">
+                        <div class="input-group-append">
+                            <button class="btn btn-success" id="searchPrescriptionBtn">
+                                <i class="fas fa-search mr-2"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="prescriptionDetails" class="d-none">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle mr-2"></i> 
+                    Verify prescription details before dispensing medications
+                </div>
+                
+                <div class="prescription-info mb-4">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0">Prescription Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Prescription ID:</label>
+                                        <div class="form-control-plaintext" id="prescriptionId">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Patient:</label>
+                                        <div class="form-control-plaintext" id="prescriptionPatient">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Doctor:</label>
+                                        <div class="form-control-plaintext" id="prescriptionDoctor">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Date:</label>
+                                        <div class="form-control-plaintext" id="prescriptionDate">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Diagnosis:</label>
+                                        <div class="form-control-plaintext" id="prescriptionDiagnosis">-</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">Total Cost:</label>
+                                        <div class="form-control-plaintext font-weight-bold text-success" id="prescriptionTotal">Ksh 0.00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="prescription-items mb-4">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0">Prescription Items</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover mb-0" id="prescriptionItemsTable">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Drug</th>
+                                            <th>Dosage</th>
+                                            <th>Frequency</th>
+                                            <th>Duration</th>
+                                            <th>Qty</th>
+                                            <th>Unit Price (Ksh)</th>
+                                            <th>Total (Ksh)</th>
+                                            <th>In Stock</th>
+                                            <th>Dispense</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Items will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dispense-actions text-right">
+                    <button class="btn btn-primary mr-2" id="dispenseAllBtn">
+                        <i class="fas fa-check-circle mr-2"></i> Dispense All Available
+                    </button>
+                    <button class="btn btn-success" id="dispenseSelectedBtn">
+                        <i class="fas fa-check mr-2"></i> Dispense Selected
+                    </button>
+                </div>
+                
+                <div id="dispensingProgress" class="d-none mt-4">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center" id="dispensingStatus">Preparing to dispense...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="paymentModalLabel">Complete Transaction</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="font-weight-bold">Total Amount:</label>
+                    <input type="text" class="form-control font-weight-bold text-success" id="paymentAmount" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="font-weight-bold">Payment Method:</label>
+                    <select class="form-control" id="paymentMethod">
+                        <option value="cash">Cash</option>
+                        <option value="mpesa">M-Pesa</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="card">Credit/Debit Card</option>
+                    </select>
+                </div>
+                <div class="form-group" id="mpesaDetails" style="display: none;">
+                    <label>M-Pesa Transaction Code:</label>
+                    <input type="text" class="form-control" id="mpesaCode" placeholder="Enter M-Pesa code">
+                </div>
+                <div class="form-group" id="insuranceDetails" style="display: none;">
+                    <label>Insurance Details:</label>
+                    <input type="text" class="form-control" id="insuranceNumber" placeholder="Enter insurance number">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmPaymentBtn">
+                    <i class="fas fa-check mr-2"></i> Confirm Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1" role="dialog" aria-labelledby="receiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="receiptModalLabel">Dispensing Complete</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Prescription has been successfully dispensed!
+                </div>
+                <div id="receiptContent">
+                    <!-- Receipt content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="printReceiptBtn">
+                    <i class="fas fa-print mr-2"></i> Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DataTables and other JS libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Setup CSRF token for all AJAX requests
+    $.ajaxSetup({
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', $('meta[name="csrf-token"]').attr('content'));
+        }
+    });
+    // Initialize DataTable
+    var itemsTable = $('#prescriptionItemsTable').DataTable({
+        responsive: true,
+        searching: false,
+        paging: false,
+        info: false,
+        ordering: false
+    });
+    
+    // Show payment method details based on selection
+    $('#paymentMethod').change(function() {
+        var method = $(this).val();
+        $('#mpesaDetails, #insuranceDetails').hide();
+        if (method === 'mpesa') {
+            $('#mpesaDetails').show();
+        } else if (method === 'insurance') {
+            $('#insuranceDetails').show();
+        }
+    });
+    
+    // Search prescription when button is clicked or enter is pressed
+    $('#searchPrescriptionBtn').click(searchPrescription);
+    $('#prescriptionSearch').keypress(function(e) {
+        if (e.which === 13) {
+            searchPrescription();
+        }
+    });
+    
+    function searchPrescription() {
+        const searchTerm = $('#prescriptionSearch').val().trim();
+        if (!searchTerm) {
+            showAlert('Please enter a search term', 'danger');
+            return;
+        }
+        
+        // Show loading state
+        $('#searchPrescriptionBtn').html('<i class="fas fa-spinner fa-spin mr-2"></i> Searching...').prop('disabled', true);
+        
+        // Make API call to search for prescription
+        fetch(`/api/prescriptions/search?q=${encodeURIComponent(searchTerm)}`, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(prescription => {
+            if (!prescription || prescription.length === 0) {
+                showAlert('No prescription found with that ID or patient name', 'warning');
+                return;
+            }
+            
+            // For simplicity, we'll take the first prescription if multiple are returned
+            if (Array.isArray(prescription)) {
+                prescription = prescription[0];
+            }
+            
+            displayPrescriptionDetails(prescription);
+        })
+        .catch(error => {
+            console.error('Error fetching prescription:', error);
+            showAlert('Error fetching prescription: ' + (error && error.message ? error.message : 'Unknown error'), 'danger');
+        })
+        .finally(() => {
+            $('#searchPrescriptionBtn').html('<i class="fas fa-search mr-2"></i> Search').prop('disabled', false);
+        });
+    }
+
+    function displayPrescriptionDetails(prescription) {
+        // Calculate total cost
+        let totalCost = 0;
+        prescription.items.forEach(item => {
+            if (item.drug && item.drug.selling_price) {
+                totalCost += item.quantity * item.drug.selling_price;
+            }
+        });
+        
+        // Display prescription details
+        $('#prescriptionId').text(prescription.id);
+        $('#prescriptionPatient').text(`${prescription.patient.name} (ID: ${prescription.patient.patient_number || prescription.patient.id})`);
+        $('#prescriptionDoctor').text(`Dr. ${prescription.doctor.username}`);
+        $('#prescriptionDate').text(moment(prescription.created_at).format('YYYY-MM-DD HH:mm'));
+        $('#prescriptionDiagnosis').text(prescription.notes || 'Not specified');
+        $('#prescriptionTotal').text('Ksh ' + totalCost.toFixed(2));
+        
+        // Populate items table
+        itemsTable.clear();
+        
+        prescription.items.forEach(item => {
+            if (!item.drug) return; // Skip items without drug info
+            
+            const rowClass = item.drug.remaining_quantity === 0 ? 'table-danger' : 
+                           (item.drug.remaining_quantity < item.quantity ? 'table-warning' : '');
+            
+            const itemTotal = item.quantity * item.drug.selling_price;
+            
+            const stockStatus = item.drug.remaining_quantity === 0 ? 
+                '<span class="badge badge-danger">Out of stock</span>' : 
+                (item.drug.remaining_quantity < item.quantity ? 
+                    `<span class="badge badge-warning">Low stock (${item.drug.remaining_quantity})</span>` : 
+                    `<span class="badge badge-success">${item.drug.remaining_quantity}</span>`);
+            
+            const checkbox = item.drug.remaining_quantity === 0 ? 
+                '<input type="checkbox" class="dispense-checkbox" disabled>' : 
+                `<input type="checkbox" class="dispense-checkbox" checked 
+                    data-drug-id="${item.drug.id}" 
+                    data-prescription-item-id="${item.id}"
+                    data-quantity="${item.quantity}"
+                    data-unit-price="${item.drug.selling_price}">`;
+            
+            itemsTable.row.add([
+                item.drug.name,
+                item.dosage || '-',
+                item.frequency || '-',
+                item.duration || '-',
+                item.quantity,
+                item.drug.selling_price.toFixed(2),
+                itemTotal.toFixed(2),
+                stockStatus,
+                checkbox
+            ]).node().className = rowClass;
+        });
+        
+        itemsTable.draw();
+        
+        // Show the prescription details section
+        $('#prescriptionDetails').removeClass('d-none').addClass('d-block');
+        
+        // Scroll to the details section
+        $('html, body').animate({
+            scrollTop: $('#prescriptionDetails').offset().top - 20
+        }, 500);
+    }
+    
+    // Dispense buttons functionality
+    $('#dispenseAllBtn').click(function() {
+        if (confirm('Are you sure you want to dispense all available items in this prescription?')) {
+            // Check all checkboxes that aren't disabled
+            $('.dispense-checkbox:not(:disabled)').prop('checked', true);
+            showPaymentModal();
+        }
+    });
+    
+    $('#dispenseSelectedBtn').click(function() {
+        if ($('.dispense-checkbox:checked').length === 0) {
+            showAlert('Please select at least one item to dispense', 'warning');
+            return;
+        }
+        showPaymentModal();
+    });
+    
+    function showPaymentModal() {
+        // Calculate total for selected items
+        let totalCost = 0;
+        $('.dispense-checkbox:checked').each(function() {
+            const quantity = $(this).data('quantity');
+            const unitPrice = $(this).data('unit-price');
+            totalCost += quantity * unitPrice;
+        });
+        
+        if (totalCost <= 0) {
+            showAlert('No valid items selected for dispensing', 'warning');
+            return;
+        }
+        
+        $('#paymentAmount').val('Ksh ' + totalCost.toFixed(2));
+        $('#paymentModal').modal('show');
+    }
+    
+    $('#confirmPaymentBtn').click(function() {
+        $('#paymentModal').modal('hide');
+        dispenseSelectedItems();
+    });
+    
+    function showAlert(message, type) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(String(message ?? ''), type || 'info');
+            return;
+        }
+        window.alert(String(message ?? ''));
+    }
+    
+    function dispenseSelectedItems() {
+        const selectedItems = [];
+        let totalCost = 0;
+        const prescriptionId = $('#prescriptionId').text();
+        
+        $('.dispense-checkbox:checked').each(function() {
+            const quantity = $(this).data('quantity');
+            const unitPrice = $(this).data('unit-price');
+            const itemTotal = quantity * unitPrice;
+            
+            selectedItems.push({
+                prescription_item_id: $(this).data('prescription-item-id'),
+                drug_id: $(this).data('drug-id'),
+                quantity: quantity,
+                unit_price: unitPrice,
+                total: itemTotal
+            });
+            
+            totalCost += itemTotal;
+        });
+        
+        if (selectedItems.length === 0) {
+            showAlert('No items selected for dispensing', 'warning');
+            return;
+        }
+        
+        // Show progress
+        $('#dispensingProgress').removeClass('d-none').addClass('d-block');
+        const progressBar = $('.progress-bar');
+        const statusText = $('#dispensingStatus');
+        
+        // Simulate dispensing process
+        let progress = 0;
+        const interval = setInterval(function() {
+            progress += 10;
+            progressBar.css('width', progress + '%');
+            
+            if (progress < 30) {
+                statusText.text('Validating prescription...');
+            } else if (progress < 60) {
+                statusText.text('Processing payment...');
+            } else if (progress < 90) {
+                statusText.text('Dispensing medications...');
+            } else {
+                statusText.text('Finalizing transaction...');
+            }
+            
+            if (progress >= 100) {
+                clearInterval(interval);
+                completeDispensing(prescriptionId, selectedItems, totalCost);
+            }
+        }, 300);
+    }
+    
+    function completeDispensing(prescriptionId, items, totalCost) {
+        // Prepare data for API call
+        const paymentMethod = $('#paymentMethod').val();
+        const paymentDetails = {
+            method: paymentMethod,
+            amount: totalCost,
+            mpesa_code: paymentMethod === 'mpesa' ? $('#mpesaCode').val() : null,
+            insurance_number: paymentMethod === 'insurance' ? $('#insuranceNumber').val() : null
+        };
+        
+        const dispensingData = {
+            prescription_id: prescriptionId,
+            items: items,
+            payment: paymentDetails
+        };
+        
+        // Make API call to record the dispensing
+        fetch('/api/prescriptions/dispense', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(dispensingData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to record dispensing');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hide progress
+            $('#dispensingProgress').addClass('d-none').removeClass('d-block');
+            
+            // Generate receipt
+            generateReceipt(data.receipt || {
+                prescription_id: prescriptionId,
+                items: items,
+                total: totalCost,
+                payment: paymentDetails,
+                date: new Date().toISOString()
+            });
+        })
+        .catch(error => {
+            console.error('Error dispensing prescription:', error);
+            showAlert('Error completing dispensing: ' + error.message, 'danger');
+            $('#dispensingProgress').addClass('d-none').removeClass('d-block');
+        });
+    }
+    
+    function generateReceipt(receiptData) {
+        const paymentMethod = receiptData.payment.method;
+        const paymentDetails = paymentMethod === 'mpesa' ? 
+            'M-Pesa: ' + receiptData.payment.mpesa_code : 
+            paymentMethod === 'insurance' ? 
+            'Insurance: ' + receiptData.payment.insurance_number : 
+            'Cash payment';
+        
+        let receiptHtml = `
+            <div class="receipt">
+                <div class="text-center mb-4">
+                    <h4>MNC PHARMACY</h4>
+                    <p>123 Health Street, Nairobi</p>
+                    <p>Tel: 0700123456 | VAT No: P05123456X</p>
+                </div>
+                
+                <div class="receipt-header mb-3">
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Receipt No:</strong> ${'RCP-' + moment(receiptData.date).format('YYYYMMDD') + '-' + Math.floor(1000 + Math.random() * 9000)}
+                        </div>
+                        <div class="col-6 text-right">
+                            <strong>Date:</strong> ${moment(receiptData.date).format('YYYY-MM-DD HH:mm')}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <strong>Prescription ID:</strong> ${receiptData.prescription_id}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="receipt-patient mb-3">
+                    <h5>Patient Details</h5>
+                    <p><strong>Name:</strong> ${$('#prescriptionPatient').text()}</p>
+                    <p><strong>Prescribed by:</strong> ${$('#prescriptionDoctor').text()}</p>
+                    <p><strong>Diagnosis:</strong> ${$('#prescriptionDiagnosis').text()}</p>
+                </div>
+                
+                <table class="table table-bordered receipt-items">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        receiptData.items.forEach(item => {
+            receiptHtml += `
+                <tr>
+                    <td>${$('#prescriptionItemsTable').DataTable().cell($('.dispense-checkbox[data-drug-id="' + item.drug_id + '"]').closest('tr'), 0).data()}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.unit_price.toFixed(2)}</td>
+                    <td>${item.total.toFixed(2)}</td>
+                </tr>`;
+        });
+        
+        receiptHtml += `
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3" class="text-right">Subtotal:</th>
+                            <td>${receiptData.total.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="text-right">VAT (0%):</th>
+                            <td>0.00</td>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="text-right">Total:</th>
+                            <td><strong>${receiptData.total.toFixed(2)}</strong></td>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="text-right">Payment Method:</th>
+                            <td>${paymentDetails}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="receipt-footer mt-4">
+                    <p class="text-center">Thank you for your purchase!</p>
+                    <p class="text-center"><small>Items cannot be returned after leaving pharmacy</small></p>
+                </div>
+            </div>`;
+        
+        $('#receiptContent').html(receiptHtml); // Ensure receiptHtml is properly sanitized if it contains user input
+        $('#receiptModal').modal('show');
+        
+        // Reset form
+        $('#prescriptionDetails').addClass('d-none').removeClass('d-block');
+        $('#prescriptionSearch').val('');
+        $('.progress-bar').css('width', '0%');
+    }
+    
+    $('#printReceiptBtn').click(function() {
+        const printContent = $('#receiptContent').html();
+        const originalContent = $('body').html();
+        
+        $('body').html(printContent);
+        window.print();
+        $('body').html(originalContent);
+        $('#receiptModal').modal('show');
+    });
+});
+</script>
+
+<style>
+.dispense-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    white-space: nowrap;
+}
+
+.receipt {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    background-color: #fff;
+}
+
+.receipt-header, .receipt-patient {
+    border-bottom: 1px dashed #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.receipt-items th, .receipt-items td {
+    padding: 8px;
+}
+
+.receipt-items tfoot th {
+    text-align: right;
+}
+
+.table-warning {
+    background-color: #fff3cd !important;
+}
+
+.table-danger {
+    background-color: #f8d7da !important;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .receipt, .receipt * {
+        visibility: visible;
+    }
+    .receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}

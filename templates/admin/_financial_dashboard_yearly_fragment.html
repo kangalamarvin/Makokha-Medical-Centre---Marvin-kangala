@@ -1,0 +1,1212 @@
+<!-- Yearly Financial Dashboard Fragment (for AJAX loading) -->
+
+<style>
+    :root {
+        --yearly-card-radius: 14px;
+        --yearly-card-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+        --yearly-border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .financial-dashboard-container {
+        font-size: 12px;
+        color: #1f2937;
+    }
+
+    .financial-dashboard-container * {
+        font-size: inherit;
+    }
+
+    .financial-dashboard-container .row {
+        row-gap: 16px;
+    }
+
+    .financial-dashboard-container .card {
+        border-radius: var(--yearly-card-radius);
+        border: var(--yearly-border);
+        box-shadow: var(--yearly-card-shadow);
+        background: #ffffff;
+        /* Removed overflow: hidden to prevent clipping issues with scrolling content */
+    }
+
+    .financial-dashboard-container .card-body {
+        padding: 12px; /* Reduced padding */
+    }
+
+    .annual-report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px; /* Reduced padding */
+        border-radius: var(--yearly-card-radius);
+        margin-bottom: 16px; /* Reduced margin */
+        box-shadow: var(--yearly-card-shadow);
+    }
+
+    .annual-report-header h3 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 16px; /* Reduced font size */
+    }
+
+    .annual-report-header p {
+        margin: 4px 0 0 0; /* Reduced margin */
+        opacity: 0.9;
+    }
+
+    /* Horizontal scrolling charts container */
+    .yearly-charts-scroll-container {
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        gap: 12px; /* Reduced gap */
+        padding: 8px 4px 12px; /* Reduced padding */
+        margin-bottom: 16px; /* Reduced margin */
+        border-radius: var(--yearly-card-radius);
+        background: #f8fafc;
+        scroll-behavior: smooth;
+        border: var(--yearly-border);
+    }
+
+    .yearly-charts-scroll-container::-webkit-scrollbar {
+        height: 6px; /* Smaller scrollbar */
+    }
+
+    .yearly-charts-scroll-container::-webkit-scrollbar-track {
+        background: #e9ecef;
+        border-radius: 3px;
+    }
+
+    .yearly-charts-scroll-container::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 3px;
+    }
+
+    .yearly-charts-scroll-container::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+
+    .yearly-chart-item {
+        flex: 0 0 auto;
+        width: 340px; /* Slightly reduced width */
+        min-width: 340px;
+    }
+    
+    .chart-widget {
+        border-radius: 10px; /* Smaller radius */
+        background: white;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); /* Reduced shadow */
+        padding: 10px; /* Reduced padding */
+        height: 100%;
+        border: 1px solid #e2e8f0;
+    }
+
+    .chart-widget h6 {
+        font-size: 11px; /* Reduced font size */
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+
+    /* Yearly report tables: compact height + bold outer borders */
+    .financial-dashboard-container .table {
+        border-collapse: collapse;
+        border: 1px solid #dee2e6; /* Lighter border */
+        background: white;
+    }
+
+    .financial-dashboard-container .table th,
+    .financial-dashboard-container .table td {
+        border: 1px solid #e9ecef; /* Lighter border */
+        padding: 5px 7px; /* Reduced padding */
+        line-height: 1.1; /* Tighter line height */
+        vertical-align: middle;
+    }
+
+    .financial-dashboard-container .table thead th {
+        background: #f8fafc;
+        font-weight: 600; /* Slightly less bold */
+        color: #111827;
+    }
+
+    .financial-dashboard-container .table-responsive {
+        border-radius: 8px; /* Smaller radius */
+        overflow-x: auto;
+        padding: 1px;
+        border: 1px solid #dee2e6;
+    }
+
+    .financial-dashboard-container .table-responsive::-webkit-scrollbar {
+        height: 6px; /* Smaller scrollbar */
+    }
+
+    .financial-dashboard-container .table-responsive::-webkit-scrollbar-track {
+        background: #e5e7eb;
+        border-radius: 999px;
+    }
+
+    .financial-dashboard-container .table-responsive::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 999px;
+    }
+
+    .financial-dashboard-container .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+
+    .financial-dashboard-container table {
+        width: 100%;
+        min-width: 680px; /* Reduced min-width */
+        table-layout: fixed;
+    }
+
+    .financial-dashboard-container th,
+    .financial-dashboard-container td {
+        white-space: nowrap;
+    }
+
+    /* Reduce category/metric column width */
+    .financial-dashboard-container th:first-child,
+    .financial-dashboard-container td:first-child {
+        width: 120px; /* Reduced width */
+        max-width: 120px; /* Reduced width */
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .financial-dashboard-container .badge {
+        font-size: 10px; /* Smaller font */
+        padding: 3px 6px; /* Smaller padding */
+        border-radius: 999px;
+    }
+
+    .financial-dashboard-container .btn {
+        border-radius: 8px; /* Smaller radius */
+        font-weight: 600;
+        font-size: 11px; /* Smaller font */
+        padding: 4px 8px; /* Smaller padding */
+    }
+
+    @media (max-width: 1200px) {
+        .yearly-chart-item {
+            width: 310px;
+            min-width: 310px;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .financial-dashboard-container {
+            font-size: 11px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .financial-dashboard-container {
+            font-size: 10px;
+        }
+
+        .yearly-chart-item {
+            width: 100%;
+            min-width: 280px;
+        }
+
+        .financial-dashboard-container .card-body {
+            padding: 10px;
+        }
+    }
+</style>
+
+<div class="financial-dashboard-container container-fluid">
+
+<div class="row mb-3">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-left-primary h-100">
+            <div class="card-body">
+                <div class="text-primary font-weight-bold text-uppercase mb-1" style="font-size: 10px;">Annual Revenue</div>
+                <div class="h4 mb-0">KES {{ "{:,.0f}".format(metrics.total_revenue) }}</div>
+                <small class="text-muted">
+                    {% if metrics.start_date %}
+                        {{ metrics.start_date.strftime('%Y') }}
+                    {% endif %}
+                </small>
+                <div class="mt-1" style="font-size: 10px;">
+                    {% if metrics.revenue_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-success"></i> {{ "{:.1f}%".format(metrics.revenue_change_pct) }} vs last year
+                    {% else %}
+                        <i class="fas fa-arrow-down text-danger"></i> {{ "{:.1f}%".format(metrics.revenue_change_pct) }} vs last year
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-left-success h-100">
+            <div class="card-body">
+                <div class="text-success font-weight-bold text-uppercase mb-1" style="font-size: 10px;">Annual Expenses</div>
+                <div class="h4 mb-0">KES {{ "{:,.0f}".format(metrics.total_expense) }}</div>
+                <small class="text-muted">Operating Costs</small>
+                <div class="mt-1" style="font-size: 10px;">
+                    {% if metrics.expense_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-danger"></i> {{ "{:.1f}%".format(metrics.expense_change_pct) }} vs last year
+                    {% else %}
+                        <i class="fas fa-arrow-down text-success"></i> {{ "{:.1f}%".format(abs(metrics.expense_change_pct)) }} vs last year
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-left-info h-100">
+            <div class="card-body">
+                <div class="text-info font-weight-bold text-uppercase mb-1" style="font-size: 10px;">Annual Net Profit</div>
+                <div class="h4 mb-0">KES {{ "{:,.0f}".format(metrics.net_profit) }}</div>
+                <small class="text-muted">Revenue - Expenses</small>
+                <div class="mt-1" style="font-size: 10px;">
+                    {% if metrics.profit_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up text-success"></i> {{ "{:.1f}%".format(metrics.profit_change_pct) }} vs last year
+                    {% else %}
+                        <i class="fas fa-arrow-down text-danger"></i> {{ "{:.1f}%".format(abs(metrics.profit_change_pct)) }} vs last year
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-left-warning h-100">
+            <div class="card-body">
+                <div class="text-warning font-weight-bold text-uppercase mb-1" style="font-size: 10px;">Profit Margin</div>
+                <div class="h4 mb-0">{{ "{:.1f}%".format(metrics.profit_margin if metrics.profit_margin else 0) }}</div>
+                <small class="text-muted">Net / Revenue Ratio</small>
+                <div class="mt-1">
+                    {% if metrics.profit_margin >= 25 %}
+                        <span class="badge badge-success">Excellent</span>
+                    {% elif metrics.profit_margin >= 15 %}
+                        <span class="badge badge-info">Good</span>
+                    {% elif metrics.profit_margin >= 5 %}
+                        <span class="badge badge-warning">Fair</span>
+                    {% else %}
+                        <span class="badge badge-danger">Critical</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Multi-Year Range Report -->
+{% if is_range and yearly_data %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Yearly Report: {{ date_range_label }} ({{ num_years }} years)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-striped">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Year</th>
+                                <th class="text-right">Revenue</th>
+                                <th class="text-right">Expenses</th>
+                                <th class="text-right">Profit</th>
+                                <th class="text-right">Margin %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for year_data in yearly_data %}
+                            <tr>
+                                <td><strong>{{ year_data.year }}</strong></td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(year_data.revenue) }}</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(year_data.expense) }}</td>
+                                <td class="text-right font-weight-bold {% if year_data.profit >= 0 %}text-success{% else %}text-danger{% endif %}">KES {{ "{:,.0f}".format(year_data.profit) }}</td>
+                                <td class="text-right">{{ "{:.1f}%".format(year_data.margin) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Professional Financial Analysis Charts - Horizontal Scrolling Row -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 font-weight-bold"><i class="fas fa-chart-line"></i> Financial Analytics Charts</h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-light btn-sm" id="yearly-export-csv"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button class="btn btn-light btn-sm" id="yearly-print-report"><i class="fas fa-print"></i> Print</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <div class="yearly-charts-scroll-container">
+                    <!-- Income vs Expenses Bar Chart -->
+                    <div class="yearly-chart-item">
+                        <div class="chart-widget">
+                            <h6 class="mb-0 font-weight-bold text-primary py-1" style="font-size: 11px;"><i class="fas fa-exchange-alt"></i> Income vs Expenses</h6>
+                            <div class="chart-container p-1" style="position: relative; height: 240px;">
+                                <canvas id="yearly-income-vs-expense-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profit Trend Line Chart -->
+                    <div class="yearly-chart-item">
+                        <div class="chart-widget">
+                            <h6 class="mb-0 font-weight-bold text-info py-1" style="font-size: 11px;"><i class="fas fa-chart-line"></i> Monthly Profit Trend</h6>
+                            <div class="chart-container p-1" style="position: relative; height: 240px;">
+                                <canvas id="yearly-profit-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Expenses Breakdown Doughnut Chart -->
+                    <div class="yearly-chart-item">
+                        <div class="chart-widget">
+                            <h6 class="mb-0 font-weight-bold text-success py-1" style="font-size: 11px;"><i class="fas fa-chart-pie"></i> Expenses Breakdown</h6>
+                            <div class="chart-container p-1" style="position: relative; height: 240px;">
+                                <canvas id="yearly-expenses-breakdown-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Income Breakdown Pie Chart -->
+                    <div class="yearly-chart-item">
+                        <div class="chart-widget">
+                            <h6 class="mb-0 font-weight-bold text-warning py-1" style="font-size: 11px;"><i class="fas fa-chart-bar"></i> Income Sources</h6>
+                            <div class="chart-container p-1" style="position: relative; height: 240px;">
+                                <canvas id="yearly-income-breakdown-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-2 px-2"><i class="fas fa-arrow-right"></i> Scroll horizontally to view all charts</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Income Sources and Expenses Filter Section -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-layer-group"></i> Income Sources Detail</h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="table-responsive mb-2">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Income Source</th>
+                                <th class="text-right">Total (KES)</th>
+                                <th class="text-center">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set income_total = metrics.total_revenue if metrics.total_revenue else 0 %}
+                            <tr data-income-source="pharmacy">
+                                <td>Pharmacy</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.pharmacy|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.pharmacy|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                            <tr data-income-source="lab">
+                                <td>Lab Tests</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.lab|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.lab|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                            <tr data-income-source="imaging">
+                                <td>Imaging</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.imaging|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.imaging|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                            <tr data-income-source="consultation">
+                                <td>Consultation</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.consultation|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.consultation|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                            <tr data-income-source="insurance">
+                                <td>Insurance</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.insurance|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.insurance|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                            <tr data-income-source="other">
+                                <td>Other</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.revenue_breakdown.other|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.revenue_breakdown.other|default(0) / income_total * 100) if income_total else 0) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted d-block mb-2">Click on a source to view detailed breakdown</small>
+                <div id="income-sources-container" class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-success income-source-btn" data-source="all">
+                        <i class="fas fa-asterisk"></i> All
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary income-source-btn" data-source="pharmacy">
+                        <i class="fas fa-pills"></i> Pharmacy
+                    </button>
+                    <button class="btn btn-sm btn-outline-info income-source-btn" data-source="lab">
+                        <i class="fas fa-flask"></i> Lab
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning income-source-btn" data-source="imaging">
+                        <i class="fas fa-x-ray"></i> Imaging
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary income-source-btn" data-source="consultation">
+                        <i class="fas fa-stethoscope"></i> Consultation
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger income-source-btn" data-source="insurance">
+                        <i class="fas fa-shield-alt"></i> Insurance
+                    </button>
+                    <button class="btn btn-sm btn-outline-dark income-source-btn" data-source="other">
+                        <i class="fas fa-ellipsis-h"></i> Other
+                    </button>
+                </div>
+                <div id="income-source-details" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6 class="font-weight-bold mb-2" id="income-source-title">Pharmacy Income</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Month</th>
+                                    <th class="text-right">Amount (KES)</th>
+                                    <th class="text-center">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="income-source-details-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-layer-group"></i> Expenses Categories Detail</h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="table-responsive mb-2">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Expense Category</th>
+                                <th class="text-right">Total (KES)</th>
+                                <th class="text-center">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set expense_total = metrics.total_expense if metrics.total_expense else 0 %}
+                            <tr data-expense-category="payroll">
+                                <td>Payroll</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.payroll|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.payroll|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                            <tr data-expense-category="pharmacy">
+                                <td>Pharmacy Stock</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.pharmacy|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.pharmacy|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                            <tr data-expense-category="equipment">
+                                <td>Equipment</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.equipment|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.equipment|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                            <tr data-expense-category="utilities">
+                                <td>Utilities</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.utilities|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.utilities|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                            <tr data-expense-category="debt">
+                                <td>Debt Service</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.debt|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.debt|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                            <tr data-expense-category="other">
+                                <td>Other</td>
+                                <td class="text-right">KES {{ "{:,.0f}".format(metrics.expense_breakdown.other|default(0)) }}</td>
+                                <td class="text-center">{{ "{:.1f}%".format((metrics.expense_breakdown.other|default(0) / expense_total * 100) if expense_total else 0) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted d-block mb-2">Click on a category to view detailed breakdown</small>
+                <div id="expenses-categories-container" class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-danger expenses-category-btn" data-category="all">
+                        <i class="fas fa-asterisk"></i> All Categories
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary expenses-category-btn" data-category="payroll">
+                        <i class="fas fa-users"></i> Payroll
+                    </button>
+                    <button class="btn btn-sm btn-outline-info expenses-category-btn" data-category="pharmacy">
+                        <i class="fas fa-pills"></i> Pharmacy Stock
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning expenses-category-btn" data-category="equipment">
+                        <i class="fas fa-tools"></i> Equipment
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary expenses-category-btn" data-category="utilities">
+                        <i class="fas fa-bolt"></i> Utilities
+                    </button>
+                    <button class="btn btn-sm btn-outline-dark expenses-category-btn" data-category="debt">
+                        <i class="fas fa-hand-holding-usd"></i> Debt Service
+                    </button>
+                    <button class="btn btn-sm btn-outline-dark expenses-category-btn" data-category="other">
+                        <i class="fas fa-ellipsis-h"></i> Other
+                    </button>
+                </div>
+                <div id="expenses-category-details" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6 class="font-weight-bold mb-2" id="expenses-category-title">Payroll Expenses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Month</th>
+                                    <th class="text-right">Amount (KES)</th>
+                                    <th class="text-center">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-category-details-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Breakdown for Selected Month -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0 font-weight-bold">📅 Daily Breakdown (Selected Month)</h6>
+            </div>
+            <div class="card-body p-2">
+                <div id="yearly-daily-empty" class="text-muted small">
+                    Select a month from the Yearly report to view daily tables.
+                </div>
+                <div id="yearly-daily-breakdown" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <strong>Month:</strong> <span id="yearly-daily-month-label"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-right">Total Income (KES)</th>
+                                    <th class="text-right">Total Expense (KES)</th>
+                                    <th class="text-right">Net Profit (KES)</th>
+                                    <th class="text-center">Margin %</th>
+                                    <th class="text-right" id="yearly-daily-income-title">Selected Income</th>
+                                    <th class="text-right" id="yearly-daily-expense-title">Selected Expense</th>
+                                </tr>
+                            </thead>
+                            <tbody id="yearly-daily-breakdown-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Annual Summary Table by Month -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0 font-weight-bold">📋 Annual Summary - Monthly Breakdown</h6>
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-center font-weight-bold">Metric</th>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <th class="text-center">{{ month.month_abbr|default(month.month_name[:3]) }}</th>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Total Income Row -->
+                            <tr class="table-success">
+                                <td class="font-weight-bold">Total Income</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.revenue if month.revenue else 0) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Total Expenses Row -->
+                            <tr class="table-danger">
+                                <td class="font-weight-bold">Total Expenses</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.expense if month.expense else 0) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Net Profit Row -->
+                            <tr class="table-info">
+                                <td class="font-weight-bold">Net Profit</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right font-weight-bold {% if month.profit >= 0 %}text-success{% else %}text-danger{% endif %}">KES {{ "{:,.0f}".format(month.profit if month.profit else 0) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Profit Margin Row -->
+                            <tr class="table-warning">
+                                <td class="font-weight-bold">Profit Margin</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">{{ "{:.1f}%".format(month.margin if month.margin else 0) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Income Sources Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0 font-weight-bold">💰 Income by Source - Monthly Breakdown</h6>
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="font-weight-bold">Income Source</th>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <th class="text-center">{{ month.month_abbr|default(month.month_name[:3]) }}</th>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Pharmacy Income -->
+                            <tr data-income-source="pharmacy">
+                                <td class="font-weight-bold">Pharmacy</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.pharmacy_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Lab Tests Income -->
+                            <tr data-income-source="lab">
+                                <td class="font-weight-bold">Lab Tests</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.lab_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Imaging Income -->
+                            <tr data-income-source="imaging">
+                                <td class="font-weight-bold">Imaging</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.imaging_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Consultation Income -->
+                            <tr data-income-source="consultation">
+                                <td class="font-weight-bold">Consultation</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.consultation_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Insurance Income -->
+                            <tr data-income-source="insurance">
+                                <td class="font-weight-bold">Insurance</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.insurance_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Other Income -->
+                            <tr data-income-source="other">
+                                <td class="font-weight-bold">Other</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.other_revenue|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expenses Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0 font-weight-bold">💸 Expenses by Category - Monthly Breakdown</h6>
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="font-weight-bold">Expense Category</th>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <th class="text-center">{{ month.month_abbr|default(month.month_name[:3]) }}</th>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Payroll Expenses -->
+                            <tr data-expense-category="payroll">
+                                <td class="font-weight-bold">Payroll</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.payroll_expense|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Pharmacy Expenses -->
+                            <tr data-expense-category="pharmacy">
+                                <td class="font-weight-bold">Pharmacy Stock</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.pharmacy_expense|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Equipment Expenses -->
+                            <tr data-expense-category="equipment">
+                                <td class="font-weight-bold">Equipment</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.equipment_expense|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Utilities Expenses -->
+                            <tr data-expense-category="utilities">
+                                <td class="font-weight-bold">Utilities</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.utilities_expense|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Debt Payments -->
+                            <tr data-expense-category="debt">
+                                <td class="font-weight-bold">Debt Service</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.debt_payment|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                            <!-- Other Expenses -->
+                            <tr data-expense-category="other">
+                                <td class="font-weight-bold">Other Expenses</td>
+                                {% if monthly_breakdown %}
+                                    {% for month in monthly_breakdown %}
+                                        <td class="text-right">KES {{ "{:,.0f}".format(month.other_expense|default(0)) }}</td>
+                                    {% endfor %}
+                                {% endif %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Expose monthly data to global scripts (used when fragment is loaded via AJAX) -->
+<div id="yearly-chart-data" data-monthly='{{ monthly_breakdown|tojson|safe }}' style="display:none"></div>
+
+<style>
+    /* Minimal styles for lightweight chart widgets when cards are removed */
+    .chart-widget {
+        padding: 0.25rem;
+    }
+    .chart-widget h6 {
+        margin-bottom: 0.5rem;
+    }
+    /* CRITICAL: Ensure chart containers have measurable height */
+    .chart-widget .chart-container {
+        height: 220px !important;
+        width: 100% !important;
+    }
+    /* Force canvas to fill container (prevents zero-size render) */
+    .chart-widget canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+</style>
+
+<script>
+    // Get monthly data from the embedded div
+    function getYearlyMonthlyData() {
+        const dataEl = document.getElementById('yearly-chart-data');
+        if (dataEl && dataEl.dataset && dataEl.dataset.monthly) {
+            try {
+                return JSON.parse(dataEl.dataset.monthly);
+            } catch (e) {
+                console.error('Failed to parse yearly monthly data:', e);
+                return [];
+            }
+        }
+        return [];
+    }
+
+    // Initialize income source filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthlyData = getYearlyMonthlyData();
+        if (!monthlyData || monthlyData.length === 0) return;
+
+        // Income source button handlers
+        document.querySelectorAll('.income-source-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const source = this.dataset.source;
+                showIncomeSourceDetails(source, monthlyData);
+                updateYearlyChartsForIncomeSource(source, monthlyData);
+                
+                // Update button states
+                document.querySelectorAll('.income-source-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-info', 'btn-warning', 'btn-secondary', 'btn-danger', 'btn-dark');
+                    const colorMap = {
+                        'all': 'success',
+                        'pharmacy': 'primary',
+                        'lab': 'info',
+                        'imaging': 'warning',
+                        'consultation': 'secondary',
+                        'insurance': 'danger',
+                        'other': 'dark'
+                    };
+                    b.classList.add('btn-outline-' + colorMap[b.dataset.source]);
+                });
+                this.classList.remove('btn-outline-' + this.className.match(/btn-outline-\w+/)[0].replace('btn-outline-', ''));
+                const colorMap = {
+                    'all': 'success',
+                    'pharmacy': 'primary',
+                    'lab': 'info',
+                    'imaging': 'warning',
+                    'consultation': 'secondary',
+                    'insurance': 'danger',
+                    'other': 'dark'
+                };
+                this.classList.add('btn-' + colorMap[source], 'active');
+            });
+        });
+
+        // Expenses category button handlers
+        document.querySelectorAll('.expenses-category-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.dataset.category;
+                showExpensesCategoryDetails(category, monthlyData);
+                updateYearlyChartsForExpenseCategory(category, monthlyData);
+                
+                // Update button states
+                document.querySelectorAll('.expenses-category-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-info', 'btn-warning', 'btn-secondary', 'btn-danger', 'btn-dark');
+                    const colorMap = {
+                        'all': 'danger',
+                        'payroll': 'primary',
+                        'pharmacy': 'info',
+                        'equipment': 'warning',
+                        'utilities': 'secondary',
+                        'debt': 'dark',
+                        'other': 'dark'
+                    };
+                    b.classList.add('btn-outline-' + colorMap[b.dataset.category]);
+                });
+                this.classList.remove('btn-outline-' + this.className.match(/btn-outline-\w+/)[0].replace('btn-outline-', ''));
+                const colorMap = {
+                    'all': 'danger',
+                    'payroll': 'primary',
+                    'pharmacy': 'info',
+                    'equipment': 'warning',
+                    'utilities': 'secondary',
+                    'debt': 'dark',
+                    'other': 'dark'
+                };
+                this.classList.add('btn-' + colorMap[category], 'active');
+            });
+        });
+    });
+
+    function updateYearlyChartsForIncomeSource(source, monthlyData) {
+        if (typeof Chart === 'undefined') return;
+
+        const monthLabels = monthlyData.map(m => m.month_abbr || (m.month_name || '').substring(0, 3));
+        
+        const sourceKeys = {
+            'pharmacy': 'pharmacy_revenue',
+            'lab': 'lab_revenue',
+            'imaging': 'imaging_revenue',
+            'consultation': 'consultation_revenue',
+            'insurance': 'insurance_revenue',
+            'other': 'other_revenue'
+        };
+
+        const sourceColors = {
+            'pharmacy': '#4CAF50',
+            'lab': '#2196F3',
+            'imaging': '#FF9800',
+            'consultation': '#9C27B0',
+            'insurance': '#00BCD4',
+            'other': '#FFC107'
+        };
+
+        let data = [];
+        if (source === 'all') {
+            data = monthlyData.map(m => Number(m.revenue || 0));
+        } else {
+            const key = sourceKeys[source];
+            data = monthlyData.map(m => Number(m[key] || 0));
+        }
+
+        // Update income vs expense chart to show only selected source
+        if (window._yearlyIncomeExpenseChart) {
+            window._yearlyIncomeExpenseChart.data.datasets[0].data = data;
+            window._yearlyIncomeExpenseChart.data.datasets[0].label = source === 'all' ? 'Total Income' : sourceKeys[source];
+            window._yearlyIncomeExpenseChart.data.datasets[0].backgroundColor = source === 'all' ? '#28a745' : sourceColors[source];
+            window._yearlyIncomeExpenseChart.update();
+        }
+
+        // Recreate profit trend to show profit from selected source only
+        const expensesConstant = monthlyData.map(m => Number(m.expense || 0));
+        const profits = data.map((val, idx) => val - expensesConstant[idx]);
+        
+        if (window._yearlyProfitTrendChart) {
+            window._yearlyProfitTrendChart.data.datasets[0].data = profits;
+            window._yearlyProfitTrendChart.data.datasets[0].label = source === 'all' ? 'Net Profit' : 'Profit from ' + sourceKeys[source];
+            window._yearlyProfitTrendChart.data.datasets[0].borderColor = source === 'all' ? '#000' : sourceColors[source];
+            window._yearlyProfitTrendChart.update();
+        }
+    }
+
+    function updateYearlyChartsForExpenseCategory(category, monthlyData) {
+        if (typeof Chart === 'undefined') return;
+
+        const monthLabels = monthlyData.map(m => m.month_abbr || (m.month_name || '').substring(0, 3));
+        
+        const categoryKeys = {
+            'payroll': 'payroll_expense',
+            'pharmacy': 'pharmacy_expense',
+            'equipment': 'equipment_expense',
+            'utilities': 'utilities_expense',
+            'debt': 'debt_payment',
+            'other': 'other_expense'
+        };
+
+        const categoryColors = {
+            'payroll': '#DC143C',
+            'pharmacy': '#FF6347',
+            'equipment': '#FF7F50',
+            'utilities': '#FFA07A',
+            'debt': '#FFB6C1',
+            'other': '#DDA0DD'
+        };
+
+        let data = [];
+        if (category === 'all') {
+            data = monthlyData.map(m => Number(m.expense || 0));
+        } else {
+            const key = categoryKeys[category];
+            data = monthlyData.map(m => Number(m[key] || 0));
+        }
+
+        const revenuesConstant = monthlyData.map(m => Number(m.revenue || 0));
+        const profits = revenuesConstant.map((val, idx) => val - data[idx]);
+
+        // Update income vs expense chart to show expenses
+        if (window._yearlyIncomeExpenseChart) {
+            window._yearlyIncomeExpenseChart.data.datasets[1].data = data;
+            window._yearlyIncomeExpenseChart.data.datasets[1].label = category === 'all' ? 'Total Expenses' : categoryKeys[category];
+            window._yearlyIncomeExpenseChart.data.datasets[1].backgroundColor = category === 'all' ? '#dc3545' : categoryColors[category];
+            window._yearlyIncomeExpenseChart.update();
+        }
+
+        // Update profit trend
+        if (window._yearlyProfitTrendChart) {
+            window._yearlyProfitTrendChart.data.datasets[0].data = profits;
+            window._yearlyProfitTrendChart.data.datasets[0].label = category === 'all' ? 'Net Profit' : 'Profit after ' + categoryKeys[category];
+            window._yearlyProfitTrendChart.data.datasets[0].borderColor = category === 'all' ? '#000' : categoryColors[category];
+            window._yearlyProfitTrendChart.update();
+        }
+    }
+
+    function showIncomeSourceDetails(source, monthlyData) {
+        const detailsDiv = document.getElementById('income-source-details');
+        const titleEl = document.getElementById('income-source-title');
+        const bodyEl = document.getElementById('income-source-details-body');
+
+        const sourceLabels = {
+            'pharmacy': 'Pharmacy Income',
+            'lab': 'Lab Tests Income',
+            'imaging': 'Imaging Income',
+            'consultation': 'Consultation Income',
+            'insurance': 'Insurance Income',
+            'other': 'Other Income',
+            'all': 'Total Income (All Sources)'
+        };
+
+        const sourceKeys = {
+            'pharmacy': 'pharmacy_revenue',
+            'lab': 'lab_revenue',
+            'imaging': 'imaging_revenue',
+            'consultation': 'consultation_revenue',
+            'insurance': 'insurance_revenue',
+            'other': 'other_revenue'
+        };
+
+        titleEl.textContent = sourceLabels[source] || 'Income';
+        bodyEl.innerHTML = '';
+
+        let totalAmount = 0;
+        const rows = [];
+
+        if (source === 'all') {
+            // Show total revenue
+            monthlyData.forEach(month => {
+                const amount = Number(month.revenue || 0);
+                totalAmount += amount;
+                rows.push({
+                    month: month.month_name || '',
+                    amount: amount
+                });
+            });
+        } else {
+            // Show specific source
+            const key = sourceKeys[source];
+            monthlyData.forEach(month => {
+                const amount = Number(month[key] || 0);
+                totalAmount += amount;
+                rows.push({
+                    month: month.month_name || '',
+                    amount: amount
+                });
+            });
+        }
+
+        rows.forEach(row => {
+            const pct = totalAmount > 0 ? ((row.amount / totalAmount) * 100).toFixed(2) : '0.00';
+            bodyEl.innerHTML += `
+                <tr>
+                    <td>${row.month}</td>
+                    <td class="text-right"><strong>KES ${row.amount.toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                    <td class="text-center">${pct}%</td>
+                </tr>
+            `;
+        });
+
+        detailsDiv.style.display = 'block';
+    }
+
+    function showExpensesCategoryDetails(category, monthlyData) {
+        const detailsDiv = document.getElementById('expenses-category-details');
+        const titleEl = document.getElementById('expenses-category-title');
+        const bodyEl = document.getElementById('expenses-category-details-body');
+
+        const categoryLabels = {
+            'payroll': 'Payroll Expenses',
+            'pharmacy': 'Pharmacy Stock Expenses',
+            'equipment': 'Equipment Expenses',
+            'utilities': 'Utilities Expenses',
+            'debt': 'Debt Service Expenses',
+            'other': 'Other Expenses',
+            'all': 'Total Expenses (All Categories)'
+        };
+
+        const categoryKeys = {
+            'payroll': 'payroll_expense',
+            'pharmacy': 'pharmacy_expense',
+            'equipment': 'equipment_expense',
+            'utilities': 'utilities_expense',
+            'debt': 'debt_payment',
+            'other': 'other_expense'
+        };
+
+        titleEl.textContent = categoryLabels[category] || 'Expenses';
+        bodyEl.innerHTML = '';
+
+        let totalAmount = 0;
+        const rows = [];
+
+        if (category === 'all') {
+            // Show total expenses
+            monthlyData.forEach(month => {
+                const amount = Number(month.expense || 0);
+                totalAmount += amount;
+                rows.push({
+                    month: month.month_name || '',
+                    amount: amount
+                });
+            });
+        } else {
+            // Show specific category
+            const key = categoryKeys[category];
+            monthlyData.forEach(month => {
+                const amount = Number(month[key] || 0);
+                totalAmount += amount;
+                rows.push({
+                    month: month.month_name || '',
+                    amount: amount
+                });
+            });
+        }
+
+        rows.forEach(row => {
+            const pct = totalAmount > 0 ? ((row.amount / totalAmount) * 100).toFixed(2) : '0.00';
+            bodyEl.innerHTML += `
+                <tr>
+                    <td>${row.month}</td>
+                    <td class="text-right"><strong>KES ${row.amount.toLocaleString('en-KE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                    <td class="text-center">${pct}%</td>
+                </tr>
+            `;
+        });
+
+        detailsDiv.style.display = 'block';
+    }
+</script>
+
+</div> <!-- End of financial-dashboard-container -->

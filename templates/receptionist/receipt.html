@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h3 class="mb-0">Receipt</h3>
+        <div class="no-print">
+            <a class="btn btn-secondary" href="{{ url_for('receptionist_dashboard') }}">Back</a>
+            {% set email_share_endpoint = url_for('api_sale_share_email', sale_id=sale.id) %}
+            {% set email_fallback_pdf = url_for('api_sale_receipt_pdf', sale_id=sale.id) %}
+            {% include 'components/email_share_button.html' %}
+            {% set whatsapp_share_endpoint = url_for('api_sale_share_whatsapp', sale_id=sale.id) %}
+            {% set whatsapp_fallback_pdf = url_for('api_sale_receipt_pdf', sale_id=sale.id) %}
+            {% include 'components/whatsapp_share_button.html' %}
+            <button class="btn btn-primary" type="button" id="printReceptionReceiptBtn"><i class="fas fa-print"></i> Print / Save PDF</button>
+        </div>
+    </div>
+
+    <div id="print-area" class="card shadow-sm" data-receipt-root="1">
+        <div class="card-body">
+            <div class="text-center mb-3">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Clinic Logo" style="height: 48px;" class="mb-2">
+                <div>makokhamedicalcentre2025@gmail.com</div>
+                <div class="small">+254 741256531 / +254 713580997</div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div><strong>Receipt #</strong> {{ sale.sale_number }}</div>
+                    <div><strong>Date</strong> {{ sale.created_at|eat_time('%Y-%m-%d %H:%M EAT') if sale.created_at else '' }}</div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div><strong>Payment</strong> {{ sale.payment_method|capitalize if sale.payment_method else 'Cash' }}</div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <strong>Patient:</strong>
+                {% if sale.patient %}
+                    {{ decrypt_data(sale.patient.name) }}
+                {% else %}
+                    Walk-in Customer
+                {% endif %}
+            </div>
+
+            {% set ns = namespace(services=[], labs=[], imaging=[], drugs=[], controlled=[], ward=[], other=[]) %}
+            {% for item in (sale.items or []) %}
+                {% set _desc = (item.description or item.drug_name or '') %}
+                {% if item.service_id %}
+                    {% set _ = ns.services.append(item) %}
+                {% elif item.lab_test_id %}
+                    {% set _ = ns.labs.append(item) %}
+                {% elif item.imaging_test_id or ((_desc or '').lower().startswith('imaging:')) %}
+                    {% set _ = ns.imaging.append(item) %}
+                {% elif ((_desc or '').lower().startswith('ward stay:')) %}
+                    {% set _ = ns.ward.append(item) %}
+                {% elif ((_desc or '').lower().startswith('controlled:')) %}
+                    {% set _ = ns.controlled.append(item) %}
+                {% elif item.drug_id %}
+                    {% set _ = ns.drugs.append(item) %}
+                {% else %}
+                    {% set _ = ns.other.append(item) %}
+                {% endif %}
+            {% endfor %}
+
+            {% macro render_section(title, rows) -%}
+                {% if rows and (rows|length) > 0 %}
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-2">{{ title }}</h6>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th class="text-end" style="width:90px;">Qty</th>
+                                        <th class="text-end" style="width:140px;">Product Price</th>
+                                        <th class="text-end" style="width:140px;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set subt = namespace(v=0.0) %}
+                                    {% for item in rows %}
+                                        {% set qty = (item.quantity or 1) %}
+                                        {% set unit = (item.unit_price or 0) %}
+                                        {% set line_total = (item.total_price if item.total_price is not none else (qty * unit)) %}
+                                        {% set subt.v = (subt.v + (line_total or 0)) %}
+                                        <tr>
+                                            <td>{{ item.description or item.drug_name or 'Item' }}</td>
+                                            <td class="text-end">{{ qty }}</td>
+                                            <td class="text-end">KSH {{ "%.2f"|format(unit) }}</td>
+                                            <td class="text-end">KSH {{ "%.2f"|format(line_total or 0) }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Subtotal</th>
+                                        <th class="text-end">KSH {{ "%.2f"|format(subt.v) }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+            {%- endmacro %}
+
+            {{ render_section('Services Done', ns.services) }}
+            {{ render_section('Lab (Completed)', ns.labs) }}
+            {{ render_section('Imaging (Completed)', ns.imaging) }}
+            {{ render_section('Drugs Prescribed/Dispensed', ns.drugs) }}
+            {{ render_section('Controlled Drugs', ns.controlled) }}
+            {{ render_section('Ward Stay', ns.ward) }}
+            {{ render_section('Other Charges', ns.other) }}
+
+            <div class="mt-3">
+                <h6 class="mb-2">Payment Summary</h6>
+                <div class="small border rounded p-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Total</span>
+                        <strong>KSH {{ "%.2f"|format(sale.total_amount or 0) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Payment Method</span>
+                        <span>{{ (sale.payment_method or 'cash')|upper }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Amount</span>
+                        <strong>KSH {{ "%.2f"|format(sale.total_amount or 0) }}</strong>
+                    </div>
+                    {% if (sale.payment_method or 'cash') == 'cash' %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Amount Given (Cash)</span>
+                        <span>
+                            {% if amount_given is not none %}
+                                KSH {{ "%.2f"|format(amount_given) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% set _chg = (change if change is not none else (((amount_given or 0) - (sale.total_amount or 0)) if amount_given is not none else none)) %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ 'Change' if (_chg is not none and _chg >= 0) else 'Balance Due' if (_chg is not none and _chg < 0) else 'Change' }}</span>
+                        <span>
+                            {% if _chg is not none %}
+                                KSH {{ "%.2f"|format(_chg) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <div class="signature-section" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap;margin-bottom:12px;">
+                    <div style="flex:0 0 45%;min-width:250px;text-align:left;">
+                        {% include 'components/signature_pad.html' %}
+                    </div>
+                    <div style="flex:0 0 45%;min-width:200px;display:flex;justify-content:flex-end;margin-left:auto;text-align:right;">
+                        {{ generate_rubber_stamp() }}
+                    </div>
+                </div>
+                <div class="mb-2">
+                    {{ render_receipt_verification_qr('sale', sale.id, sale.sale_number) }}
+                </div>
+                <div class="small text-muted">Thank you for your purchase.</div>
+                <div class="small text-muted">Goods sold are not returnable without original receipt.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+#print-area table.table,
+#print-area table.table th,
+#print-area table.table td {
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+#print-area table.table thead th {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+@page {
+    size: auto;
+    margin: 8mm;
+}
+
+@media print {
+    .no-print { display: none !important; }
+    /* Print only the receipt card (hide base layout/sidebar/etc.) */
+    body * { visibility: hidden !important; }
+    #print-area, #print-area * { visibility: visible !important; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+
+    .signature-placeholder,
+    .signature-drawing {
+        display: none !important;
+    }
+    .signature-display button,
+    .signature-display .btn,
+    #penModeIndicator {
+        display: none !important;
+    }
+    .signature-display img {
+        border: none !important;
+        max-width: 100% !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('printReceptionReceiptBtn')?.addEventListener('click', async function() {
+    const exporter = window.MMC_RECEIPT_EXPORT;
+    if (!exporter || typeof exporter.printPdf !== 'function') {
+        alert('Receipt PDF exporter is not available on this page.');
+        return;
+    }
+    const ok = await exporter.printPdf();
+    if (!ok) {
+        alert('Unable to open generated receipt PDF for print.');
+    }
+});
+</script>
+{% endblock %}

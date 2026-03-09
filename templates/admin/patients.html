@@ -1,0 +1,758 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Add this to the head section of all your base templates -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    .patient-filter-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .patient-table-scroll {
+        border: 2px solid #1f2937;
+        border-radius: 12px;
+        max-height: 70vh;
+        overflow: auto;
+        background: #fff;
+    }
+
+    .summary-box {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+        background-color: #f8f9fa;
+        transition: transform 0.2s;
+    }
+    
+    .summary-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table {
+        width: max-content;
+        min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-bottom: 1rem;
+        white-space: nowrap;
+    }
+
+    .data-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        font-weight: 600;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .data-table td {
+        padding: 12px;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .btn-view-details {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-view-details:hover {
+        background-color: #0056b3;
+    }
+
+    .modal-content {
+        border-radius: 8px;
+    }
+
+    .modal-header {
+        background-color: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .modal-body h6 {
+        color: #495057;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+    }
+
+    .detail-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .detail-value {
+        color: #212529;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-badge.active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-badge.completed {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+
+    @media (min-width: 320px) and (max-width: 480px) {
+        .patient-filter-form {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+        }
+
+        .patient-filter-form .form-group,
+        .patient-filter-form button {
+            flex: 0 0 auto;
+        }
+
+        .patient-filter-form .form-group {
+            min-width: 160px;
+        }
+
+        .financial-summary-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin: 0;
+        }
+
+        .financial-summary-row > [class^="col-"] {
+            max-width: none;
+            padding: 0;
+        }
+
+        .summary-box {
+            padding: 10px !important;
+            margin-bottom: 0;
+        }
+
+        .summary-box h6 {
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .summary-box p {
+            font-size: 12px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .view-details {
+            padding: 6px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .view-details i {
+            display: none;
+        }
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Patient Management</h2>
+            
+            <!-- Date Filter Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="dateFilterForm" class="form-inline patient-filter-form">
+                        <div class="form-group mr-3">
+                            <label for="startDate" class="mr-2">From:</label>
+                            <input type="date" class="form-control" id="startDate" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="endDate" class="mr-2">To:</label>
+                            <input type="date" class="form-control" id="endDate" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary mr-2">Filter</button>
+                        <button type="button" id="resetFilter" class="btn btn-secondary">Reset</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Summary Box -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Financial Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row financial-summary-row">
+                        <div class="col-md-3">
+                            <div class="summary-box bg-light p-3">
+                                <h6>Total Lab Amount</h6>
+                                <p id="totalLabAmount">Ksh.0.00</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box bg-light p-3">
+                                <h6>Total Service Amount</h6>
+                                <p id="totalServiceAmount">Ksh.0.00</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box bg-light p-3">
+                                <h6>Total Drug Amount</h6>
+                                <p id="totalDrugAmount">Ksh.0.00</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-box bg-light p-3">
+                                <h6>Total Amount</h6>
+                                <p id="totalAmount">Ksh.0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive patient-table-scroll">
+                <table class="data-table" id="patientsTable">
+                    <thead>
+                        <tr>
+                            <th>Patient No.</th>
+                            <th>Name</th>
+                            <th>Chief Complain</th>
+                            <th>Diagnosis</th>
+                            <th>Lab Done</th>
+                            <th>Lab Amount</th>
+                            <th>Services Done</th>
+                            <th>Services Amount</th>
+                            <th>Drug Name</th>
+                            <th>Quantity</th>
+                            <th>Drug Amount</th>
+                            <th>Total Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                        {% set lab_total = namespace(amount=0) %}
+                        {% if patient.labs %}
+                            {% for lab in patient.labs %}
+                                {% set lab_total.amount = lab_total.amount + lab.test.price %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% set service_total = namespace(amount=0) %}
+                        {% if patient.services %}
+                            {% for service in patient.services %}
+                                {% set service_total.amount = service_total.amount + service.service.price %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% set drug_total = namespace(amount=0) %}
+                        {% if patient.prescriptions %}
+                            {% for prescription in patient.prescriptions %}
+                                {% for item in prescription.items %}
+                                    {% set drug_total.amount = drug_total.amount + (item.drug.selling_price * item.quantity) %}
+                                {% endfor %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% set total_amount = lab_total.amount + service_total.amount + drug_total.amount %}
+                        
+                        <tr data-lab-amount="{{ lab_total.amount }}" data-service-amount="{{ service_total.amount }}" data-drug-amount="{{ drug_total.amount }}" data-total-amount="{{ total_amount }}">
+                            <td>{{ patient.op_number or patient.ip_number }}</td>
+                            <td>{{ patient.decrypted_name }}</td>
+                            <td>{{ patient.chief_complaint|default('-', true)|truncate(30) }}</td>
+                            <td>{{ patient.patient_Diagnosis[0].diagnosis if patient.patient_Diagnosis else '-' }}</td>
+                            <td>
+                                {% if patient.labs %}
+                                    {% for lab in patient.labs %}
+                                        {{ lab.test.name }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.labs %}
+                                    Ksh.{{ "%.2f"|format(lab_total.amount) }}
+                                {% else %}
+                                    Ksh.0.00
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.services %}
+                                    {% for service in patient.services %}
+                                        {{ service.service.name }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.services %}
+                                    Ksh.{{ "%.2f"|format(service_total.amount) }}
+                                {% else %}
+                                    Ksh.0.00
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.prescriptions %}
+                                    {% for prescription in patient.prescriptions %}
+                                        {% for item in prescription.items %}
+                                            {{ item.drug.name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.prescriptions %}
+                                    {% for prescription in patient.prescriptions %}
+                                        {% for item in prescription.items %}
+                                            {{ item.quantity }}{% if not loop.last %} + {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient.prescriptions %}
+                                    Ksh.{{ "%.2f"|format(drug_total.amount) }}
+                                {% else %}
+                                    Ksh.0.00
+                                {% endif %}
+                            </td>
+                            <td>
+                                Ksh.{{ "%.2f"|format(total_amount) }}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary view-details" data-id="{{ patient.id }}" data-toggle="modal" data-target="#viewPatientModal">
+                                    <i class="fas fa-eye"></i> View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Patient Modal -->
+<div class="modal fade" id="viewPatientModal" tabindex="-1" role="dialog" aria-labelledby="viewPatientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewPatientModalLabel">Patient Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Basic Information</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Patient Number</th>
+                                    <td id="view_patient_number"></td>
+                                </tr>
+                                <tr>
+                                    <th>Name</th>
+                                    <td id="view_name"></td>
+                                </tr>
+                                <tr>
+                                    <th>Age</th>
+                                    <td id="view_age"></td>
+                                </tr>
+                                <tr>
+                                    <th>Gender</th>
+                                    <td id="view_gender"></td>
+                                </tr>
+                                <tr>
+                                    <th>Type</th>
+                                    <td id="view_type"></td>
+                                </tr>
+                            </table>
+                            
+                            <h5>Contact Information</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Address</th>
+                                    <td id="view_address"></td>
+                                </tr>
+                                <tr>
+                                    <th>Phone</th>
+                                    <td id="view_phone"></td>
+                                </tr>
+                                <tr>
+                                    <th>Next of Kin</th>
+                                    <td id="view_nok_name"></td>
+                                </tr>
+                                <tr>
+                                    <th>NOK Contact</th>
+                                    <td id="view_nok_contact"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Medical Information</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Chief Complaints</th>
+                                    <td id="view_complaints"></td>
+                                </tr>
+                                <tr>
+                                    <th>Diagnosis</th>
+                                    <td id="view_diagnosis"></td>
+                                </tr>
+                                <tr>
+                                    <th>Treatment</th>
+                                    <td id="view_treatment"></td>
+                                </tr>
+                                <tr>
+                                    <th>TCA Date</th>
+                                    <td id="view_tca"></td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td id="view_status"></td>
+                                </tr>
+                            </table>
+                            
+                            <h5>Financial Summary</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Total Lab Amount</th>
+                                    <td id="view_total_lab_amount"></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Service Amount</th>
+                                    <td id="view_total_service_amount"></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Drug Amount</th>
+                                    <td id="view_total_drug_amount"></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Amount</th>
+                                    <td id="view_total_amount"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h5>Lab Tests</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="view_lab_tests">
+                                    <thead>
+                                        <tr>
+                                            <th>Test</th>
+                                            <th>Price</th>
+                                            <th>Results</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-sm btn-primary mt-2" id="addLabTestBtn" data-patient-id="">
+                                <i class="fas fa-plus"></i> Add Lab Test
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Services</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="view_services">
+                                    <thead>
+                                        <tr>
+                                            <th>Service</th>
+                                            <th>Price</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-sm btn-primary mt-2" id="addServiceBtn" data-patient-id="">
+                                <i class="fas fa-plus"></i> Add Service
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h5>Prescriptions</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="view_prescriptions">
+                                    <thead>
+                                        <tr>
+                                            <th>Drug</th>
+                                            <th>Quantity</th>
+                                            <th>Price</th>
+                                            <th>Total</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Lab Test Modal -->
+<div class="modal fade" id="addLabTestModal" tabindex="-1" role="dialog" aria-labelledby="addLabTestModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addLabTestModalLabel">Add Lab Test</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addLabTestForm">
+                <input type="hidden" id="lab_patient_id" name="patient_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="lab_test_id">Test</label>
+                        <select class="form-control" id="lab_test_id" name="test_id" required>
+                            {% for test in lab_tests %}
+                                <option value="{{ test.id }}">{{ test.name }} - Ksh.{{ test.price }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lab_results">Results</label>
+                        <textarea class="form-control" id="lab_results" name="results" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="lab_comments">Comments</label>
+                        <textarea class="form-control" id="lab_comments" name="comments" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Lab Test</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-labelledby="addServiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addServiceModalLabel">Add Service</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addServiceForm">
+                <input type="hidden" id="service_patient_id" name="patient_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="service_id">Service</label>
+                        <select class="form-control" id="service_id" name="service_id" required>
+                            {% for service in services %}
+                                <option value="{{ service.id }}">{{ service.name }} - Ksh.{{ service.price }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="service_notes">Notes</label>
+                        <textarea class="form-control" id="service_notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Service</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- DataTables and other JS libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTable with drawCallback to update totals
+    $('#patientsTable').DataTable({
+        drawCallback: function(settings) {
+            var api = this.api();
+            
+            // Calculate totals for each column
+            var labTotal = api.column(5, {page: 'current'}).data().reduce(function(a, b) {
+                return a + parseFloat(b.replace(/[^\d.]/g, '') || 0);
+            }, 0);
+            
+            var serviceTotal = api.column(7, {page: 'current'}).data().reduce(function(a, b) {
+                return a + parseFloat(b.replace(/[^\d.]/g, '') || 0);
+            }, 0);
+            
+            var drugTotal = api.column(10, {page: 'current'}).data().reduce(function(a, b) {
+                return a + parseFloat(b.replace(/[^\d.]/g, '') || 0);
+            }, 0);
+            
+            var overallTotal = api.column(11, {page: 'current'}).data().reduce(function(a, b) {
+                return a + parseFloat(b.replace(/[^\d.]/g, '') || 0);
+            }, 0);
+            
+            // Update summary boxes
+            $('#totalLabAmount').text('Ksh.' + labTotal.toFixed(2));
+            $('#totalServiceAmount').text('Ksh.' + serviceTotal.toFixed(2));
+            $('#totalDrugAmount').text('Ksh.' + drugTotal.toFixed(2));
+            $('#totalAmount').text('Ksh.' + overallTotal.toFixed(2));
+        }
+    });
+    
+    // Date filter form submission
+    $('#dateFilterForm').submit(function(e) {
+        e.preventDefault();
+        const startDate = $('#startDate').val();
+        const endDate = $('#endDate').val();
+        
+        // Reload the page with date parameters
+        window.location.href = `?start_date=${startDate}&end_date=${endDate}`;
+    });
+    
+    // Reset filter button
+    $('#resetFilter').click(function() {
+        window.location.href = window.location.pathname;
+    });
+    
+    // Calculate and display summary totals
+    function calculateSummaryTotals() {
+        let totalLab = 0;
+        let totalService = 0;
+        let totalDrug = 0;
+        let totalOverall = 0;
+        
+        $('#patientsTable tbody tr').each(function() {
+            const labAmount = parseFloat($(this).data('lab-amount')) || 0;
+            const serviceAmount = parseFloat($(this).data('service-amount')) || 0;
+            const drugAmount = parseFloat($(this).data('drug-amount')) || 0;
+            const rowTotal = parseFloat($(this).data('total-amount')) || 0;
+            
+            totalLab += labAmount;
+            totalService += serviceAmount;
+            totalDrug += drugAmount;
+            totalOverall += rowTotal;
+        });
+        
+        $('#totalLabAmount').text('Ksh.' + totalLab.toFixed(2));
+        $('#totalServiceAmount').text('Ksh.' + totalService.toFixed(2));
+        $('#totalDrugAmount').text('Ksh.' + totalDrug.toFixed(2));
+        $('#totalAmount').text('Ksh.' + totalOverall.toFixed(2));
+    }
+    
+    // Call the function on page load
+    calculateSummaryTotals();
+    
+    // View patient modal handler
+    $('.view-details').click(function() {
+        const patientId = $(this).data('id');
+        $('#addLabTestBtn').data('patient-id', patientId);
+        $('#addServiceBtn').data('patient-id', patientId);
+        
+        // In a real application, you would fetch this data from the server
+        // For demonstration, we'll use the data from the table row
+        const row = $(this).closest('tr');
+        
+        $('#view_patient_number').text(row.find('td:eq(0)').text());
+        $('#view_name').text(row.find('td:eq(1)').text());
+        $('#view_complaints').text(row.find('td:eq(2)').text());
+        $('#view_diagnosis').text(row.find('td:eq(3)').text());
+        
+        // Set financial summary
+        $('#view_total_lab_amount').text(row.find('td:eq(5)').text());
+        $('#view_total_service_amount').text(row.find('td:eq(7)').text());
+        $('#view_total_drug_amount').text(row.find('td:eq(10)').text());
+        $('#view_total_amount').text(row.find('td:eq(11)').text());
+        
+        // Show the modal
+        $('#viewPatientModal').modal('show');
+    });
+    
+    // Add Lab Test button handler
+    $('#addLabTestBtn').click(function() {
+        const patientId = $(this).data('patient-id');
+        $('#lab_patient_id').val(patientId);
+        $('#addLabTestModal').modal('show');
+    });
+    
+    // Add Service button handler
+    $('#addServiceBtn').click(function() {
+        const patientId = $(this).data('patient-id');
+        $('#service_patient_id').val(patientId);
+        $('#addServiceModal').modal('show');
+    });
+    
+    // Add Lab Test form submission
+    $('#addLabTestForm').submit(function(e) {
+        e.preventDefault();
+        alert('Lab test added successfully!');
+        $('#addLabTestModal').modal('hide');
+    });
+    
+    // Add Service form submission
+    $('#addServiceForm').submit(function(e) {
+        e.preventDefault();
+        alert('Service added successfully!');
+        $('#addServiceModal').modal('hide');
+    });
+});
+</script>
+{% endblock %}

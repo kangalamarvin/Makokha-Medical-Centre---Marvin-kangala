@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Drug Dosage Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dosageTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Drug Number</th>
+                                    <th>Drug Name</th>
+                                    <th>Indications</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dosage in dosages %}
+                                <tr>
+                                    <td>{{ dosage.drug_record.drug_number }}</td>
+                                    <td>{{ dosage.drug_record.name }}</td>
+                                    <td>{{ dosage.indication|truncate(100) if dosage.indication else 'N/A' }}</td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm view-dosage" data-id="{{ dosage.id }}">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dosage Details Modal -->
+<div class="modal fade" id="dosageModal" tabindex="-1" role="dialog" aria-labelledby="dosageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dosageModalLabel">Drug Dosage Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Drug Information</h6>
+                        <p><strong>Drug Number:</strong> <span id="drug-number"></span></p>
+                        <p><strong>Drug Name:</strong> <span id="drug-name"></span></p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6>Dosage Information</h6>
+                        <p><strong>Indication:</strong> <span id="indication"></span></p>
+                        <p><strong>Contraindication:</strong> <span id="contraindication"></span></p>
+                        <p><strong>Interaction:</strong> <span id="interaction"></span></p>
+                        <p><strong>Side Effects:</strong> <span id="side-effects"></span></p>
+                        <p><strong>Pediatric Dosage:</strong> <span id="dosage-peds"></span></p>
+                        <p><strong>Adult Dosage:</strong> <span id="dosage-adults"></span></p>
+                        <p><strong>Geriatric Dosage:</strong> <span id="dosage-geriatrics"></span></p>
+                        <p><strong>Important Notes:</strong> <span id="important-notes"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#dosageTable').DataTable({
+        responsive: true
+    });
+
+    // View dosage details
+    $('.view-dosage').click(function() {
+        var dosageId = $(this).data('id');
+        
+        $.get('/pharmacist/dosage/' + dosageId, function(data) {
+            $('#drug-number').text(data.drug.drug_number);
+            $('#drug-name').text(data.drug.name);
+            $('#indication').text(data.indication || 'N/A');
+            $('#contraindication').text(data.contraindication || 'N/A');
+            $('#interaction').text(data.interaction || 'N/A');
+            $('#side-effects').text(data.side_effects || 'N/A');
+            $('#dosage-peds').text(data.dosage_peds || 'N/A');
+            $('#dosage-adults').text(data.dosage_adults || 'N/A');
+            $('#dosage-geriatrics').text(data.dosage_geriatrics || 'N/A');
+            $('#important-notes').text(data.important_notes || 'N/A');
+            
+            $('#dosageModal').modal('show');
+        }).fail(function() {
+            if (typeof window.showAlert === 'function') {
+                window.showAlert('Failed to load dosage information', 'danger');
+            } else if (window.toastr) {
+                toastr.error('Failed to load dosage information');
+            } else {
+                alert('Failed to load dosage information');
+            }
+        });
+    });
+
+    // View drug dosage
+    $('.view-drug-dosage').click(function() {
+        var drugId = $(this).data('id');
+        
+        $.get('/pharmacist/drugs/' + drugId + '/dosage', function(data) {
+            $('#drug-number').text(data.drug.drug_number);
+            $('#drug-name').text(data.drug.name);
+            
+            if (data.dosage) {
+                $('#indication').text(data.dosage.indication || 'N/A');
+                $('#contraindication').text(data.dosage.contraindication || 'N/A');
+                $('#interaction').text(data.dosage.interaction || 'N/A');
+                $('#side-effects').text(data.dosage.side_effects || 'N/A');
+                $('#dosage-peds').text(data.dosage.dosage_peds || 'N/A');
+                $('#dosage-adults').text(data.dosage.dosage_adults || 'N/A');
+                $('#dosage-geriatrics').text(data.dosage.dosage_geriatrics || 'N/A');
+                $('#important-notes').text(data.dosage.important_notes || 'N/A');
+            } else {
+                $('#indication, #contraindication, #interaction, #side-effects, ' +
+                 '#dosage-peds, #dosage-adults, #dosage-geriatrics, #important-notes')
+                 .text('No dosage information available');
+            }
+            
+            $('#dosageModal').modal('show');
+        }).fail(function() {
+            if (typeof window.showAlert === 'function') {
+                window.showAlert('Failed to load drug dosage information', 'danger');
+            } else if (window.toastr) {
+                toastr.error('Failed to load drug dosage information');
+            } else {
+                alert('Failed to load drug dosage information');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

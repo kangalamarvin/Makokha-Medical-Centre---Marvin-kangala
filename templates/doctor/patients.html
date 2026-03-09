@@ -1,0 +1,690 @@
+{% extends "doctor/layout.html" %}
+
+{% block content %}
+<div class="content container-fluid">
+    <div class="page-header d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-procedures"></i> Patients</h2>
+        <a href="{{ url_for('doctor_new_patient') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> New Patient
+        </a>
+    </div>
+
+    <div class="patient-tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'activePatients')">Active Patients</button>
+        <button class="tab-btn" onclick="openTab(event, 'oldPatients')">Old Patients</button>
+    </div>
+
+        <div id="completeAlert" class="alert alert-warning alert-dismissible fade d-none" role="alert">
+            <div id="completeAlertBody"></div>
+            <button type="button" class="btn-close" aria-label="Close" onclick="hideCompleteAlert()"></button>
+        </div>
+
+    <!-- Active Patients -->
+    <div id="activePatients" class="tab-content active">
+        <div class="search-box mb-3">
+            <input type="text" id="activePatientSearch" class="form-control" placeholder="Search active patients...">
+        </div>
+
+        <h5 class="mt-2">Outpatients (OP)</h5>
+        <div class="table-container">
+            <table class="simple-table" id="activeOutpatientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in (active_outpatients if active_outpatients is defined else active_patients) %}
+                    {% if patient.op_number and not patient.ip_number %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span>{{ patient.op_number }}</span>
+                                {% if patient.discharge_state == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending discharge</span>
+                                {% elif patient.discharge_state == 'discharged' %}
+                                    <span class="badge bg-success">Discharged</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ patient.decrypted_name }}</td>
+                        <td>{{ patient.age or 'N/A' }}</td>
+                        <td>{{ patient.gender or 'N/A' }}</td>
+                        <td>{{ patient.updated_at|eat_time('%Y-%m-%d') if patient.updated_at else 'N/A' }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="{{ url_for('doctor_patient_details', patient_id=patient.id) }}" class="action-btn btn-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="action-btn btn-success" onclick="completeTreatment('{{ patient.id }}')" title="Complete">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="action-btn btn-warning" onclick="admitPatient('{{ patient.id }}')" title="Admit">
+                                    <i class="fas fa-hospital"></i>
+                                </button>
+                                <button class="action-btn btn-info" onclick="viewSections('{{ patient.id }}')" title="Sections">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                                <button class="action-btn btn-danger" onclick="confirmDelete('{{ patient.id }}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="6" class="text-center">No active outpatients found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h5 class="mt-4">Inpatients (IP)</h5>
+        <div class="table-container">
+            <table class="simple-table" id="activeInpatientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in (active_inpatients if active_inpatients is defined else active_patients) %}
+                    {% if patient.ip_number %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span>{{ patient.ip_number }}</span>
+                                {% if patient.discharge_state == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending discharge</span>
+                                {% elif patient.discharge_state == 'discharged' %}
+                                    <span class="badge bg-success">Discharged</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ patient.decrypted_name }}</td>
+                        <td>{{ patient.age or 'N/A' }}</td>
+                        <td>{{ patient.gender or 'N/A' }}</td>
+                        <td>{{ patient.updated_at|eat_time('%Y-%m-%d') if patient.updated_at else 'N/A' }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="{{ url_for('doctor_patient_details', patient_id=patient.id) }}" class="action-btn btn-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if patient.discharge_state == 'pending' %}
+                                    <button class="action-btn btn-secondary" disabled title="Pending discharge">
+                                        <i class="fas fa-clock"></i>
+                                    </button>
+                                {% else %}
+                                    <button class="action-btn btn-warning" onclick="completeTreatment('{{ patient.id }}')" title="Request Discharge">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                    </button>
+                                {% endif %}
+                                <button class="action-btn btn-info" onclick="viewSections('{{ patient.id }}')" title="Sections">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                                <button class="action-btn btn-danger" onclick="confirmDelete('{{ patient.id }}')" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="6" class="text-center">No active inpatients found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Old Patients -->
+    <div id="oldPatients" class="tab-content">
+        <div class="search-box mb-3">
+            <input type="text" id="oldPatientSearch" class="form-control" placeholder="Search old patients...">
+        </div>
+
+        <h5 class="mt-2">Outpatients (OP)</h5>
+        <div class="table-container">
+            <table class="simple-table" id="oldOutpatientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in (completed_outpatients if completed_outpatients is defined else completed_patients) %}
+                    {% if patient.op_number and not patient.ip_number %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span>{{ patient.op_number }}</span>
+                                {% if patient.discharge_state == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending discharge</span>
+                                {% elif patient.discharge_state == 'discharged' %}
+                                    <span class="badge bg-success">Discharged</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ patient.decrypted_name }}</td>
+                        <td>{{ patient.age or 'N/A' }}</td>
+                        <td>{{ patient.gender or 'N/A' }}</td>
+                        <td>{{ patient.updated_at.strftime('%Y-%m-%d') if patient.updated_at else 'N/A' }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="{{ url_for('doctor_patient_details', patient_id=patient.id) }}" class="action-btn btn-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="action-btn btn-warning" onclick="readmitPatient('{{ patient.id }}')" title="Readmit">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                                <button class="action-btn btn-info" onclick="viewSections('{{ patient.id }}')" title="Sections">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="6" class="text-center">No old outpatients found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h5 class="mt-4">Inpatients (IP)</h5>
+        <div class="table-container">
+            <table class="simple-table" id="oldInpatientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in (completed_inpatients if completed_inpatients is defined else completed_patients) %}
+                    {% if patient.ip_number %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span>{{ patient.ip_number }}</span>
+                                {% if patient.discharge_state == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Pending discharge</span>
+                                {% elif patient.discharge_state == 'discharged' %}
+                                    <span class="badge bg-success">Discharged</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ patient.decrypted_name }}</td>
+                        <td>{{ patient.age or 'N/A' }}</td>
+                        <td>{{ patient.gender or 'N/A' }}</td>
+                        <td>{{ patient.updated_at.strftime('%Y-%m-%d') if patient.updated_at else 'N/A' }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <a href="{{ url_for('doctor_patient_details', patient_id=patient.id) }}" class="action-btn btn-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="action-btn btn-warning" onclick="readmitPatient('{{ patient.id }}')" title="Readmit">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                                <button class="action-btn btn-info" onclick="viewSections('{{ patient.id }}')" title="Sections">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="6" class="text-center">No old inpatients found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+<script>
+function showCompleteAlert(message, level) {
+    const alertEl = document.getElementById('completeAlert');
+    const bodyEl = document.getElementById('completeAlertBody');
+    if (!alertEl || !bodyEl) return;
+
+    const cls = (level === 'danger') ? 'alert-danger'
+        : (level === 'success') ? 'alert-success'
+        : (level === 'info') ? 'alert-info'
+        : 'alert-warning';
+
+    alertEl.classList.remove('alert-warning', 'alert-danger', 'alert-success', 'alert-info');
+    alertEl.classList.add(cls);
+    bodyEl.textContent = message;
+    alertEl.classList.remove('d-none');
+    alertEl.classList.add('show');
+    try {
+        alertEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {}
+}
+
+function hideCompleteAlert() {
+    const alertEl = document.getElementById('completeAlert');
+    if (!alertEl) return;
+    alertEl.classList.remove('show');
+    alertEl.classList.add('d-none');
+}
+
+function openTab(evt, tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    evt.currentTarget.classList.add('active');
+}
+
+function completeTreatment(patientId) {
+    if (confirm("Complete treatment for this patient?")) {
+        fetch(`/doctor/patient/${patientId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({})
+        })
+        .then(async (res) => {
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (e) {
+                data = {};
+            }
+
+            if (res.ok && data.success) {
+                location.reload();
+                return;
+            }
+
+            if (data && data.ward_stay_due) {
+                const w = data.ward_stay_due;
+                const dailyRate = (w.daily_rate !== undefined && w.daily_rate !== null)
+                    ? Number(w.daily_rate)
+                    : null;
+                const amount = (w.amount !== undefined && w.amount !== null)
+                    ? Number(w.amount)
+                    : null;
+                const days = (w.days !== undefined && w.days !== null)
+                    ? Number(w.days)
+                    : null;
+
+                    const msg = [
+                        'Cannot discharge: ward stay charges are unpaid.',
+                        `Ward: ${w.ward_name || '-'}`,
+                        `Bed: ${w.bed_number || '-'}`,
+                        `Due: ${days !== null && !Number.isNaN(days) ? days : '-'} day(s) (${w.start_date || '-'} to ${w.end_date || '-'})`,
+                        `Rate: ${dailyRate !== null && !Number.isNaN(dailyRate) ? dailyRate.toFixed(2) : '-'}`,
+                        `Amount: ${amount !== null && !Number.isNaN(amount) ? amount.toFixed(2) : '-'}`,
+                        'Please ask reception to bill/pay the ward stay, then try again.'
+                    ].join(' | ');
+                    showCompleteAlert(msg, 'warning');
+                return;
+            }
+
+                showCompleteAlert((data && data.error) ? data.error : 'Error completing treatment', 'danger');
+        })
+        .catch(() => {
+                showCompleteAlert('Network error completing treatment', 'danger');
+        });
+    }
+}
+
+function viewSections(patientId) {
+    // Navigate to medical record page
+    window.location.href = `/doctor/patient/${patientId}/record`;
+}
+
+function admitPatient(patientId) {
+    // Navigate to admission page
+    window.location.href = `/doctor/patient/${patientId}/admit`;
+}
+
+function confirmDelete(patientId) {
+    if (confirm("Are you sure you want to delete this patient?")) {
+        fetch(`/doctor/patient/${patientId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(`Error: ${data.error}`);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+}
+
+function readmitPatient(patientId) {
+    if (confirm("Readmit this patient?")) {
+        fetch('/doctor/patient/readmit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: `patient_id=${patientId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.error || 'Error readmitting patient');
+        });
+    }
+}
+function filterTable(inputId, tableId) {
+    const value = document.getElementById(inputId).value.toLowerCase();
+    const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+
+    rows.forEach(row => {
+        const rowText = row.textContent.toLowerCase();
+        if (rowText.includes(value)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Bind search events
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('activePatientSearch').addEventListener('keyup', () => {
+        filterTable('activePatientSearch', 'activeOutpatientsTable');
+        filterTable('activePatientSearch', 'activeInpatientsTable');
+    });
+
+    document.getElementById('oldPatientSearch').addEventListener('keyup', () => {
+        filterTable('oldPatientSearch', 'oldOutpatientsTable');
+        filterTable('oldPatientSearch', 'oldInpatientsTable');
+    });
+});
+</script>
+
+<style>
+:root {
+    --primary: #4361ee;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --danger: #dc3545;
+    --warning: #ffc107;
+    --info: #17a2b8;
+    --white: #ffffff;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-600: #6c757d;
+    --gray-800: #343a40;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+.tab-btn { 
+    padding: 10px 15px; 
+    border: none; 
+    border-bottom: 3px solid transparent; 
+    background: none; 
+    cursor: pointer; 
+}
+.tab-btn.active { 
+    border-bottom: 3px solid #007bff; 
+    color: #007bff; 
+    font-weight: bold; 
+}
+.tab-content { 
+    display: none; 
+}
+.tab-content.active { 
+    display: block; 
+}
+
+/* Table Container - Modern Card Style */
+.table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+}
+
+/* Simple Table Styles */
+.simple-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    margin: 0;
+    font-size: 14px;
+}
+
+.simple-table thead {
+    background: #0d6efd;
+    color: white;
+}
+
+/* Sticky header for all patient tables */
+.simple-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d6efd;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    border: 2px solid #0d6efd;
+    white-space: nowrap;
+}
+
+.simple-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--gray-300);
+}
+
+.simple-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.simple-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.simple-table tbody tr:last-child td {
+    border-bottom: 2px solid var(--gray-300);
+}
+
+/* Action Buttons Container */
+.action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+/* Action Button Styles */
+.action-btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    color: white;
+    text-decoration: none;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+    text-decoration: none;
+    color: white;
+}
+
+.action-btn.btn-primary {
+    background: #4361ee;
+}
+
+.action-btn.btn-primary:hover {
+    background: #3651d3;
+}
+
+.action-btn.btn-success {
+    background: #28a745;
+}
+
+.action-btn.btn-success:hover {
+    background: #218838;
+}
+
+.action-btn.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.action-btn.btn-warning:hover {
+    background: #e0a800;
+    color: #212529;
+}
+
+.action-btn.btn-danger {
+    background: #dc3545;
+}
+
+.action-btn.btn-danger:hover {
+    background: #c82333;
+}
+
+.action-btn.btn-info {
+    background: #17a2b8;
+}
+
+.action-btn.btn-info:hover {
+    background: #138496;
+}
+
+.action-btn.btn-secondary {
+    background: #6c757d;
+}
+
+.action-btn.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Status Badges */
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Responsive Design */
+@media (min-width: 481px) and (max-width: 767px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .simple-table {
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        width: 26px;
+        height: 26px;
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+}
+
+@media (min-width: 320px) and (max-width: 480px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-height: 60vh;
+    }
+    
+    .simple-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .simple-table th,
+    .simple-table td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        min-width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .action-btn i {
+        font-size: 11px;
+    }
+    
+    .badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}
+</style>
+{% endblock %}

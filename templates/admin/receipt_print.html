@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt - {{ receipt.receipt_number }}</title>
+    <link rel="stylesheet" href="{{ request.script_root }}/vendor/cdnjs/ajax/libs/font-awesome/6.4.0/css/all.min.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .receipt-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hospital-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .hospital-details {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .receipt-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            color: #333;
+        }
+
+        .receipt-number {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .receipt-content {
+            margin-bottom: 20px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #ddd;
+            font-size: 13px;
+        }
+
+        .receipt-row label {
+            font-weight: 600;
+            color: #333;
+            min-width: 150px;
+        }
+
+        .receipt-row value {
+            text-align: right;
+            color: #555;
+            flex: 1;
+        }
+
+        .amount-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .amount-row label {
+            color: #333;
+        }
+
+        .amount-row value {
+            color: #28a745;
+            text-align: right;
+        }
+
+        .notes-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .notes-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .stamp-area {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stamp-text {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .stamp-placeholder {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ddd;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .receipt-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .footer-text {
+            margin: 5px 0;
+        }
+
+        .print-button {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-print {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-print:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-close {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-close:hover {
+            background: #e0e0e0;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .receipt-container {
+                max-width: 100%;
+                padding: 20px;
+                box-shadow: none;
+            }
+
+            .print-button {
+                display: none;
+            }
+
+            .receipt-content {
+                page-break-inside: avoid;
+            }
+        }
+
+        .field-group {
+            margin-bottom: 2px;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #333;
+            display: inline-block;
+            min-width: 140px;
+        }
+
+        .field-value {
+            color: #555;
+            display: inline-block;
+        }
+
+        .amount-highlight {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <!-- Header -->
+        <div class="receipt-header">
+            <div class="hospital-name">{{ hospital_name }}</div>
+            <div class="hospital-details">
+                <div>P.O. Box 123, Nairobi, Kenya</div>
+                <div>Tel: +254 7XXXXXXXX | KRA PIN: XXX</div>
+            </div>
+        </div>
+
+        <!-- Receipt Title -->
+        <div class="receipt-title">
+            <i class="fas fa-receipt"></i> RECEIPT
+        </div>
+        <div class="receipt-number">
+            Receipt #: <strong>{{ receipt.receipt_number }}</strong>
+        </div>
+
+        <!-- Receipt Details -->
+        <div class="receipt-content">
+            <div class="field-group">
+                <span class="field-label">Date:</span>
+                <span class="field-value">{{ receipt.payment_date or receipt.created_at }}</span>
+            </div>
+
+            <div class="field-group">
+                <span class="field-label">Amount:</span>
+                <span class="field-value amount-highlight">Ksh {{ "%.2f"|format(receipt.amount) }}</span>
+            </div>
+
+            <div class="field-group">
+                <span class="field-label">Payment Method:</span>
+                <span class="field-value">{{ receipt.payment_method|capitalize if receipt.payment_method else 'Cash' }}</span>
+            </div>
+
+            <div class="field-group">
+                <span class="field-label">Issued By:</span>
+                <span class="field-value">{{ receipt.issued_by }}</span>
+            </div>
+
+            {% if receipt.bill_type %}
+            <div class="field-group">
+                <span class="field-label">Bill Type:</span>
+                <span class="field-value">{{ receipt.bill_type|capitalize }}</span>
+            </div>
+            {% endif %}
+
+            {% if receipt.description %}
+            <div class="field-group">
+                <span class="field-label">Description:</span>
+                <span class="field-value">{{ receipt.description }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Notes Section -->
+        {% if receipt.notes %}
+        <div class="notes-section">
+            <div class="notes-label">Notes:</div>
+            <div>{{ receipt.notes }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Stamp Area -->
+        <div class="stamp-area">
+            <div class="stamp-text">Official Hospital Stamp</div>
+            <div class="stamp-placeholder">
+                [STAMP]
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="receipt-footer">
+            <div class="footer-text">? Payment Confirmed</div>
+            <div class="footer-text">Thank you for your payment</div>
+            <div class="footer-text">Keep this receipt for your records</div>
+            <div class="footer-text" style="margin-top: 10px; font-size: 10px;">
+                Generated on {{ receipt.created_at }}
+            </div>
+        </div>
+
+        <!-- Print Buttons -->
+        <div class="print-button">
+            <button class="btn btn-print" onclick="window.print()">
+                <i class="fas fa-print"></i> Print Receipt
+            </button>
+            <button class="btn btn-close" onclick="window.close()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Auto-focus print dialog on load
+        window.addEventListener('load', function() {
+            // Uncomment to auto-print:
+            // window.print();
+        });
+    </script>
+</body>
+</html>
+{% endblock %}

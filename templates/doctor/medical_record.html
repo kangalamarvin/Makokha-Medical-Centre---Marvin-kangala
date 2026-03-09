@@ -1,0 +1,404 @@
+{% extends "doctor/layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Medical Record: {{ patient.decrypted_name }}</h2>
+        <div>
+            <span class="badge badge-secondary">
+                {{ patient.op_number or patient.ip_number }}
+            </span>
+            <span class="badge badge-{{ 'success' if patient.status == 'active' else 'info' }}">
+                {{ patient.status|capitalize }}
+            </span>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Biodata</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Age:</strong> {{ patient.age }}</p>
+                    <p><strong>Gender:</strong> {{ patient.gender }}</p>
+                    <p><strong>Phone:</strong> {{ patient.decrypted_phone }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Address:</strong> {{ patient.decrypted_address }}</p>
+                    <p><strong>Occupation:</strong> {{ patient.decrypted_occupation }}</p>
+                    <p><strong>Religion:</strong> {{ patient.religion }}</p>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <p><strong>Next of Kin:</strong> {{ patient.decrypted_nok_name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Kin Contact:</strong> {{ patient.decrypted_nok_contact }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chief Complaint and History -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Chief Complaint & History</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Chief Complaint:</strong></p>
+            <p>{{ patient.chief_complaint or 'Not recorded' }}</p>
+            
+            <p class="mt-3"><strong>History of Present Illness:</strong></p>
+            <p>{{ patient.history_present_illness or 'Not recorded' }}</p>
+        </div>
+    </div>
+
+    <!-- Review of Systems -->
+    {% if review_systems %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Review of Systems</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>CNS:</strong> {{ review_systems.cns or 'Normal' }}</p>
+                    <p><strong>CVS:</strong> {{ review_systems.cvs or 'Normal' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>RS:</strong> {{ review_systems.rs or 'Normal' }}</p>
+                    <p><strong>GIT:</strong> {{ review_systems.git or 'Normal' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>GUT:</strong> {{ review_systems.gut or 'Normal' }}</p>
+                    <p><strong>MSK:</strong> {{ review_systems.msk or 'Normal' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- History -->
+    {% if history %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Patient History</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Medical History:</strong></p>
+                    <p>{{ history.medical_history or 'None' }}</p>
+                    
+                    <p class="mt-3"><strong>Surgical History:</strong></p>
+                    <p>{{ history.surgical_history or 'None' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Family History:</strong></p>
+                    <p>{{ history.family_history or 'None' }}</p>
+                    
+                    <p class="mt-3"><strong>Allergies:</strong></p>
+                    <p>{{ history.allergies or 'None' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Examination -->
+    {% if examination %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Examination Findings</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>General Appearance:</strong> {{ examination.general_appearance or 'Normal' }}</p>
+                    <p><strong>Vital Signs:</strong></p>
+                    <ul>
+                        <li>Temp: {{ examination.temperature or '--' }}°C</li>
+                        <li>Pulse: {{ examination.pulse or '--' }}/min</li>
+                        <li>BP: {{ examination.bp_systolic or '--' }}/{{ examination.bp_diastolic or '--' }} mmHg</li>
+                        <li>SpO2: {{ examination.spo2 or '--' }}%</li>
+                        <li>RR: {{ examination.resp_rate or '--' }}/min</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Findings:</strong></p>
+                    <ul>
+                        <li>Jaundice: {{ 'Yes' if examination.jaundice else 'No' }}</li>
+                        <li>Pallor: {{ 'Yes' if examination.pallor else 'No' }}</li>
+                        <li>Cyanosis: {{ 'Yes' if examination.cyanosis else 'No' }}</li>
+                        <li>Edema: {{ 'Yes' if examination.edema else 'No' }}</li>
+                    </ul>
+                    
+                    <p class="mt-3"><strong>System Examinations:</strong></p>
+                    <p>CVS: {{ examination.cvs_exam or 'Normal' }}</p>
+                    <p>Resp: {{ examination.resp_exam or 'Normal' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Diagnosis -->
+    {% if diagnosis %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Diagnosis</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Working Diagnosis:</strong></p>
+            <p>{{ diagnosis.working_diagnosis or 'Not recorded' }}</p>
+            
+            <p class="mt-3"><strong>Differential Diagnosis:</strong></p>
+            <p>{{ diagnosis.differential_diagnosis or 'Not recorded' }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Management -->
+{% if management %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Management</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Treatment Plan:</strong></p>
+        <p>{{ management.treatment_plan or 'Not recorded' }}</p>
+        
+        <p class="mt-3"><strong>Follow Up:</strong></p>
+        <p>{{ management.follow_up or 'Not recorded' }}</p>
+
+        <p class="mt-3"><strong>Notes:</strong></p>
+        <p>{{ management.notes or 'None' }}</p>
+
+        <p class="mt-3"><strong>Discharge Plan:</strong></p>
+        <p>{{ management.discharge_plan or 'None' }}</p>
+
+        <p class="mt-3"><strong>Procedures Performed:</strong></p>
+        <p>{{ management.procedures_done or 'None' }}</p>
+
+        <!-- Render Services -->
+        <hr class="my-4">
+        <h6>Services Rendered</h6>
+        {% if services %}
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Performed By</th>
+                        <th>Notes</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in services %}
+                    <tr>
+                        <td>{{ s.service.name }}</td>
+                        <td>{{ s.performed_by_user.name if s.performed_by_user else 'N/A' }}</td>
+                        <td>{{ s.notes or 'None' }}</td>
+                        <td>{{ s.created_at|eat_time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No services recorded</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+    <!-- Investigations -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Investigations</h5>
+        </div>
+        <div class="card-body">
+            <h6>Lab Tests</h6>
+            {% if lab_requests %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Test</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in lab_requests %}
+                        <tr>
+                            <td>{{ req.test.name }}</td>
+                            <td>{{ req.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'success' if req.status == 'completed' else 'warning' }}">
+                                    {{ req.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if req.result %}
+                                <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#labResultModal{{ req.id }}">
+                                    View
+                                </button>
+                                {% else %}
+                                Pending
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No lab tests requested</p>
+            {% endif %}
+
+            <h6 class="mt-4">Imaging</h6>
+            {% if imaging_requests %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Test</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in imaging_requests %}
+                        <tr>
+                            <td>{{ req.test.name }}</td>
+                            <td>{{ req.created_at|eat_time('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'success' if req.status == 'completed' else 'warning' }}">
+                                    {{ req.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if req.result %}
+                                <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#imagingResultModal{{ req.id }}">
+                                    View
+                                </button>
+                                {% else %}
+                                Pending
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No imaging tests requested</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Prescriptions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Prescriptions</h5>
+        </div>
+        <div class="card-body">
+            {% if prescriptions %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Drug</th>
+                            <th>Dosage</th>
+                            <th>Frequency</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prescription in prescriptions %}
+                            {% for item in prescription.items %}
+                            <tr>
+                                <td>{{ item.drug.name if item.drug else 'N/A' }}</td>
+                                <td>{{ item.dosage }}</td>
+                                <td>{{ item.frequency }}</td>
+                                <td>{{ item.duration }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if item.status == 'dispensed' else 'warning' }}">
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>No prescriptions recorded</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <a href="{{ url_for('old_patients') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Old Patients
+        </a>
+    </div>
+</div>
+
+<!-- Lab Result Modals -->
+{% for req in lab_requests if req.result %}
+<div class="modal fade" id="labResultModal{{ req.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ req.test.name }} Result</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Result:</strong> {{ req.result }}</p>
+                <p><strong>Notes:</strong> {{ req.notes or 'None' }}</p>
+                <p><strong>Date:</strong> {{ req.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Imaging Result Modals -->
+{% for req in imaging_requests if req.result %}
+<div class="modal fade" id="imagingResultModal{{ req.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ req.test.name }} Result</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Result:</strong> {{ req.result }}</p>
+                <p><strong>Notes:</strong> {{ req.notes or 'None' }}</p>
+                <p><strong>Date:</strong> {{ req.updated_at|eat_time }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
