@@ -8664,7 +8664,8 @@ def _ensure_all_tables_and_columns(engine) -> tuple[int, int]:
             if table.name in existing_tables:
                 continue
             try:
-                table.create(bind=engine, checkfirst=True)
+                with engine.begin() as conn:
+                    table.create(conn, checkfirst=True)
                 tables_created += 1
             except Exception:
                 try:
@@ -8988,10 +8989,10 @@ def ensure_database_initialized():
             
             if missing_tables:
                 app.logger.warning(f"Database missing {len(missing_tables)} tables. Creating them now...")
-                # db.create_all()
+                db.create_all()
                 inspector = sa_inspect(engine)
                 new_tables = set(inspector.get_table_names())
-                # app.logger.info(f"✓ Database schema initialized successfully. Created {len(new_tables)} tables.")
+                app.logger.info(f"Database schema initialized successfully. Created {len(new_tables - existing_tables)} missing tables.")
             else:
                 pass  # Database schema verification silent
 
@@ -9753,7 +9754,7 @@ def filter_accessible_patients(query, user):
         inpatient_condition = db.and_(
             Patient.ip_number.isnot(None),
             Patient.id.in_(
-                db.select([Bed.patient_id]).where(
+                db.select(Bed.patient_id).where(
                     db.and_(
                         Bed.patient_id.isnot(None),
                         Bed.ward_id.in_(ward_ids)
