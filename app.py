@@ -36614,7 +36614,10 @@ def nurse_dashboard():
         return redirect(url_for('home'))
     
     # Count inpatients with access control
-    base_inpatients_query = Patient.query.filter_by(patient_type='inpatient', status='active')
+    base_inpatients_query = Patient.query.filter(
+        Patient.ip_number.isnot(None),
+        Patient.status == 'active'
+    )
     inpatients_count = filter_accessible_patients(base_inpatients_query, current_user).count()
     
     # Count pending nurse notifications
@@ -36682,7 +36685,10 @@ def nurse_patients():
         return redirect(url_for('home'))
     
     # Get all inpatients with access control
-    base_patients_query = Patient.query.filter_by(patient_type='inpatient', status='active')
+    base_patients_query = Patient.query.filter(
+        Patient.ip_number.isnot(None),
+        Patient.status == 'active'
+    )
     patients = filter_accessible_patients(base_patients_query, current_user).order_by(Patient.created_at.desc()).all()
     
     # Attach latest nursing report to each patient
@@ -37360,7 +37366,10 @@ def nurse_medication_schedule():
         return redirect(url_for('home'))
     
     # Get all inpatients with their latest medication administrations
-    patients = Patient.query.filter_by(patient_type='inpatient', status='active').all()
+    patients = Patient.query.filter(
+        Patient.ip_number.isnot(None),
+        Patient.status == 'active'
+    ).all()
     
     medications = []
     now = get_eat_now()
