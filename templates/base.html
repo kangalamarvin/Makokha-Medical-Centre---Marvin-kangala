@@ -996,6 +996,198 @@ body:not(.mmc-context-receipt) .table-container tbody tr:hover {
                 margin-top: 0 !important;
             }
         }
+
+        /* ============================================
+           LOADING INDICATOR STYLES
+           ============================================ */
+        .mmc-loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .mmc-loading-overlay.active {
+            display: flex;
+        }
+
+        .mmc-loading-container {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        /* Spinner animation */
+        .mmc-spinner {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .mmc-spinner--loading::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .mmc-spinner--complete::after {
+            content: '\2713';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-size: 2.5rem;
+            color: #28a745;
+            font-weight: bold;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        .mmc-spinner--done::after {
+            content: '\2713';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-size: 2.5rem;
+            color: #17a2b8;
+            font-weight: bold;
+            animation: checkmarkBounce 0.6s ease-out;
+        }
+
+        /* Loading status text */
+        .mmc-loading-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+
+        .mmc-loading-subtext {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin: 0;
+        }
+
+        /* Status color variations */
+        .mmc-loading-container.status-loading {
+            border-top: 4px solid #0d6efd;
+        }
+
+        .mmc-loading-container.status-complete {
+            border-top: 4px solid #28a745;
+            animation: slideUp 0.4s ease-out, slideDown 0.1s ease-in 1.5s forwards;
+        }
+
+        .mmc-loading-container.status-done {
+            border-top: 4px solid #17a2b8;
+            animation: slideUp 0.4s ease-out, slideDown 0.1s ease-in 2.5s forwards;
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes checkmarkBounce {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive design for loading overlay */
+        @media (max-width: 480px) {
+            .mmc-loading-container {
+                padding: 2rem 1.5rem;
+                max-width: 90%;
+                border-radius: 12px;
+            }
+
+            .mmc-spinner {
+                width: 50px;
+                height: 50px;
+            }
+
+            .mmc-loading-text {
+                font-size: 1rem;
+            }
+
+            .mmc-loading-subtext {
+                font-size: 0.85rem;
+            }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -1051,6 +1243,16 @@ body:not(.mmc-context-receipt) .table-container tbody tr:hover {
       data-mmc-pharmacist-context="{{ '1' if is_pharmacist_context else '0' }}"
       data-mmc-rich-typing-context="{{ '1' if is_rich_typing_context else '0' }}"
       data-mmc-receipt-context="{{ '1' if is_receipt_context else '0' }}">
+    
+    <!-- Loading Indicator Overlay -->
+    <div id="mmc-loading-overlay" class="mmc-loading-overlay" style="display: none;">
+        <div class="mmc-loading-container status-loading">
+            <div class="mmc-spinner mmc-spinner--loading"></div>
+            <div class="mmc-loading-text" id="mmc-loading-title">Loading...</div>
+            <p class="mmc-loading-subtext" id="mmc-loading-message"></p>
+        </div>
+    </div>
+
     {% if is_embed %}
         <style>
             body { padding-top: 0 !important; background: #fff; }
@@ -1633,6 +1835,7 @@ body:not(.mmc-context-receipt) .table-container tbody tr:hover {
     </script>
     
     <!-- Local JS -->
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
